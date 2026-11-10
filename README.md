@@ -13,7 +13,8 @@ tells you which file to download and how fast it will run.
 | Path | What it is |
 | --- | --- |
 | `design/mockup.html` | Clickable design with example data (open it in Edge or Chrome) |
-| `design/mockup-dark.png` | Screenshot of the design |
+| `design/mockup-dark.png` | Screenshot of the design: model list (dark) |
+| `design/mockup-battle-light.png` | Screenshot of the design: Battle view (light) |
 | `research/similar-tools.md` | Study of similar tools and the features we take over |
 | `PROGRESS.md` | Decisions, what is done, and the next steps |
 
