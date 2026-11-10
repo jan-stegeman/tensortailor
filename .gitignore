@@ -5,6 +5,7 @@ node_modules/
 engine/pkg-node/
 engine/pkg-web/
 engine/golden-native.json
+vendor/
 
 # Local secrets and tokens: never commit them
 .env
