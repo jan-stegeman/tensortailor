@@ -59,6 +59,8 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 | `research/similar-tools.md` | Study of similar tools and the features we take over |
 | `PROGRESS.md` | Decisions, what is done, and the next steps |
 | `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly |
+| `engine/tools/patch-llmfit.sh` | The two small browser changes to llmfit-core (clock, and the update code split) |
+| `engine/tools/hf-fixtures.json` | 13 fixed Hugging Face models: the live conversion must be the same natively and in WebAssembly |
 | `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
 | `web/build.mjs` | Makes the single file `dist/tensortailor.html` |
 | `tools/cdp_test.mjs` | Tests the built page in headless Edge (DevTools protocol) and takes screenshots |
@@ -73,6 +75,10 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 - **Engine:** the fit and speed calculation of [llmfit](https://github.com/AlexsJones/llmfit) by Alex Jones,
   compiled to WebAssembly so it runs inside the browser. The results match llmfit.
 - **Model list:** llmfit's catalog of the same llmfit release as the engine.
+- **New models:** click the catalog button (top right), then **Fetch new models**. Like `llmfit update`, it adds
+  the newest trending and most downloaded models from Hugging Face, with llmfit's own code inside the engine.
+  Or paste any Hugging Face link in the search box and press Enter to check one model live. Fetched models
+  get the label **live** and stay in your browser until you remove them.
 - **Your hardware:** the browser sees the GPU name and CPU threads; you type or import RAM and VRAM.
 - **Downloads:** copy a ready command, or download inside the page with a SHA-256 check afterwards.
 - **LM Studio:** reads your local models and can measure real speed through LM Studio's local server.

@@ -171,6 +171,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .chip.new { background: var(--perfect-soft); color: var(--perfect); } .chip.vllm { background: var(--tight-soft); color: var(--tight); }
 .chip.lms { background: var(--good-soft); color: var(--good); } .chip.upg { background: var(--accent); color: var(--accent-text); }
 .chip.meas { background: var(--perfect-soft); color: var(--perfect); }
+.chip.live { background: var(--good-soft); color: var(--good); }
+.live-list { margin: 6px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; font-size: 13px; }
+.live-list li { margin: 2px 0; }
+.live-list button { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
+.live-list button:hover { text-decoration: underline; }
 /* Capability icons in LM Studio's style: eye = vision, hammer = tool use, brain = reasoning */
 .caps { display: inline-flex; gap: 3px; flex: none; align-items: center; }
 .cap { width: 19px; height: 19px; border-radius: 5px; display: inline-grid; place-items: center; border: 1.5px solid currentColor; flex: none; }
@@ -459,6 +464,12 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
   <div class="dlg-body" id="cmpBody"></div>
 </dialog>
 
+<dialog id="dlgCatalog">
+  <div class="dlg-head"><h2>Model catalog</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body" id="catBody"></div>
+  <div class="dlg-foot"><button class="btn" id="btnLiveClear">Remove fetched models</button><button class="btn primary" id="btnLiveFetch">Fetch new models</button></div>
+</dialog>
+
 <dialog id="dlgAbout">
   <div class="dlg-head"><h2>About TensorTailor</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="aboutBody"></div>
@@ -503,6 +514,7 @@ const state = {
   view: "models", tab: "overview", engine: "lms",
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
   token: "", lms: { online: false, checked: false, models: [] },
+  live: { models: [], meta: {}, at: "" }, liveBusy: false, liveLog: "", liveResult: null, lookup: null,
   queue: [], plan: { target: 30, users: 4, keep: 3 },
   detail: new Map(), files: new Map(), srcIdx: {}
 };
@@ -629,7 +641,8 @@ function modelView(name, row, F) {
     ctx: c.context_length || 0, uses: [ucKey(row[F.use_case])], license: c.license || "unknown",
     gated: GATED_LICENSES.test(c.license || ""), langs: meta.langs, caps: capsOf(c),
     added: c.release_date || "", downloads: meta.downloads, likes: meta.likes, format: c.format || "",
-    gguf: (c.gguf_sources || []).map((s) => ({ repo: s.repo, provider: s.provider })), runtime: row[F.runtime]
+    gguf: (c.gguf_sources || []).map((s) => ({ repo: s.repo, provider: s.provider })), runtime: row[F.runtime],
+    live: state.live.meta[name] ? state.live.meta[name].at || "yes" : ""
   };
   modelCache.set(name, m);
   return m;
@@ -755,7 +768,7 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)" aria-label="Watch ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? '<span class="chip moe">MoE</span>' : ""}${r.upgradeOnly ? '<span class="chip upg">upgrade</span>' : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
     <div class="num">${fmtParams(m.params)}</div>
     <div><span class="quant">${esc(b.q)}</span></div>
     <div class="membar">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
@@ -819,11 +832,10 @@ function renderList() {
   const hidden = base.length - state.visible.length;
   $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden by the tiles` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` in ${(state.lastMs / 1000).toFixed(1)} s` : "");
   const el = $("rows");
-  if (!state.visible.length) {
-    const s = state.search.trim();
-    el.innerHTML = /^(https?:\/\/huggingface\.co\/)?[\w.-]+\/[\w.-]+\/?$/.test(s)
-      ? `<div class="lookup"><h3>Not in llmfit's list: ${esc(s.replace(/^https?:\/\/huggingface\.co\//, ""))}</h3><p>Open it on Hugging Face. A live check of models outside the list comes in a later version.</p><a class="btn small" target="_blank" rel="noopener" href="https://huggingface.co/${esc(s.replace(/^https?:\/\/huggingface\.co\//, ""))}">Open on Hugging Face ↗</a></div>`
-      : `<div class="empty">No models match. Turn on more tiles above, reset the filters, or clear the search.</div>`;
+  const lookupId = hfRepoId(state.search.trim());
+  // A pasted link shows its live check; a typed "org/name" only when nothing matches.
+  if (!state.visible.length || (lookupId && state.lookup && state.lookup.id === lookupId)) {
+    el.innerHTML = lookupId ? lookupHTML(lookupId) : `<div class="empty">No models match. Turn on more tiles above, reset the filters, or clear the search.</div>`;
   } else {
     if (el.scrollTop > state.visible.length * ROW_H) el.scrollTop = 0;
     renderRowsWindow();
@@ -1093,6 +1105,162 @@ function renderDetail() {
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
 }
 
+/* ===================== Live models from Hugging Face ===================== */
+// The same as `llmfit update`: llmfit's own Hub lists, its "already known" check
+// and its own conversion all run in the engine; the page only fetches. Fetched
+// models stay in this browser (local storage) until "Remove fetched models".
+const LIVE_KEY = "tt-live";
+const PAGE_EXPAND = ["downloads", "likes"]; // for the page only; llmfit ignores them
+function loadLiveStore() {
+  try {
+    const v = JSON.parse(safeGet("localStorage", LIVE_KEY) || "null");
+    if (v && Array.isArray(v.models)) state.live = { models: v.models, meta: v.meta || {}, at: v.at || "" };
+  } catch (e) { /* ignore a broken store */ }
+}
+function saveLiveStore() { safeSet("localStorage", LIVE_KEY, state.live.models.length ? JSON.stringify(state.live) : null); }
+function liveMetaToPage() {
+  for (const [name, x] of state.meta) if (x.live) state.meta.delete(name);
+  for (const [name, x] of Object.entries(state.live.meta)) if (!state.meta.has(name)) state.meta.set(name, { downloads: x.downloads || 0, likes: x.likes || 0, langs: x.langs || [], live: true });
+}
+// Give the engine the fetched models, then read the list again.
+async function applyLive() {
+  await call("setExtraModels", JSON.stringify(state.live.models));
+  state.catalog = await call("catalog");
+  state.byName.clear();
+  for (const c of state.catalog) state.byName.set(c.name, c);
+  liveMetaToPage();
+  modelCache.clear();
+  renderCatalogText();
+  await recompute();
+}
+function renderCatalogText() {
+  const n = state.live.models.length;
+  $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models` + (n ? ` (${n} live)` : "");
+  $("q").placeholder = `Search ${state.catalog.length.toLocaleString("en")} models, or paste a Hugging Face link and press Enter`;
+}
+function hfRepoId(s) {
+  const raw = String(s || "").trim(), isUrl = /^https?:\/\//i.test(raw);
+  const parts = raw.replace(/^https?:\/\/(www\.)?huggingface\.co\//i, "").replace(/[?#].*$/, "").split("/").filter(Boolean);
+  if (parts.length < 2 || (parts.length > 2 && !isUrl) || /^(api|datasets|spaces|models|docs)$/i.test(parts[0])) return null;
+  const id = parts[0] + "/" + parts[1];
+  return /^[\w.-]+\/[\w.-]+$/.test(id) ? id : null;
+}
+async function hfConfigText(id) {
+  try { const res = await fetch(`https://huggingface.co/${id}/resolve/main/config.json`, { headers: hfHeaders() }); return res.ok ? await res.text() : null; }
+  catch (e) { return null; }
+}
+async function inPool(items, size, fn) {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => { while (next < items.length) { const i = next++; await fn(items[i], i); } }));
+}
+function addLive(model, entry) {
+  state.live.models = state.live.models.filter((m) => m.name !== model.name).concat([model]);
+  state.live.meta[model.name] = { downloads: entry.downloads || 0, likes: entry.likes || 0, langs: model.languages || [], at: new Date().toISOString().slice(0, 10) };
+}
+function liveReady() {
+  if (!state.ready) return false;
+  if (!state.info.live) { toast("This build cannot fetch models live. Get a newer tensortailor.html from the Releases page."); return false; }
+  return true;
+}
+async function fetchNewModels() {
+  if (state.liveBusy || !liveReady()) return;
+  state.liveBusy = true; state.liveResult = null;
+  const log = (t) => { state.liveLog = t; renderCatalogDlg(); };
+  const warn = [];
+  try {
+    const urls = await call("updateUrls");
+    log(`Asking Hugging Face for ${urls.length} lists (trending and most downloaded)…`);
+    const extra = PAGE_EXPAND.map((f) => "&expand[]=" + f).join("");
+    const lists = await Promise.all(urls.map((u) => hfJson(u + extra).catch((e) => { warn.push(e.message); return []; })));
+    const seen = new Set(), entries = [];
+    for (const list of lists) for (const e of list) if (e && e.id && !seen.has(e.id)) { seen.add(e.id); entries.push(e); }
+    if (!entries.length) throw new Error("No models came back from Hugging Face. " + (warn[0] || "Check the internet connection."));
+    const fresh = new Set(await call("unknownIds", JSON.stringify(entries.map((e) => e.id))));
+    const todo = entries.filter((e) => fresh.has(e.id)), found = [];
+    let done = 0;
+    log(`${entries.length} models received, ${todo.length} not in the list yet. Reading their config.json…`);
+    await inPool(todo, 6, async (e, i) => {
+      const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
+      if (model) found.push({ i, model, e });
+      done++;
+      if (done % 5 === 0 || done === todo.length) log(`Reading config.json: ${done} of ${todo.length}…`);
+    });
+    found.sort((a, b) => a.i - b.i).forEach(({ model, e }) => addLive(model, e));
+    state.live.at = new Date().toISOString().slice(0, 10);
+    saveLiveStore();
+    log("Adding them to the list…");
+    await applyLive();
+    state.liveResult = { checked: entries.length, known: entries.length - todo.length, added: found.map((x) => x.model.name), skipped: todo.length - found.length, warn };
+    toast(found.length ? `${found.length} new models added.` : "No new models this time.");
+  } catch (e) {
+    state.liveResult = { error: e.message, warn };
+  } finally {
+    state.liveBusy = false; state.liveLog = ""; renderCatalogDlg();
+  }
+}
+async function clearLive() {
+  if (state.liveBusy || !state.live.models.length) return;
+  state.live = { models: [], meta: {}, at: "" }; state.liveResult = null;
+  saveLiveStore();
+  await applyLive();
+  renderCatalogDlg(); toast("Fetched models removed.");
+}
+function renderCatalogDlg() {
+  const L = state.live, r = state.liveResult, ref = esc(state.info.llmfit_ref || "");
+  const names = L.models.map((m) => m.name).reverse();
+  $("catBody").innerHTML = `<p>The list comes from llmfit ${ref}. llmfit's own updater (<code>llmfit update</code>) adds the newest trending and most downloaded models from Hugging Face. <b>Fetch new models</b> does the same in this page, with llmfit's own code.</p>
+    <dl class="lic"><dt>From llmfit ${ref}</dt><dd>${Number(state.info.catalog_models || 0).toLocaleString("en")} models</dd>
+    <dt>Fetched live</dt><dd>${L.models.length ? `${L.models.length} models` + (L.at ? ` · last fetch ${esc(L.at)}` : " (from checked links)") : "none yet"}</dd></dl>
+    ${state.liveLog ? `<p class="status-line"><span class="dot warn"></span>${esc(state.liveLog)}</p>` : ""}
+    ${r && r.error ? `<div class="warn-box">Stopped: ${esc(r.error)}</div>` : ""}
+    ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}.</p>` : ""}
+    ${r && r.warn && r.warn.length ? `<p class="hint">Some lists did not load: ${esc(r.warn[0])}</p>` : ""}
+    ${names.length ? `<p style="margin-bottom:0">Fetched models (newest first). Click one to open it:</p><ul class="live-list">${names.map((n) => `<li><button data-show="${esc(n)}">${esc(n)}</button></li>`).join("")}</ul>` : ""}
+    <p class="hint">Fetched models get the label <b>live</b> and stay in this browser until you remove them. Most are new, so the filter "Popular (10,000+ downloads)" can hide them. Gated models (such as Llama) need your token for the exact layout; without it they get llmfit's rough estimate, like in llmfit.</p>`;
+  $("btnLiveFetch").disabled = state.liveBusy || !state.ready;
+  $("btnLiveFetch").textContent = state.liveBusy ? "Fetching…" : "Fetch new models";
+  $("btnLiveClear").disabled = state.liveBusy || !L.models.length;
+}
+function lookupHTML(id) {
+  const L = state.lookup && state.lookup.id === id ? state.lookup : null;
+  const open = `<a class="btn small" target="_blank" rel="noopener" href="https://huggingface.co/${esc(id)}">Open on Hugging Face ↗</a>`;
+  if (L && L.busy) return `<div class="lookup"><h3>Checking ${esc(id)}…</h3><p>Reading the model and its config.json on Hugging Face.</p></div>`;
+  if (L) return `<div class="lookup"><h3>${esc(id)}</h3><p>${esc(L.msg)}</p>${L.base ? `<button class="btn small primary" data-hfcheck="${esc(L.base)}">Check the base model: ${esc(L.base)}</button> ` : ""}${open}</div>`;
+  return `<div class="lookup"><h3>Not in llmfit's list: ${esc(id)}</h3><p>Check it live: TensorTailor reads the model on Hugging Face and runs llmfit's own conversion and fit for this PC.</p><button class="btn small primary" data-hfcheck="${esc(id)}">Check live</button> ${open}</div>`;
+}
+async function checkHfLink(id) {
+  if (state.liveBusy || !liveReady()) return;
+  state.liveBusy = true; state.lookup = { id, busy: true }; renderList();
+  try {
+    const urls = await call("updateUrls");
+    const fields = new URL(urls[0]).searchParams.getAll("expand[]").concat(PAGE_EXPAND);
+    const e = await hfJson(`https://huggingface.co/api/models/${id}?` + fields.map((f) => "expand[]=" + f).join("&"));
+    const unknown = await call("unknownIds", JSON.stringify([e.id]));
+    if (!unknown.length) {
+      const hit = state.results.find((r) => r.m.id.toLowerCase() === e.id.toLowerCase());
+      if (hit) { state.lookup = null; state.search = ""; $("q").value = ""; showModel(hit.m.id, "overview"); return; }
+      state.lookup = { id, msg: `llmfit already has this model under a very similar name. Search for "${e.id.split("/")[1]}".` };
+      return;
+    }
+    const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
+    if (!model) {
+      const base = (e.tags || []).filter((t) => t.startsWith("base_model:")).map((t) => t.split(":").pop()).find((b) => /^[\w.-]+\/[\w.-]+$/.test(b) && b !== e.id);
+      state.lookup = { id, base, msg: `llmfit does not list this kind of model (Hugging Face says: ${e.pipeline_tag || "no model type"}). It lists text, vision, any-to-any and speech models.` + (base ? " It names a base model, which may be listed." : "") };
+      return;
+    }
+    addLive(model, e); saveLiveStore();
+    await applyLive();
+    state.lookup = null; state.search = ""; $("q").value = "";
+    showModel(model.name, "overview");
+    toast(`Checked live: ${shortName(model.name)} is now in the list (label "live").`);
+  } catch (err) {
+    state.lookup = { id, msg: "The check stopped: " + err.message };
+  } finally {
+    state.liveBusy = false;
+    if (state.lookup) renderList();
+  }
+}
+
 /* ===================== My models (LM Studio) ===================== */
 function normLms(x) {
   const inst = (x.loaded_instances || [])[0];
@@ -1289,13 +1457,13 @@ function exportCsv() {
 function renderAbout() {
   const b = state.build, i = state.info;
   $("aboutBody").innerHTML = `<p><b>TensorTailor</b> finds the AI models that fit your PC. It runs fully in this page; nothing is installed.</p>
-    <dl class="lic"><dt>Engine</dt><dd>llmfit ${esc(i.llmfit_ref || b.llmfit || "")} by Alex Jones, compiled to WebAssembly. MIT License, Copyright (c) 2026 Alex Jones. One change for the browser: the clock (web_time) in the recency bonus.</dd>
-    <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from llmfit's catalog (data from the Hugging Face API).</dd>
+    <dl class="lic"><dt>Engine</dt><dd>llmfit ${esc(i.llmfit_ref || b.llmfit || "")} by Alex Jones, compiled to WebAssembly. MIT License, Copyright (c) 2026 Alex Jones. Changes for the browser only: the clock (web_time) in the recency bonus, and llmfit's update code split so the page can fetch from Hugging Face itself and then use llmfit's own conversion.</dd>
+    <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from llmfit's catalog (data from the Hugging Face API)${state.live.models.length ? `, plus ${state.live.models.length} fetched live` : ""}.</dd>
     <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
     <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
     <dt>Rust libraries</dt><dd>Their licenses are listed in THIRD-PARTY-NOTICES in the repository.</dd>
     <dt>Models</dt><dd>Never included. Each model keeps its own license; some are gated.</dd>
-    <dt>Privacy</dt><dd>No tracking. The page only talks to huggingface.co (when you check files) and to LM Studio on 127.0.0.1.</dd></dl>`;
+    <dt>Privacy</dt><dd>No tracking. The page only talks to huggingface.co (when you check files, fetch new models or check a link) and to LM Studio on 127.0.0.1.</dd></dl>`;
 }
 
 /* ===================== Events ===================== */
@@ -1338,7 +1506,11 @@ function wire() {
     if (e.key !== "Enter") return;
     const s = e.target.value.trim().replace(/^https?:\/\/huggingface\.co\//, "").replace(/\/$/, "").toLowerCase();
     const hit = state.results.find((r) => r.m.id.toLowerCase() === s || r.m.gguf.some((g) => g.repo.toLowerCase() === s));
-    if (hit) { state.search = ""; e.target.value = ""; showModel(hit.m.id, "files"); }
+    if (hit) { state.search = ""; e.target.value = ""; showModel(hit.m.id, "files"); return; }
+    // A pasted link is always checked live; typed "org/name" only when nothing matches.
+    const id = hfRepoId(e.target.value);
+    state.search = e.target.value; renderList();
+    if (id && (/^https?:\/\//i.test(e.target.value.trim()) || !state.visible.length)) checkHfLink(id);
   });
   [["fLang", "lang"], ["fSize", "size"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.value; renderList(); }));
   [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.checked; renderList(); }));
@@ -1363,7 +1535,8 @@ function wire() {
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (t.id === "btnCloseSuggest") { $("suggest").hidden = true; return; }
-    const show = t.closest("[data-show]"); if (show) { showModel(show.dataset.show, show.dataset.gotab); return; }
+    const show = t.closest("[data-show]"); if (show) { const d = show.closest("dialog"); if (d) d.close(); showModel(show.dataset.show, show.dataset.gotab); return; }
+    const hc = t.closest("[data-hfcheck]"); if (hc) { checkHfLink(hc.dataset.hfcheck); return; }
     const ab = t.closest("[data-addbattle]"); if (ab) { toggleCompare(ab.dataset.addbattle, true); toast("Added to the battle."); return; }
     const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
     const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
@@ -1396,7 +1569,9 @@ function wire() {
     toast(v ? "Token set for this tab only." : "No token set."); renderDetail();
   });
   $("btnTokClear").addEventListener("click", () => { state.token = ""; $("tokInput").value = ""; safeSet("sessionStorage", "tt-token", null); renderToken(); $("dlgToken").close(); toast("Token removed."); });
-  $("btnUpdate").addEventListener("click", () => { renderAbout(); $("dlgAbout").showModal(); });
+  $("btnUpdate").addEventListener("click", () => { renderCatalogDlg(); $("dlgCatalog").showModal(); });
+  $("btnLiveFetch").addEventListener("click", fetchNewModels);
+  $("btnLiveClear").addEventListener("click", clearLive);
   $("btnAbout").addEventListener("click", () => { renderAbout(); $("dlgAbout").showModal(); });
   $("btnTheme").addEventListener("click", toggleTheme);
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
@@ -1437,12 +1612,19 @@ function wire() {
     banner("Starting the engine…", "busy");
     state.info = await call("__init", bytes);
     banner(`Reading ${Number(state.info.catalog_models || 0).toLocaleString("en")} models…`, "busy");
+    if (state.info.live) {
+      loadLiveStore();
+      if (state.live.models.length) {
+        try { await call("setExtraModels", JSON.stringify(state.live.models)); }
+        catch (e) { state.live = { models: [], meta: {}, at: "" }; saveLiveStore(); }
+      }
+    }
     state.catalog = await call("catalog");
     for (const c of state.catalog) { state.byName.set(c.name, c); }
+    liveMetaToPage();
     $("brandSub").textContent = `Engine: llmfit ${state.info.llmfit_ref} · WebAssembly`;
-    $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models`;
     $("catDot").className = "dot ok";
-    $("q").placeholder = `Search ${state.catalog.length.toLocaleString("en")} models, or paste a Hugging Face link and press Enter`;
+    renderCatalogText();
     state.ready = true;
     state.bootMs = Math.round(performance.now() - t0);
     await recompute();
