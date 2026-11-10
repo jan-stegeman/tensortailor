@@ -30,6 +30,7 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 | `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly |
 | `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
 | `web/build.mjs` | Makes the single file `dist/tensortailor.html` |
+| `tools/cdp_test.mjs` | Tests the built page in headless Edge (DevTools protocol) and takes a screenshot |
 | `.github/workflows/engine.yml` | GitHub build: native and WebAssembly runs must give the same answers |
 
 ## How it will work

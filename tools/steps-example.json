@@ -1,0 +1,11 @@
+[
+  { "log": "select Qwen3-14B files", "js": "(() => { showModel('Qwen/Qwen3-14B', 'files'); return state.selected; })()", "wait": 800 },
+  { "log": "check files", "js": "(() => { const b = document.querySelector('[data-loadfiles]'); if (!b) return 'no button'; b.click(); return 'clicked ' + b.dataset.loadfiles; })()", "wait": 5000 },
+  { "log": "files tab", "js": "document.getElementById('detail').innerText.slice(0, 1400)" },
+  { "log": "run tab", "js": "(() => { state.tab = 'run'; renderDetail(); return document.getElementById('detail').innerText.slice(300, 1100); })()", "wait": 500 },
+  { "log": "plan tab", "js": "(() => { state.tab = 'plan'; renderDetail(); return 'ok'; })()", "wait": 1500 },
+  { "log": "plan text", "js": "document.getElementById('detail').innerText.slice(280, 1700)" },
+  { "log": "my models", "js": "(() => { setView('mine'); return document.getElementById('viewPane').innerText.slice(0, 1800); })()", "wait": 500 },
+  { "log": "battle", "js": "(() => { state.compare = ['Qwen/Qwen3-14B', 'google/gemma-4-E4B-it', 'Qwen/Qwen3.5-9B']; setView('battle'); return document.getElementById('viewPane').innerText.slice(0, 900); })()", "wait": 500 },
+  { "log": "back to models, overview", "js": "(() => { setView('models'); state.tab = 'overview'; renderDetail(); return 'ok'; })()", "wait": 800 }
+]

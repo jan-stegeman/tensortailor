@@ -1,0 +1,50 @@
+// Opens a page in headless Edge through the DevTools protocol, prints console
+// messages and errors, waits for a JS condition, runs optional steps, and saves
+// a screenshot. Usage:
+//   node cdp_test.mjs <edge.exe> <url> <screenshot.png> [waitExpr] [stepsJson]
+import { spawn } from "node:child_process";
+import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
+
+const [edge, url, shot, waitExpr = "true", stepsJson = "[]"] = process.argv.slice(2);
+const port = 9333 + Math.floor(Math.random() * 300);
+const profile = `D:\\AI\\temp\\tt-cdp-profile-${port}`;
+mkdirSync(profile, { recursive: true });
+const proc = spawn(edge, ["--headless=new", "--no-first-run", "--disable-extensions", `--user-data-dir=${profile}`,
+  `--remote-debugging-port=${port}`, "--window-size=1600,900", "about:blank"], { stdio: "ignore" });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let target;
+for (let i = 0; i < 60 && !target; i++) {
+  try { const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); target = list.find((t) => t.type === "page"); } catch { /* not up yet */ }
+  if (!target) await sleep(250);
+}
+if (!target) { console.log("FAIL: Edge did not start"); proc.kill(); process.exit(1); }
+
+const ws = new WebSocket(target.webSocketDebuggerUrl);
+await new Promise((r) => ws.addEventListener("open", r, { once: true }));
+let seq = 0; const waiters = new Map();
+ws.addEventListener("message", (ev) => {
+  const msg = JSON.parse(ev.data);
+  if (msg.id && waiters.has(msg.id)) { waiters.get(msg.id)(msg); waiters.delete(msg.id); return; }
+  if (msg.method === "Runtime.consoleAPICalled") console.log(`[console.${msg.params.type}]`, msg.params.args.map((a) => a.value ?? a.description ?? "").join(" ").slice(0, 400));
+  if (msg.method === "Runtime.exceptionThrown") console.log("[exception]", (msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text || "").slice(0, 600));
+  if (msg.method === "Log.entryAdded") console.log(`[log.${msg.params.entry.level}]`, msg.params.entry.text.slice(0, 300));
+});
+const send = (method, params = {}) => new Promise((resolve) => { const id = ++seq; waiters.set(id, resolve); ws.send(JSON.stringify({ id, method, params })); });
+const evaluate = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); return r.result?.result?.value ?? r.result?.exceptionDetails?.exception?.description; };
+
+await send("Runtime.enable"); await send("Log.enable"); await send("Page.enable");
+const t0 = Date.now();
+await send("Page.navigate", { url });
+let ok = false;
+for (let i = 0; i < 120; i++) { await sleep(500); if (await evaluate(`(() => { try { return !!(${waitExpr}); } catch (e) { return false; } })()`)) { ok = true; break; } }
+console.log(ok ? `READY after ${((Date.now() - t0) / 1000).toFixed(1)} s` : "FAIL: condition not met in 60 s");
+const steps = JSON.parse((stepsJson.endsWith(".json") ? readFileSync(stepsJson, "utf8") : stepsJson).replace(/^﻿/, ""));
+for (const step of steps) {
+  const out = await evaluate(step.js);
+  if (step.log) console.log(`[step] ${step.log}:`, typeof out === "string" ? out.slice(0, 800) : JSON.stringify(out));
+  await sleep(step.wait || 300);
+}
+const shotRes = await send("Page.captureScreenshot", { format: "png" });
+writeFileSync(shot, Buffer.from(shotRes.result.data, "base64"));
+console.log("screenshot:", shot);
+ws.close(); proc.kill(); process.exit(ok ? 0 : 1);
