@@ -8,7 +8,17 @@ tells you which file to download and how fast it will run.
 
 > **Status:** first working version. `dist/tensortailor.html` is one offline file (about 3 MB) with the llmfit
 > engine inside as WebAssembly. Every build checks that the engine gives exactly the same answers as native
-> llmfit. Direct downloads and the weekly release are not done yet.
+> llmfit. Direct downloads inside the page are not done yet.
+
+## Get the page
+
+Open [Releases](https://github.com/jan-stegeman/tensortailor/releases), download `tensortailor.html`, and open it
+in Edge or Chrome. Each release also has `tensortailor.html.sha256` to check the download.
+
+A new release comes every Tuesday when something changed. The weekly build (`.github/workflows/weekly.yml`)
+also follows new llmfit releases by itself: it switches the engine to the new llmfit tag, builds it, checks
+that the answers are the same as native llmfit, and only then commits and publishes. When a check fails,
+nothing is pushed or released.
 
 ## Screenshots
 
@@ -54,13 +64,15 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 | `tools/cdp_test.mjs` | Tests the built page in headless Edge (DevTools protocol) and takes screenshots |
 | `tools/readme-screenshots.json` | The steps that make the README pictures (with demo data for My models) |
 | `docs/screenshots/` | The README pictures, light and dark |
-| `.github/workflows/engine.yml` | GitHub build: native and WebAssembly runs must give the same answers |
+| `.github/actions/build/` | The build steps, shared by both workflows |
+| `.github/workflows/engine.yml` | GitHub build on every push: native and WebAssembly runs must give the same answers |
+| `.github/workflows/weekly.yml` | Tuesday build: follows new llmfit releases and publishes a GitHub Release |
 
 ## How it will work
 
 - **Engine:** the fit and speed calculation of [llmfit](https://github.com/AlexsJones/llmfit) by Alex Jones,
   compiled to WebAssembly so it runs inside the browser. The results match llmfit.
-- **Model list:** llmfit's catalog, refreshed every week by a GitHub Actions build.
+- **Model list:** llmfit's catalog of the same llmfit release as the engine.
 - **Your hardware:** the browser sees the GPU name and CPU threads; you type or import RAM and VRAM.
 - **Downloads:** copy a ready command, or download inside the page with a SHA-256 check afterwards.
 - **LM Studio:** reads your local models and can measure real speed through LM Studio's local server.
