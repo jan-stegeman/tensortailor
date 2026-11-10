@@ -130,9 +130,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .check-list input { accent-color: var(--accent); width: 15px; height: 15px; }
 .two-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 
-.suggest { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 10px; margin-bottom: 12px; align-items: stretch; }
+.suggest { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; margin-bottom: 10px; align-items: stretch; }
+.sug-head { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.sug-head span { color: var(--muted); font-size: 12.5px; }
+.sug .m { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .suggest[hidden] { display: none; }
-.sug { padding: 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sug { padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .sug .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); font-weight: 700; }
 .sug .n { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sug .m { font-size: 12.5px; color: var(--muted); }
@@ -519,7 +522,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
     <div class="list-head">
       <div class="count" id="countText"></div>
       <div class="list-tools">
-        <button class="btn small primary" id="btnSuggest">Suggest for this PC</button>
+        <button class="btn small primary" id="btnSuggest" aria-pressed="false" title="Show or hide the top picks for this PC">Top picks</button>
         <button class="btn small" id="btnExport" title="Save the list as a CSV file">Export CSV</button>
         <button class="btn small ghost" id="btnLegend" title="What the colours, labels and numbers mean">Legend</button>
         <label class="sort">Sort
@@ -1218,6 +1221,7 @@ function renderList() {
   const base = state.results.filter(passFilters);
   renderTiles(base);
   state.visible = sortResults(base.filter((r) => state.show[r.best.plain]));
+  renderSuggest();
   const hidden = base.length - state.visible.length;
   $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden by the tiles` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` in ${(state.lastMs / 1000).toFixed(1)} s` : "");
   const el = $("rows");
@@ -1236,15 +1240,21 @@ function renderList() {
 
 /* ===================== Suggest ===================== */
 function renderSuggest() {
+  const el = $("suggest");
+  if (!state.picksOpen || !state.ready) { el.hidden = true; return; }
   const ok = state.results.filter((r) => passFilters(r) && r.best.plain !== "nofit" && !r.m.uses.includes("embedding"));
   const bestOverall = ok.filter((r) => r.best.lo >= 12).sort((a, b) => b.best.score - a.best.score)[0];
   const smartest = ok.filter((r) => r.best.lo >= READING_PACE).sort((a, b) => b.best.parts.quality - a.best.parts.quality || b.best.score - a.best.score)[0];
   const fastest = ok.filter((r) => r.best.parts.quality >= 60).sort((a, b) => b.best.tps - a.best.tps)[0];
-  const card = (k, r, why) => r ? `<div class="sug"><span class="k">${k}</span><span class="n" title="${esc(r.m.id)}">${esc(r.m.name)}</span><span class="m">${esc(r.best.q)} · ${speedRange(r.best)} tok/s · ${why}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">Show</button><button class="btn small" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="n" title="${esc(r.m.id)}">${esc(r.m.name)}</span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedRange(r.best)} tok/s</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
     : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
-  const el = $("suggest");
-  el.innerHTML = card("Best overall", bestOverall, "highest score at 12+ tok/s") + card("Smartest", smartest, "best quality at reading pace") + card("Fastest", fastest, "quickest that still answers well") + `<button class="btn ghost small" id="btnCloseSuggest" aria-label="Close suggestions" style="align-self:start">✕</button>`;
+  el.innerHTML = `<div class="sug-head"><b>Top picks for this PC</b><span>They follow your filters. Point at a label for the rule.</span><span class="spacer"></span><button class="btn ghost small" id="btnCloseSuggest" title="Hide the top picks (the button Top picks shows them again)">Hide</button></div>` + card("Best overall", bestOverall, "Highest score that still gives 12+ tok/s.") + card("Highest quality", smartest, "Best quality score at reading pace or faster.") + card("Fastest", fastest, "Quickest model whose quality score is 60 or more.");
   el.hidden = false;
+}
+function setPicks(open) {
+  state.picksOpen = open; safeSet("localStorage", "tt-picks", open ? "1" : "0");
+  const b = $("btnSuggest"); b.setAttribute("aria-pressed", String(open)); b.classList.toggle("primary", !open);
+  renderSuggest();
 }
 
 /* ===================== Detail ===================== */
@@ -2888,11 +2898,11 @@ function wire() {
   $("btnClearCmp").addEventListener("click", () => { state.compare = []; renderTray(); renderNav(); renderRowsWindow(); });
   $("btnCompare").addEventListener("click", openCompare);
   $("btnToBattle").addEventListener("click", () => setView("battle"));
-  $("btnSuggest").addEventListener("click", renderSuggest);
+  $("btnSuggest").addEventListener("click", () => setPicks(!state.picksOpen));
   $("btnExport").addEventListener("click", exportCsv);
   document.addEventListener("click", (e) => {
     const t = e.target;
-    if (t.id === "btnCloseSuggest") { $("suggest").hidden = true; return; }
+    if (t.id === "btnCloseSuggest") { setPicks(false); return; }
     const show = t.closest("[data-show]"); if (show) { const d = show.closest("dialog"); if (d) d.close(); showModel(show.dataset.show, show.dataset.gotab); return; }
     const hc = t.closest("[data-hfcheck]"); if (hc) { checkHfLink(hc.dataset.hfcheck); return; }
     const hs = t.closest("[data-hubsearch]"); if (hs) { searchHub(hs.dataset.hubsearch); return; }
@@ -2980,6 +2990,9 @@ function wire() {
   try { const w = JSON.parse(safeGet("localStorage", "tt-watch") || "[]"); if (Array.isArray(w)) state.watch = new Set(w); } catch (e) { /* ignore */ }
   try { const l = JSON.parse(safeGet("localStorage", "tt-lms-links") || "{}"); if (l && typeof l === "object" && !Array.isArray(l)) state.lmsLinks = l; } catch (e) { /* ignore */ }
   loadPrefs();
+  // Top picks: open on a first visit, then as the user left them.
+  state.picksOpen = safeGet("localStorage", "tt-picks") !== "0";
+  $("btnSuggest").setAttribute("aria-pressed", String(state.picksOpen)); $("btnSuggest").classList.toggle("primary", !state.picksOpen);
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
   // First visit (no saved hardware yet): show the hardware fields open.
   if (!safeGet("localStorage", "tt-hw")) $("hwEdit").open = true;
