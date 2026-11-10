@@ -48,7 +48,8 @@ if (/<\/script/i.test(glue)) throw new Error("engine glue contains </script>; ca
 const buildInfo = {
   built: new Date().toISOString().slice(0, 10),
   llmfit: llmfitRef,
-  commit: (process.env.GITHUB_SHA || "local").slice(0, 7),
+  // TT_COMMIT: set by the build action (the weekly run may add a commit after GITHUB_SHA).
+  commit: (process.env.TT_COMMIT || process.env.GITHUB_SHA || "local").slice(0, 7),
   wasm_sha256: createHash("sha256").update(wasm).digest("hex"),
   wasm_mb: +(wasm.length / 1e6).toFixed(1),
   wasm_gz_mb: +(gz.length / 1e6).toFixed(2),

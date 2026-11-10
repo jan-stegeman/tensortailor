@@ -1,0 +1,163 @@
+name: Weekly release
+
+# Every Tuesday: follow the newest llmfit release, build, check that the
+# WebAssembly engine gives the same answers as native llmfit, and publish the
+# single HTML file as a GitHub Release. Nothing is pushed or released when a
+# check fails. No release when nothing that goes into the page changed.
+
+on:
+  schedule:
+    - cron: "0 6 * * 2" # Tuesday 06:00 UTC (llmfit refreshes its catalog on Monday)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Test only: build and check, but no push and no release"
+        type: boolean
+        default: false
+      llmfit_tag:
+        description: "Test only: try this llmfit tag (for example v1.1.19). Always a dry run."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-release
+  cancel-in-progress: false
+
+jobs:
+  weekly:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout (with tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Look for a new llmfit release
+        id: llmfit
+        env:
+          WANT: ${{ inputs.llmfit_tag }}
+          DRY_INPUT: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          CUR=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
+          if [ -n "${WANT:-}" ]; then
+            NEW="$WANT"
+          else
+            NEW=$(gh api repos/AlexsJones/llmfit/releases/latest --jq .tag_name)
+          fi
+          if ! [[ "$NEW" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected llmfit tag: $NEW"
+            exit 1
+          fi
+          UPDATE=false
+          if [ "$NEW" != "$CUR" ]; then
+            if [ -n "${WANT:-}" ] || [ "$(printf '%s\n%s\n' "$CUR" "$NEW" | sort -V | tail -n1)" = "$NEW" ]; then
+              UPDATE=true
+            fi
+          fi
+          DRY=false
+          if [ "${DRY_INPUT:-false}" = "true" ] || [ -n "${WANT:-}" ]; then DRY=true; fi
+          {
+            echo "current=$CUR"
+            echo "new=$NEW"
+            echo "update=$UPDATE"
+            echo "dry=$DRY"
+          } >> "$GITHUB_OUTPUT"
+          echo "llmfit: we use $CUR, newest is $NEW. Update: $UPDATE. Dry run: $DRY." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Rust (for the lock file update)
+        if: steps.llmfit.outputs.update == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Switch the engine to the new llmfit tag (local commit, pushed only after all checks)
+        if: steps.llmfit.outputs.update == 'true'
+        env:
+          CUR: ${{ steps.llmfit.outputs.current }}
+          NEW: ${{ steps.llmfit.outputs.new }}
+        run: |
+          set -euo pipefail
+          sed -i "s/tag = \"$CUR\"/tag = \"$NEW\"/" engine/Cargo.toml
+          sed -i "s/LLMFIT_REF: &str = \"$CUR\"/LLMFIT_REF: \\&str = \"$NEW\"/" engine/src/lib.rs
+          grep -q "tag = \"$NEW\"" engine/Cargo.toml
+          grep -q "LLMFIT_REF: &str = \"$NEW\"" engine/src/lib.rs
+          (cd engine && cargo update -p llmfit-core)
+          grep -q "llmfit?tag=$NEW#" engine/Cargo.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898783+github-actions[bot]@users.noreply.github.com"
+          git add engine/Cargo.toml engine/Cargo.lock engine/src/lib.rs
+          git commit -m "chore(engine): follow llmfit $NEW" -m "Weekly run: same answers as native llmfit checked before the push."
+          git --no-pager show --stat HEAD
+
+      - name: Build, compare with native llmfit, make the page
+        uses: ./.github/actions/build
+
+      - name: Check that the build did not change the lock file
+        run: |
+          TAG=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
+          grep -q "llmfit?tag=$TAG#" engine/Cargo.lock
+          git diff --exit-code -- engine/Cargo.lock
+
+      - name: Keep the page
+        uses: actions/upload-artifact@v4
+        with:
+          name: tensortailor-html-weekly
+          path: dist/tensortailor.html
+          retention-days: 30
+
+      - name: Decide on a release
+        id: decide
+        env:
+          UPDATE: ${{ steps.llmfit.outputs.update }}
+          DRY: ${{ steps.llmfit.outputs.dry }}
+        run: |
+          set -euo pipefail
+          LAST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')
+          RELEASE=true
+          WHY="new build"
+          if [ "$DRY" = "true" ]; then
+            RELEASE=false; WHY="dry run"
+          elif [ "$UPDATE" != "true" ] && [ -n "$LAST" ] && git diff --quiet "$LAST" HEAD -- engine web .github/actions; then
+            RELEASE=false; WHY="nothing in engine/, web/ or the build changed since $LAST"
+          fi
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          echo "Release: $RELEASE ($WHY). Last release: ${LAST:-none}." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the new llmfit version
+        if: steps.llmfit.outputs.update == 'true' && steps.llmfit.outputs.dry != 'true'
+        run: git push origin HEAD:main
+
+      - name: Publish the release
+        if: steps.decide.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          DAY=$(date -u +%Y.%m.%d)
+          TAG="v$DAY"
+          n=2
+          while git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || gh release view "$TAG" >/dev/null 2>&1; do
+            TAG="v$DAY-$n"; n=$((n + 1))
+          done
+          LLMFIT=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
+          (cd dist && sha256sum tensortailor.html > tensortailor.html.sha256)
+          SHA=$(cut -d' ' -f1 dist/tensortailor.html.sha256)
+          SIZE=$(du -m dist/tensortailor.html | cut -f1)
+          cat > release-notes.md <<EOF
+          One offline HTML file (about $SIZE MB). Download **tensortailor.html** and open it in Edge or Chrome.
+
+          - Engine: llmfit [$LLMFIT](https://github.com/AlexsJones/llmfit/releases/tag/$LLMFIT) by Alex Jones (MIT), compiled to WebAssembly.
+            This build gave exactly the same answers as native llmfit.
+          - Model list: llmfit's catalog of the same tag.
+          - Commit: $(git rev-parse --short HEAD)
+          - SHA-256 of tensortailor.html: \`$SHA\` (also in tensortailor.html.sha256)
+          EOF
+          gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 \
+            --target "$(git rev-parse HEAD)" \
+            --title "TensorTailor $DAY (llmfit $LLMFIT)" \
+            --notes-file release-notes.md
+          echo "Published release $TAG" | tee -a "$GITHUB_STEP_SUMMARY"

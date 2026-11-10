@@ -6,6 +6,7 @@ on:
       - "engine/**"
       - "web/**"
       - ".github/workflows/engine.yml"
+      - ".github/actions/build/**"
   workflow_dispatch:
 
 permissions:
@@ -19,76 +20,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    defaults:
-      run:
-        working-directory: engine
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Rust with the WebAssembly target
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-
-      - name: Cache Rust builds
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: engine
-
-      - name: Check that the llmfit tag matches LLMFIT_REF
-        run: |
-          TAG=$(grep -oP 'tag = "\K[^"]+' Cargo.toml)
-          REF=$(grep -oP 'LLMFIT_REF: &str = "\K[^"]+' src/lib.rs)
-          echo "Cargo.toml tag: $TAG, lib.rs LLMFIT_REF: $REF"
-          test "$TAG" = "$REF"
-
-      - name: Native run (golden answers)
-        run: cargo run --release --example golden -- golden-native.json
-
-      - name: Make a browser-ready copy of llmfit-core (clock fix)
-        run: bash tools/patch-llmfit.sh "$GITHUB_WORKSPACE/vendor/llmfit"
-
-      - name: Build WebAssembly
-        run: >
-          cargo build --release --target wasm32-unknown-unknown --lib
-          --config "patch.\"https://github.com/AlexsJones/llmfit\".llmfit-core.path=\"$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core\""
-
-      - name: Install wasm-bindgen CLI (same version as the crate)
-        run: |
-          V=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name=="wasm-bindgen") | .version')
-          echo "wasm-bindgen $V"
-          cargo install wasm-bindgen-cli --version "$V" --locked
-
-      - name: Make the JavaScript bindings
-        run: |
-          WASM=target/wasm32-unknown-unknown/release/tensortailor_engine.wasm
-          wasm-bindgen --target nodejs --out-dir pkg-node "$WASM"
-          wasm-bindgen --target web --out-dir pkg-web "$WASM"
-          wasm-bindgen --target no-modules --out-dir pkg-nomod "$WASM"
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Compare WebAssembly with native
-        run: node tools/compare.mjs golden-native.json
-
-      - name: Size report
-        run: |
-          gzip -9 -k pkg-web/tensortailor_engine_bg.wasm
-          ls -l pkg-web
-          {
-            echo "## Engine size"
-            echo '```'
-            ls -l pkg-web
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Build the single-file page
-        working-directory: .
-        run: node web/build.mjs engine/pkg-nomod dist/tensortailor.html vendor/llmfit/llmfit-core/data/hf_models.json
+      - name: Build, compare with native llmfit, make the page
+        uses: ./.github/actions/build
 
       - name: Keep the page
         uses: actions/upload-artifact@v4
