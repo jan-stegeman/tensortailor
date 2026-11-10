@@ -1,0 +1,36 @@
+[
+  {
+    "id": "rtx3090",
+    "hardware": {
+      "gpu_name": "NVIDIA GeForce RTX 3090",
+      "vram_gb": 24,
+      "gpu_count": 1,
+      "ram_gb": 128,
+      "cpu_cores": 64,
+      "cpu_name": "AMD Ryzen Threadripper 3990X 64-Core Processor",
+      "backend": "cuda"
+    }
+  },
+  {
+    "id": "2x-rtx3090",
+    "hardware": {
+      "gpu_name": "NVIDIA GeForce RTX 3090",
+      "vram_gb": 24,
+      "gpu_count": 2,
+      "ram_gb": 128,
+      "cpu_cores": 64,
+      "cpu_name": "AMD Ryzen Threadripper 3990X 64-Core Processor",
+      "backend": "cuda"
+    }
+  },
+  {
+    "id": "cpu-only",
+    "hardware": {
+      "vram_gb": 0,
+      "ram_gb": 32,
+      "cpu_cores": 8,
+      "cpu_name": "Intel(R) Core(TM) i7-10700 CPU",
+      "backend": "cpu_x86"
+    }
+  }
+]

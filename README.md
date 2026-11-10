@@ -17,6 +17,8 @@ tells you which file to download and how fast it will run.
 | `design/mockup-battle-light.png` | Screenshot of the design: Battle view (light) |
 | `research/similar-tools.md` | Study of similar tools and the features we take over |
 | `PROGRESS.md` | Decisions, what is done, and the next steps |
+| `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly (trial) |
+| `.github/workflows/engine.yml` | GitHub build: native and WebAssembly runs must give the same answers |
 
 ## How it will work
 

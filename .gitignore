@@ -1,7 +1,10 @@
 # Build output
 /dist/
-/target/
-/node_modules/
+target/
+node_modules/
+engine/pkg-node/
+engine/pkg-web/
+engine/golden-native.json
 
 # Local secrets and tokens: never commit them
 .env
