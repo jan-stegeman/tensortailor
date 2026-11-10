@@ -55,11 +55,6 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 
 | Path | What it is |
 | --- | --- |
-| `design/mockup.html` | Clickable design with example data (open it in Edge or Chrome) |
-| `design/mockup-dark.png` | Screenshot of the design: model list (dark) |
-| `design/mockup-battle-light.png` | Screenshot of the design: Battle view (light) |
-| `research/similar-tools.md` | Study of similar tools and the features we take over |
-| `PROGRESS.md` | Decisions, what is done, and the next steps |
 | `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly |
 | `engine/tools/patch-llmfit.sh` | The two small browser changes to llmfit-core (clock, and the update code split) |
 | `engine/tools/hf-fixtures.json` | 13 fixed Hugging Face models: the live conversion must be the same natively and in WebAssembly |

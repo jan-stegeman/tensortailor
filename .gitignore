@@ -9,6 +9,11 @@ engine/golden-native.json
 engine/mapcheck-native.json
 vendor/
 
+# Work notes: kept on the developer's PC only, never on GitHub
+/PROGRESS.md
+/research/
+/design/
+
 # Local secrets and tokens: never commit them
 .env
 *.token
