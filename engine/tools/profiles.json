@@ -8,7 +8,8 @@
       "ram_gb": 128,
       "cpu_cores": 64,
       "cpu_name": "AMD Ryzen Threadripper 3990X 64-Core Processor",
-      "backend": "cuda"
+      "backend": "cuda",
+      "ram_bandwidth_gbps": 90
     }
   },
   {

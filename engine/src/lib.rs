@@ -4,10 +4,10 @@
 //! JSON. Everything else (the model catalog, the fit rules, the speed formula,
 //! the community measurements) is llmfit-core itself, unchanged.
 
+use llmfit_core::analysis::build_model_fits_with_config;
+use llmfit_core::fit::CalcConfig;
 use llmfit_core::hardware::GpuInfo;
-use llmfit_core::{
-    GpuBackend, InstalledIndex, ModelDatabase, ModelFit, SystemSpecs, build_model_fits,
-};
+use llmfit_core::{GpuBackend, InstalledIndex, ModelDatabase, ModelFit, SystemSpecs};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::sync::OnceLock;
@@ -37,6 +37,32 @@ pub struct HardwareInput {
     /// "cuda", "rocm", "vulkan", "metal", "sycl", "cpu_x86" or "cpu_arm".
     #[serde(default)]
     pub backend: Option<String>,
+    /// System RAM speed in GB/s, used when part of a model runs from RAM.
+    /// Native llmfit measures it with a threaded test; a browser cannot, so the
+    /// page passes it in. None = llmfit's conservative fallback.
+    #[serde(default)]
+    pub ram_bandwidth_gbps: Option<f64>,
+    /// GPU memory speed in GB/s for a card that llmfit's table does not know.
+    /// None = llmfit's own lookup by GPU name.
+    #[serde(default)]
+    pub gpu_bandwidth_gbps: Option<f64>,
+}
+
+/// llmfit's own fallback when the RAM speed is unknown (DDR4-3200 dual channel).
+pub const DEFAULT_RAM_BANDWIDTH_GBPS: f64 = 50.0;
+
+/// llmfit's calculation settings for this hardware. Setting the RAM speed here
+/// keeps llmfit from measuring the machine it runs on.
+pub fn config_from(hw: &HardwareInput) -> CalcConfig {
+    CalcConfig {
+        ddr_bandwidth_gbps: Some(
+            hw.ram_bandwidth_gbps
+                .filter(|b| *b > 0.0)
+                .unwrap_or(DEFAULT_RAM_BANDWIDTH_GBPS),
+        ),
+        gpu_bandwidth_gbps_override: hw.gpu_bandwidth_gbps.filter(|b| *b > 0.0),
+        ..CalcConfig::default()
+    }
 }
 
 fn default_gpu_count() -> u32 {
@@ -112,12 +138,12 @@ fn database() -> &'static ModelDatabase {
 /// Every catalog model analysed for this hardware, in catalog order (unsorted).
 pub fn fit_all(hw: &HardwareInput, context_limit: Option<u32>) -> Vec<ModelFit> {
     let specs = specs_from(hw);
-    build_model_fits(
+    build_model_fits_with_config(
         database(),
         &specs,
         &InstalledIndex::empty(),
         context_limit,
-        None,
+        config_from(hw),
     )
 }
 
