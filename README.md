@@ -33,6 +33,8 @@ nothing is pushed or released.
 | **Files:** the real file list from Hugging Face, with SHA-256 | **Plan:** llmfit's planner for this PC |
 | ![My models: the models in LM Studio with a verdict and the best setting](docs/screenshots/my-models-dark.png) | ![Battle: three models compete on this PC and one wins](docs/screenshots/battle-light.png) |
 | **My models:** your LM Studio models (demo data in this picture) | **Battle:** 2 to 4 models compete, one wins |
+| ![Downloads: one file done with its SHA-256 checked from disk, one downloading, one waiting](docs/screenshots/downloads-dark.png) | ![A pasted Hugging Face link, checked live and opened](docs/screenshots/live-check-light.png) |
+| **Downloads:** resume after a crash, SHA-256 read back from disk (demo data in this picture) | **Live check:** paste any Hugging Face link |
 
 All pictures are 1600 × 900 and show the page in light and dark mode. The "My models" pictures use
 made-up demo models, not a real LM Studio list. Make them again after a change:
