@@ -349,6 +349,24 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
 /* Downloads: the long help folds away. */
 details.help-fold > summary { cursor: pointer; font-weight: 600; font-size: 13px; }
 details.help-fold[open] > summary { margin-bottom: 6px; }
+/* ---- package B: the detail header gives the answer and stays in view ---- */
+.detail > .dhead { position: sticky; top: 0; z-index: 3; }
+.dh-top { display: flex; align-items: flex-start; gap: 10px; }
+.dh-top .d-title { flex: 1; min-width: 0; }
+.btn.fav { flex: none; }
+.btn.fav[aria-pressed="true"] { color: var(--star); border-color: var(--star); }
+.d-meta { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.d-answer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.d-answer .badge { font-size: 13px; padding: 3px 10px; }
+.d-file { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.d-file b { font: 600 12.5px var(--mono); color: var(--text); }
+.safer { margin: 0 0 10px; }
+.fit-cell .badge { font-size: 11px; padding: 1px 7px; }
+.detail { overflow-x: hidden; }
+.ftable { table-layout: auto; }
+.ftable td:first-child { min-width: 0; }
+.link-copy { border: 0; background: transparent; color: var(--muted); padding: 0 4px; margin-left: 4px; border-radius: 4px; font-size: 12px; }
+.link-copy:hover { color: var(--accent); background: var(--accent-soft); }
 /* Downloads has nothing to filter: no left panel there, the table gets the width. */
 .layout.full { grid-template-columns: minmax(0, 1fr); }
 .layout.full .side { display: none; }
@@ -611,7 +629,8 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
 
     <h3>The detail panel (right)</h3>
     <dl>
-      <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization.</dd>
+      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. <b>☆ Favorite</b> stars the model. This part stays in view while you scroll.</dd>
+      <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization. When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
       <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them. Below it: ready commands and settings for AI agents.</dd>
       <dt>Plan</dt><dd>llmfit's planner: what hardware the model needs, which routes work, how many chats fit.</dd>
@@ -1223,6 +1242,24 @@ function mathLine(b) {
   if (b.mode === "MoE offload") return `${gb(b.inGpu)} in VRAM (of ${gb(b.vram)}) + ${gb(b.inRam)} experts in RAM (slower)`;
   return `${gb(b.need)} needed − ${gb(b.vram)} VRAM = ${gb(b.inRam)} in RAM (slower)`;
 }
+// The planner rows of "Which file fits?" as plain verdicts, by quant.
+function ladderVerdicts(d) {
+  const out = new Map();
+  for (const x of (d && d.ladder) || []) {
+    if (x.error || !x.plan) continue;
+    const c = x.plan.current, md = MODE[c.run_mode] || c.run_mode;
+    out.set(String(x.quant).toUpperCase(), { plain: plainOf(LEVEL[c.fit_level] || "tight", md), mode: md, tps: c.estimated_tps, size: x.plan.disk_size_gb });
+  }
+  return out;
+}
+// When the planner (more safety room) rates the list's best file lower, say so and name the best file that runs well.
+function saferNote(r, d) {
+  const b = r.best, lv = ladderVerdicts(d), mine = lv.get(String(b.q).toUpperCase());
+  if (!mine || (mine.plain === b.plain && mine.mode === b.mode)) return "";
+  const ok = [...lv.entries()].find(([, v]) => v.plain === "well");
+  const alt = ok && ok[0] !== String(b.q).toUpperCase() ? `For a safe margin, choose <b>${esc(ok[0])}</b> (${gb(ok[1].size)}, runs well${ok[1].tps > 0 ? `, about ${fmtT(ok[1].tps)} tok/s` : ""}).` : "";
+  return `<div class="warn-box safer">The list puts <b>${esc(b.q)}</b> at <b>${esc(PLAIN[b.plain].label.toLowerCase())}</b> on ${esc(b.mode)}. llmfit's planner keeps more safety room and says <b>${esc(PLAIN[mine.plain].label.toLowerCase())}</b> on ${esc(mine.mode)}. Both are estimates; the truth is in between. ${alt}</div>`;
+}
 function tabOverview(r, d) {
   const b = r.best, basis = d && d.detail ? d.detail.fit.estimate_basis : null;
   const ladder = d && d.ladder;
@@ -1241,7 +1278,7 @@ function tabOverview(r, d) {
     <div class="typing" id="typing" hidden></div>
   </section>
   <section class="card"><div class="card-head"><h2>Which file fits?</h2><small>llmfit planner · ${fmtCtx(r.ctx)} context · KV ${state.kvq.toUpperCase()}</small></div>
-    ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : d.error ? `<div class="warn-box">${esc(d.error)}</div>` : `<table class="ladder"><thead><tr><th>Quant</th><th class="r">File</th><th>Runs on</th><th>Verdict</th><th class="r">tok/s</th></tr></thead><tbody>${ladder.map((x) => {
+    ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : d.error ? `<div class="warn-box">${esc(d.error)}</div>` : `${saferNote(r, d)}<table class="ladder"><thead><tr><th>Quant</th><th class="r">File</th><th>Runs on</th><th>Verdict</th><th class="r">tok/s</th></tr></thead><tbody>${ladder.map((x) => {
       if (x.error) return `<tr><td><span class="quant">${esc(x.quant)}</span></td><td colspan="4"><small>${esc(x.error)}</small></td></tr>`;
       const c = x.plan.current, lv = LEVEL[c.fit_level] || "tight", md = MODE[c.run_mode] || c.run_mode, t = c.estimated_tps;
       return `<tr class="${x.quant === b.q ? "pick" : ""}"><td><span class="quant">${esc(x.quant)}</span></td><td class="r">${gb(x.plan.disk_size_gb)}</td><td>${md}</td><td>${verdict(plainOf(lv, md))}</td><td class="r">${t > 0 ? fmtT(t) : "—"}</td></tr>`;
@@ -1317,15 +1354,20 @@ function tabFiles(r) {
     if (f && f.error) html += `<div class="warn-box">${esc(f.error)}</div>`;
     if (f && f.files) {
       // Leave out text, settings and Ollama's extension-less files (template, params, license).
-      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => c.size - a.size);
+      const isPick = (x) => { const q = quantOfFile(x.path); return !!q && q === String(b.q).toUpperCase() && fileKind(x.path)[0] === "model file"; };
+      // The file "best for this PC" first, then the rest from large to small.
+      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => (isPick(c) - isPick(a)) || c.size - a.size);
+      // "Fits here": the verdict of llmfit's planner for this file's quant ("Which file fits?" in Overview).
+      const lv = ladderVerdicts(state.detail.get(detailKey(m.id)));
+      const fitCell = (x) => { if (fileKind(x.path)[0] !== "model file") return ""; const q = quantOfFile(x.path); if (!q) return "—"; const v = lv.get(planQuant(q)); return v ? `<span title="${esc(`llmfit planner for ${planQuant(q)}${planQuant(q) !== q ? ` (counted for ${q})` : ""}: ${PLAIN[v.plain].label} on ${v.mode}`)}"><span class="badge ${PLAIN[v.plain].cls}">${{ well: "Runs well", tight: "Tight", slower: "Slower", nofit: "Won't fit" }[v.plain]}</span></span>` : "—"; };
       // Read the GGUF header of the file llmfit picks (else the smallest model file): MTP layers and more.
       const models = shown.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file");
       const headFile = models.find((x) => quantOfFile(x.path) === String(b.q).toUpperCase()) || models.slice().sort((a, c) => a.size - c.size)[0];
       if (headFile) { if (!state.gguf.has(repo + "/" + headFile.path)) setTimeout(() => loadGgufHeader(m, repo, headFile.path), 0); html += ggufLine(repo, headFile.path); }
-      html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th></th></tr></thead><tbody>${shown.map((x) => {
-        const k = fileKind(x.path), q = quantOfFile(x.path), pick = q && q === String(b.q).toUpperCase();
+      html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th title="llmfit planner, with extra safety room (as in Which file fits?)">Fits here</th><th></th></tr></thead><tbody>${shown.map((x) => {
+        const k = fileKind(x.path), pick = isPick(x);
         const job = dlJob(repo, x.path);
-        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="r">${fmtSize(x.size)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`} <button class="btn small ghost" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link">Link</button></td></tr>`;
+        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}<button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link">⧉</button>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}</div>${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}${x.sha256 ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="r" style="white-space:nowrap">${fmtSize(x.size)}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
       }).join("")}</tbody></table><p class="hint"><b>best for this PC</b> = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>) and LM Studio sees the file at once.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
       html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>SHA-256 of each large file is shown; the page will check it after a download.</li></ul>`;
@@ -1430,7 +1472,7 @@ function lmsSettingsCard(r, repo, file) {
     loadBox = `<p class="hint">${state.lms.online ? lms ? "" : "To load it from here: download the model into LM Studio first (tab Files)." : "To load it from here: start LM Studio's server (Developer tab → server on), then open this tab again."}</p>`;
   }
   return `<section class="card">${head}${loadBox}
-    <p class="hint" style="margin-top:0">${loadBox.includes("data-lmsload") ? "Or set it by hand. " : ""}In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
+    <p class="hint" style="margin-top:0">These settings are for <b>${esc(fileQuant)}</b>, ${lms && String(lms.quantization || "").toUpperCase() === fileQuant ? "the file you have in LM Studio" : "the best file for this PC"}. ${loadBox.includes("data-lmsload") ? "Or set it by hand. " : ""}In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
     <div class="lmset">${rows.join("")}</div>
     <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Memory per context (llmfit estimate, ${esc(quant)})</summary><table class="ftable"><thead><tr><th class="r">Context</th><th class="r">KV F16</th><th class="r">KV Q8_0</th></tr></thead><tbody>${e.rows.map((x) => `<tr><td class="r">${x.ctx.toLocaleString("en")}</td><td class="r" style="${fits(x.f16) ? "" : "color:var(--tight)"}">${x.f16 != null ? gb(x.f16) : "—"}</td><td class="r" style="${fits(x.q8) ? "" : "color:var(--tight)"}">${x.q8 != null ? gb(x.q8) : "—"}</td></tr>`).join("")}</tbody></table></details></section>`;
 }
@@ -1442,6 +1484,14 @@ async function lmsPost(path, body) {
   try { data = await res.json(); } catch (e) { /* empty answer */ }
   if (!res.ok) throw new Error((data && data.error && data.error.message) || `LM Studio answered HTTP ${res.status}.`);
   return data || {};
+}
+// "Load in LM Studio…" in the detail header: open the Run tab, wait until its settings are calculated, then the check window.
+async function headLoad(id) {
+  state.tab = "run"; renderDetail();
+  for (let i = 0; i < 100 && !state.lmsPlans.has(id); i++) await new Promise((res) => setTimeout(res, 150));
+  if (state.selected !== id) return;
+  if (state.lmsPlans.has(id)) openLmsLoad(id);
+  else toast("The settings are not ready yet. Press Load in LM Studio at the top of the Run tab.");
 }
 function openLmsLoad(id) {
   const plan = state.lmsPlans.get(id);
@@ -1596,10 +1646,19 @@ function renderDetail() {
   if (!state.mtp.has(m.id) && (!m.gated || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
-  $("detail").innerHTML = `<section class="card">
-    <h1 class="d-title">${esc(m.name)}</h1>
+  // The answer first (verdict, file, one action); model facts as one quiet line; the header stays in view.
+  const fav = state.watch.has(m.id), b = r.best;
+  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`, m.license, m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
+  const lmsQ = lms && lms.quantization ? lms.quantization.toUpperCase() : "";
+  const action = lms && state.lms.online && !/embed/i.test(lms.type) && b.plain !== "nofit"
+    ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
+    : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
+  $("detail").innerHTML = `<section class="card dhead">
+    <div class="dh-top"><h1 class="d-title">${esc(m.name)}</h1><button class="btn small fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★ Favorite" : "☆ Favorite"}</button></div>
     <a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener">huggingface.co/${esc(m.id)} ↗</a>
-    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}<span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${mtpTag(m)}${m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W)" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
+    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}</div>
+    <div class="d-meta">${meta.map(esc).join(" · ")}</div>
+    <div class="d-answer">${verdict(b.plain)}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
 }
 
@@ -2760,6 +2819,7 @@ function wire() {
     if (t.id === "btnPreview") { const r = selectedResult(); if (r) startTyping((r.best.lo + r.best.hi) / 2); return; }
     if (t.id === "btnLmsRefresh") { checkLms().then(renderView); toast("Asking LM Studio for its models…"); return; }
     const ll = t.closest("[data-lmsload]"); if (ll) { openLmsLoad(ll.dataset.lmsload); return; }
+    const hl = t.closest("[data-headload]"); if (hl) { headLoad(hl.dataset.headload); return; }
     if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
     if (t.id === "btnNotices") { showAboutText("notices"); return; }
     if (t.id === "btnLocalGguf") { scanLocalGguf(true); return; }
