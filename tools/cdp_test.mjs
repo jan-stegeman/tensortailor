@@ -10,6 +10,7 @@ import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, normalize, extname } from "node:path";
+import { tmpdir } from "node:os";
 
 const [edge, rawUrl, shot, waitExpr = "true", stepsJson = "[]"] = process.argv.slice(2);
 let url = rawUrl, server = null;
@@ -27,7 +28,8 @@ if (process.env.CDP_SERVE_DIR) {
   console.log("serving", root, "at", url);
 }
 const port = 9333 + Math.floor(Math.random() * 300);
-const profile = `D:\\AI\\temp\\tt-cdp-profile-${port}`;
+// Edge's throw-away profile: in CDP_PROFILE_DIR when set, else in the system's temp folder.
+const profile = join(process.env.CDP_PROFILE_DIR || tmpdir(), `tt-cdp-profile-${port}`);
 mkdirSync(profile, { recursive: true });
 const proc = spawn(edge, ["--headless=new", "--no-first-run", "--disable-extensions", `--user-data-dir=${profile}`,
   `--remote-debugging-port=${port}`, "--window-size=1600,900", "about:blank"], { stdio: "ignore" });

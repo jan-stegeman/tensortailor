@@ -570,7 +570,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
       <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them.</dd>
-      <dt>Search</dt><dd>Type a name or a publisher (for example HauhauCS). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
+      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
     </dl>
 
     <h3>The detail panel (right)</h3>
@@ -712,7 +712,9 @@ const CHIP_TIP = {
   runtime: "This model needs {rt}, not llama.cpp. LM Studio on Windows cannot run it."
 };
 const LMS_URL = "http://127.0.0.1:1234";
-const LMS_FOLDER = "D:\\AI\\Models\\lm-studio";
+// LM Studio's default models folder: in a PowerShell command, and as a hint for people.
+const LMS_FOLDER = "$env:USERPROFILE\\.lmstudio\\models";
+const LMS_FOLDER_HINT = "C:\\Users\\<you>\\.lmstudio\\models";
 const DEFAULT_HW = { gpuName: "NVIDIA GeForce RTX 3090", vram: 24, gpus: 1, ram: 128, reserve: 1, ramBw: 90, cores: 64, cpuName: "AMD Ryzen Threadripper 3990X 64-Core Processor", freeDisk: null };
 
 /* ===================== State ===================== */
@@ -979,13 +981,13 @@ const speedRange = (b) => (!b || b.tps <= 0 ? "—" : `${fmtT(b.lo)}–${fmtT(b.
 const isNew = (m) => { if (!m.added) return false; const d = Date.parse(m.added); return isFinite(d) && Date.now() - d < 60 * 86400000; };
 // LM Studio key (e.g. "mistralai/codestral-22b-v0.1") vs catalog name (e.g.
 // "mistralai/Codestral-22B-v0.1"): same name, or the key ends with the model's
-// short name. A fine-tune ("huihui-qwen3.8-27b-abliterated") does not match its base.
+// short name. A fine-tune ("someone-qwen3-8b-finetune") does not match its base.
 function lmsMatches(lmsKey, m) {
   const a = norm(m.name), b = norm(lmsKey), c = norm(shortName(lmsKey));
   return a.length > 5 && (c === a || b === norm(m.id) || b.endsWith(a));
 }
 // Also check the maker: a name match from another publisher only counts when the
-// short names are exactly equal (so "huihui-ai/..." does not pair with "wangzhang/...").
+// short names are exactly equal (so "org-a/..." does not pair with "org-b/...").
 function lmsPairOk(x, m) {
   if (!lmsMatches(x.id, m)) return false;
   const pub = String(x.publisher || "").toLowerCase();
@@ -2278,7 +2280,7 @@ function viewDownloads() {
   const folder = d.root ? `Folder: <b>${esc(d.root.name || "(browser test storage)")}</b>` : "No folder chosen yet";
   return `<div class="view-head"><h1>Downloads</h1><span class="status-line"><span class="dot ${d.root ? "ok" : "warn"}"></span>${folder}</span><span class="spacer"></span><button class="btn small" id="btnDlFolder">${d.root ? "Change folder" : "Choose folder"}</button></div>
     <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : `<p class="hint" style="margin-top:0">No downloads yet. Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file.</p>`}</section>
-    <section class="card"><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (for example <code>${esc(LMS_FOLDER)}</code>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
+    <section class="card"><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>; LM Studio shows yours under <b>My Models</b>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
     <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
     <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
     <b>Vision:</b> when you download a model file from a repo with a vision projector (mmproj), the projector is taken along. LM Studio needs it in the same folder to read images.<br>

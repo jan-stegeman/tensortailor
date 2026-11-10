@@ -40,7 +40,9 @@ All pictures are 1600 × 900 and show the page in light and dark mode. The "My m
 made-up demo models, not a real LM Studio list. Make them again after a change:
 
 ```powershell
-node tools/cdp_test.mjs "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" "file:///D:/AI/tools/llmfit-studio/dist/tensortailor.html" D:\AI\temp\tt-last.png "state.ready && state.results.length > 0" tools/readme-screenshots.json
+$edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+$page = "file:///" + ((Resolve-Path "dist\tensortailor.html").Path -replace '\\', '/')
+node tools/cdp_test.mjs $edge $page "$env:TEMP\tt-last.png" "state.ready && state.results.length > 0" tools/readme-screenshots.json
 ```
 
 ## Build the page
@@ -82,7 +84,7 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 - **New models:** click the catalog button (top right), then **Fetch new models**. Like `llmfit update`, it adds
   the newest trending and most downloaded models from Hugging Face, with llmfit's own code inside the engine.
   Or paste any Hugging Face link in the search box and press Enter to check one model live. Searching for a
-  publisher (for example HauhauCS) shows how many matches your filters hide, and **Search Hugging Face** adds the
+  publisher (for example bartowski) shows how many matches your filters hide, and **Search Hugging Face** adds the
   publisher's models. Fetched models
   get the label **live** and stay in your browser until you remove them.
 - **Your hardware:** the browser sees the GPU name and CPU threads; you type or import RAM and VRAM.
