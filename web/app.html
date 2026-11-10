@@ -538,7 +538,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
-      <dt><span class="chip lock">license</span></dt><dd>The license may ask you to accept terms on Hugging Face first (gated model).</dd>
+      <dt><span class="chip lock">license</span></dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. The label comes from the license name only. Some of these repos are "gated" (you accept the terms on Hugging Face first, and TensorTailor then needs your HF token to read the files); many copies and fine-tunes are not gated and download without a token. The Files tab tells you when a token is needed.</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
     </dl>
 
@@ -685,6 +685,16 @@ const LEVEL = { Perfect: "perfect", Good: "good", Marginal: "marginal", TooTight
 const MODE = { Gpu: "GPU", TensorParallel: "GPU", MoeOffload: "MoE offload", CpuOffload: "CPU+GPU", CpuOnly: "CPU" };
 const OPEN_LICENSES = /^(apache-2\.0|mit|bsd|cc-by-4\.0|openrail|bigscience)/i;
 const GATED_LICENSES = /llama|gemma|mnpl|non-production|cc-by-nc|research/i;
+// Hover texts for the small labels in the list (the Help window has the same, longer).
+const CHIP_TIP = {
+  license: 'License "{lic}": not a plain open license (MIT, Apache). It has its own terms: Llama and Gemma licenses have rules for use; non-commercial or research licenses forbid business use. Read the terms on the model page before you use it.\nSome repos with such a license are "gated": Hugging Face asks you to accept the terms first, and TensorTailor then needs your HF token for the files. Many copies (like this kind of fine-tune) are not gated and download without a token.',
+  new: "Released in the last 60 days.",
+  moe: "Mixture of experts: many experts, only a few work per word. Fast for its size; the unused experts can wait in system RAM (MoE offload).",
+  upg: 'Only runs well with the upgrade you switched on under "What if I upgrade?".',
+  meas: "The speed comes from real measurements on similar hardware (llmfit's benchmark data), not from an estimate.",
+  lms: "You already have this model in LM Studio.",
+  runtime: "This model needs {rt}, not llama.cpp. LM Studio on Windows cannot run it."
+};
 const LMS_URL = "http://127.0.0.1:1234";
 const LMS_FOLDER = "D:\\AI\\Models\\lm-studio";
 const DEFAULT_HW = { gpuName: "NVIDIA GeForce RTX 3090", vram: 24, gpus: 1, ram: 128, reserve: 1, ramBw: 90, cores: 64, cpuName: "AMD Ryzen Threadripper 3990X 64-Core Processor", freeDisk: null };
@@ -978,8 +988,8 @@ function rowHTML(r) {
   const m = r.m, b = r.best, lms = state.lms.online ? inLms(m) : null;
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)" aria-label="Watch ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
-    <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? '<span class="chip moe">MoE</span>' : ""}${r.upgradeOnly ? '<span class="chip upg">upgrade</span>' : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
+    <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)}</span></div></div>
     <div class="num">${fmtParams(m.params)}</div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
     <div class="membar" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
