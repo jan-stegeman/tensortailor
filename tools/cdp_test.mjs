@@ -1,6 +1,7 @@
 // Opens a page in headless Edge through the DevTools protocol, prints console
 // messages and errors, waits for a JS condition, runs optional steps, and saves
-// a screenshot. Usage:
+// a screenshot. A step may have "js" (run it), "log", "wait" (ms) and "shot"
+// (save a screenshot to that path after the wait). Usage:
 //   node cdp_test.mjs <edge.exe> <url> <screenshot.png> [waitExpr] [stepsJson]
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
@@ -40,9 +41,14 @@ for (let i = 0; i < 120; i++) { await sleep(500); if (await evaluate(`(() => { t
 console.log(ok ? `READY after ${((Date.now() - t0) / 1000).toFixed(1)} s` : "FAIL: condition not met in 60 s");
 const steps = JSON.parse((stepsJson.endsWith(".json") ? readFileSync(stepsJson, "utf8") : stepsJson).replace(/^﻿/, ""));
 for (const step of steps) {
-  const out = await evaluate(step.js);
+  const out = step.js ? await evaluate(step.js) : undefined;
   if (step.log) console.log(`[step] ${step.log}:`, typeof out === "string" ? out.slice(0, 800) : JSON.stringify(out));
   await sleep(step.wait || 300);
+  if (step.shot) {
+    const res = await send("Page.captureScreenshot", { format: "png" });
+    writeFileSync(step.shot, Buffer.from(res.result.data, "base64"));
+    console.log("screenshot:", step.shot);
+  }
 }
 const shotRes = await send("Page.captureScreenshot", { format: "png" });
 writeFileSync(shot, Buffer.from(shotRes.result.data, "base64"));

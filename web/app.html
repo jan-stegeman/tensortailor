@@ -817,7 +817,7 @@ function renderList() {
   renderTiles(base);
   state.visible = sortResults(base.filter((r) => state.show[r.best.plain]));
   const hidden = base.length - state.visible.length;
-  $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden by the tiles` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` in ${(state.lastMs / 1000).toFixed(1)} s` : "");
+  $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden by the tiles` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` in ${(state.lastMs / 1000).toFixed(1)} s` : "");
   const el = $("rows");
   if (!state.visible.length) {
     const s = state.search.trim();
