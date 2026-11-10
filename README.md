@@ -64,6 +64,8 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 | `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
 | `web/build.mjs` | Makes the single file `dist/tensortailor.html` |
 | `tools/cdp_test.mjs` | Tests the built page in headless Edge (DevTools protocol) and takes screenshots |
+| `tools/test-sha256.mjs` | Checks the page's SHA-256 against Node's crypto and measures its speed |
+| `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
 | `tools/readme-screenshots.json` | The steps that make the README pictures (with demo data for My models) |
 | `docs/screenshots/` | The README pictures, light and dark |
 | `.github/actions/build/` | The build steps, shared by both workflows |
@@ -80,7 +82,10 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
   Or paste any Hugging Face link in the search box and press Enter to check one model live. Fetched models
   get the label **live** and stay in your browser until you remove them.
 - **Your hardware:** the browser sees the GPU name and CPU threads; you type or import RAM and VRAM.
-- **Downloads:** copy a ready command, or download inside the page with a SHA-256 check afterwards.
+- **Downloads:** press **Download** next to a file (tab **Files**). Pick a folder once, best LM Studio's models
+  folder: the file goes to `<folder>\<publisher>\<repo>\`. It comes in parts of 256 MB, so after a crash or
+  restart **Resume** keeps the finished parts. The model file gets its real name only when it is complete.
+  Then TensorTailor reads it back from disk and compares its SHA-256 with Hugging Face's. Edge or Chrome only.
 - **LM Studio:** reads your local models and can measure real speed through LM Studio's local server.
 
 ## Credits and license

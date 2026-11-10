@@ -176,6 +176,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .live-list li { margin: 2px 0; }
 .live-list button { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
 .live-list button:hover { text-decoration: underline; }
+.dlbar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.dlbar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.dlstate { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.dlstate.done { color: var(--perfect); } .dlstate.mismatch, .dlstate.failed { color: var(--tight); }
 /* Capability icons in LM Studio's style: eye = vision, hammer = tool use, brain = reasoning */
 .caps { display: inline-flex; gap: 3px; flex: none; align-items: center; }
 .cap { width: 19px; height: 19px; border-radius: 5px; display: inline-grid; place-items: center; border: 1.5px solid currentColor; flex: none; }
@@ -595,6 +599,7 @@ const state = {
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
   token: "", lms: { online: false, checked: false, models: [] },
   live: { models: [], meta: {}, at: "" }, liveBusy: false, liveLog: "", liveResult: null, lookup: null,
+  dl: { root: null, jobs: [], active: null, partBytes: 256 * 1024 * 1024, parallel: 2, loaded: false },
   queue: [], plan: { target: 30, users: 4, keep: 3 },
   detail: new Map(), files: new Map(), srcIdx: {}
 };
@@ -1031,7 +1036,7 @@ async function loadFiles(repo) {
   state.files.set(repo, entry);
   try {
     const tree = await hfJson(`https://huggingface.co/api/models/${repo}/tree/main?recursive=true`);
-    entry.files = tree.filter((t) => t.type === "file").map((t) => ({ path: t.path, size: (t.lfs ? t.lfs.size : t.size) / 1e9, sha256: t.lfs ? t.lfs.oid : null }));
+    entry.files = tree.filter((t) => t.type === "file").map((t) => ({ path: t.path, bytes: t.lfs ? t.lfs.size : t.size, size: (t.lfs ? t.lfs.size : t.size) / 1e9, sha256: t.lfs ? t.lfs.oid : null }));
     entry.loading = false;
   } catch (e) { entry.loading = false; entry.error = e.message; }
   renderDetail();
@@ -1085,8 +1090,9 @@ function tabFiles(r) {
       const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => c.size - a.size);
       html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th></th></tr></thead><tbody>${shown.map((x) => {
         const k = fileKind(x.path), q = quantOfFile(x.path), pick = q && q === String(b.q).toUpperCase();
-        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? " ⭐" : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 ${esc(x.sha256)}</div>` : ""}</td><td class="r">${fmtSize(x.size)}</td><td class="r"><button class="btn small" data-copy="${esc(`hf download ${repo} "${x.path}" --local-dir "${LMS_FOLDER}\\${repo.replace("/", "\\")}"`)}" data-what="Download command">Copy command</button></td></tr>`;
-      }).join("")}</tbody></table><p class="hint">⭐ = the quant llmfit picks for this PC (${esc(b.q)}). The command saves into <code>${esc(LMS_FOLDER)}</code>, so LM Studio sees the file at once. Direct download inside the page comes in the next step.</p>`;
+        const job = dlJob(repo, x.path);
+        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? " ⭐" : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 ${esc(x.sha256)}</div>` : ""}</td><td class="r">${fmtSize(x.size)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small primary" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`} <button class="btn small ghost" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link">Link</button></td></tr>`;
+      }).join("")}</tbody></table><p class="hint">⭐ = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (for example <code>${esc(LMS_FOLDER)}</code>) and LM Studio sees the file at once.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
       html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>SHA-256 of each large file is shown; the page will check it after a download.</li></ul>`;
     }
@@ -1457,8 +1463,247 @@ function battlePng() {
   });
   c.toBlob((blob) => { if (blob) { saveFile("tensortailor-battle.png", blob); toast("Picture saved to your Downloads folder."); } });
 }
+/* ===================== Downloads: a folder you pick, crash-safe resume, SHA-256 from disk ===================== */
+// A file comes down in parts (256 MB) into <folder>/<publisher>/<repo>/.tensortailor-parts/, so a crash or
+// restart loses at most the parts in progress. The parts are joined into "<name>.tt-tmp", which gets the
+// real name only when it is complete. Then the file is read back from disk and its SHA-256 compared with
+// Hugging Face's. Nothing outside the parts folder is ever deleted.
+const DL_LABEL = { queued: "Waiting", downloading: "Downloading", paused: "Paused", assembling: "Joining parts", verifying: "Checking SHA-256", done: "Done ✓", mismatch: "SHA-256 differs", failed: "Stopped" };
+const DL_PARTS = ".tensortailor-parts";
+function dlUrl(repo, path) { return `https://huggingface.co/${repo}/resolve/main/${path.split("/").map(encodeURIComponent).join("/")}`; }
+function dlJob(repo, path) { return state.dl.jobs.find((j) => j.repo === repo && j.path === path) || null; }
+function dlSafe(path) { return path.replace(/[\\/:*?"<>|]/g, "_"); }
+let idbConn = null;
+function idbOpen() {
+  if (idbConn) return idbConn;
+  idbConn = new Promise((resolve, reject) => {
+    const r = indexedDB.open("tensortailor", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("kv"); r.result.createObjectStore("jobs", { keyPath: "id" }); };
+    r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
+  });
+  return idbConn;
+}
+async function idbDo(store, mode, fn) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode), req = fn(tx.objectStore(store));
+    tx.oncomplete = () => resolve(req ? req.result : undefined); tx.onerror = () => reject(tx.error);
+  });
+}
+const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note"];
+function dlSave(job) { const o = {}; for (const k of DL_KEEP) o[k] = job[k]; return idbDo("jobs", "readwrite", (s) => s.put(o)).catch(() => {}); }
+async function dlLoad() {
+  try {
+    state.dl.root = (await idbDo("kv", "readonly", (s) => s.get("root"))) || null;
+    const jobs = (await idbDo("jobs", "readonly", (s) => s.getAll())) || [];
+    // Work that was running when the page closed waits for a click (the folder permission needs one).
+    for (const j of jobs) if (["downloading", "assembling", "verifying", "queued"].includes(j.status)) { j.status = "paused"; j.note = "Stopped when the page closed. Press Resume."; }
+    state.dl.jobs = jobs.sort((a, b) => String(a.added).localeCompare(String(b.added)));
+  } catch (e) { /* no IndexedDB: downloads still work until the page closes */ }
+  state.dl.loaded = true; renderNav();
+}
+async function dlFolder(interactive, choose) {
+  const d = state.dl;
+  if ((!d.root || choose) && interactive) {
+    if (!window.showDirectoryPicker) throw new Error("This browser cannot save into a folder. Use Edge or Chrome.");
+    d.root = await window.showDirectoryPicker({ id: "tensortailor-models", mode: "readwrite" });
+    await idbDo("kv", "readwrite", (s) => s.put(d.root, "root")).catch(() => {});
+  }
+  if (!d.root) return false;
+  if (d.root.queryPermission && (await d.root.queryPermission({ mode: "readwrite" })) === "granted") return true;
+  if (interactive && d.root.requestPermission) return (await d.root.requestPermission({ mode: "readwrite" })) === "granted";
+  return false;
+}
+async function dlDir(base, names) { let dir = base; for (const n of names) dir = await dir.getDirectoryHandle(n, { create: true }); return dir; }
+async function dlAdd(repo, file) {
+  try {
+    if (!(await dlFolder(true))) { toast("TensorTailor needs a folder with write permission."); return; }
+  } catch (e) { if (e.name !== "AbortError") toast(e.message); return; }
+  let job = dlJob(repo, file.path);
+  if (job && ["done", "queued", "downloading", "assembling", "verifying"].includes(job.status)) { setView("downloads"); return; }
+  if (!job) { job = { id: repo + "/" + file.path, repo, path: file.path, bytes: file.bytes, sha256: file.sha256 || null, partBytes: state.dl.partBytes, added: new Date().toISOString() }; state.dl.jobs.push(job); }
+  job.status = "queued"; job.error = ""; job.note = "";
+  const free = state.hw.freeDisk;
+  if (free && job.bytes * 2 / 1e9 > free) job.note = `Your last import showed ${free.toFixed(0)} GB free on D:. Joining the parts needs about twice the file size for a short time.`;
+  await dlSave(job); renderNav(); renderDetail(); toast("Added to Downloads."); dlNext();
+}
+function dlNext() {
+  if (state.dl.active) return;
+  const job = state.dl.jobs.find((j) => j.status === "queued");
+  if (job) dlRun(job);
+}
+let dlPaint = 0;
+function dlRefresh(force) {
+  const now = Date.now();
+  if (!force && now - dlPaint < 400) return;
+  dlPaint = now; renderNav();
+  if (state.view === "downloads") renderView();
+}
+async function dlRun(job) {
+  const d = state.dl;
+  d.active = job; job.ctl = new AbortController(); job.error = ""; job.note = ""; job.speed = 0;
+  try {
+    if (!(await dlFolder(false))) throw new Error("The folder needs your permission again. Press Resume.");
+    const [pub, name] = job.repo.split("/");
+    const repoDir = await dlDir(d.root, [pub, name]);
+    // The complete file is already there (joined earlier, or downloaded before): only check it.
+    const parts = job.path.split("/"), fileName = parts.pop();
+    const fileDir = await dlDir(repoDir, parts);
+    let existing = null;
+    try { const fh = await fileDir.getFileHandle(fileName); if ((await fh.getFile()).size === job.bytes) existing = fh; } catch (e) { /* not there yet */ }
+    if (existing) { job.note = "The complete file was already in the folder; it is only checked."; await dlVerify(job, existing); return; }
+    const partsDir = await dlDir(repoDir, [DL_PARTS, dlSafe(job.path)]);
+    const n = Math.max(1, Math.ceil(job.bytes / job.partBytes)), partName = (i) => `part-${String(i + 1).padStart(5, "0")}`;
+    const partLen = (i) => Math.min(job.bytes, (i + 1) * job.partBytes) - i * job.partBytes;
+    // Parts already complete on disk are kept (resume after a crash or restart).
+    const todo = [];
+    job.have = 0;
+    for (let i = 0; i < n; i++) {
+      let size = -1;
+      try { size = (await (await partsDir.getFileHandle(partName(i))).getFile()).size; } catch (e) { /* not there yet */ }
+      if (size === partLen(i)) job.have += size; else todo.push(i);
+    }
+    job.status = "downloading"; job.live = 0; job.t0 = Date.now(); job.b0 = job.have; dlSave(job); dlRefresh(true);
+    await inPool(todo, d.parallel, async (i) => {
+      const start = i * job.partBytes, len = partLen(i);
+      const res = await fetch(dlUrl(job.repo, job.path), { headers: { ...hfHeaders(), Range: `bytes=${start}-${start + len - 1}` }, signal: job.ctl.signal });
+      if (res.status === 401 || res.status === 403) throw new Error("This repository is gated or private. Accept its license on Hugging Face and set your token.");
+      if (res.status !== 206) throw new Error(res.status === 200 ? "Hugging Face sent the whole file instead of a part." : `Hugging Face answered ${res.status}.`);
+      const total = /\/(\d+)\s*$/.exec(res.headers.get("content-range") || "");
+      if (total && Number(total[1]) !== job.bytes) throw new Error("The file on Hugging Face has another size now. Remove this download and start it again.");
+      const fh = await partsDir.getFileHandle(partName(i), { create: true });
+      const w = await fh.createWritable();
+      let got = 0;
+      try {
+        const reader = res.body.getReader();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await w.write(value); got += value.length; job.live += value.length;
+          job.speed = (job.have + job.live - job.b0) / Math.max(0.5, (Date.now() - job.t0) / 1000);
+          dlRefresh();
+        }
+        if (got !== len) throw new Error(`A part came back short (${got} of ${len} bytes). Press Resume.`);
+        await w.close();
+      } catch (e) { job.live -= got; try { await w.abort(); } catch (x) { /* already closed */ } throw e; }
+      job.have += len; job.live -= got;
+    });
+    // Join the parts into "<name>.tt-tmp"; it gets the real name only when complete.
+    job.status = "assembling"; job.joined = 0; dlSave(job); dlRefresh(true);
+    const tmp = await fileDir.getFileHandle(fileName + ".tt-tmp", { create: true });
+    const out = await tmp.createWritable();
+    try {
+      for (let i = 0; i < n; i++) {
+        if (job.ctl.signal.aborted) throw new DOMException("Paused", "AbortError");
+        const pf = await (await partsDir.getFileHandle(partName(i))).getFile();
+        if (pf.size !== partLen(i)) throw new Error(`Part ${i + 1} on disk has the wrong size. Press Resume.`);
+        await pf.stream().pipeTo(out, { preventClose: true, preventAbort: true, signal: job.ctl.signal });
+        job.joined += pf.size; dlRefresh();
+      }
+      await out.close();
+    } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } throw e; }
+    let final = tmp;
+    try {
+      if (typeof tmp.move !== "function") throw new Error("no move()");
+      await tmp.move(fileName); final = await fileDir.getFileHandle(fileName);
+    } catch (e) { job.note = `The file could not get its real name (${e.message}). It is called ${fileName}.tt-tmp; rename it to ${fileName} after the check.`; }
+    try { await (await repoDir.getDirectoryHandle(DL_PARTS)).removeEntry(dlSafe(job.path), { recursive: true }); } catch (e) { /* parts stay; harmless */ }
+    try { const pd = await repoDir.getDirectoryHandle(DL_PARTS); let empty = true; for await (const _ of pd.keys()) { empty = false; break; } if (empty) await repoDir.removeEntry(DL_PARTS); } catch (e) { /* keep it */ }
+    await dlVerify(job, final);
+  } catch (e) {
+    if (e && e.name === "AbortError") { job.status = job.removing ? "removed" : "paused"; }
+    else { job.status = "failed"; job.error = String((e && e.message) || e); if (job.ctl) job.ctl.abort(); }
+  } finally {
+    job.speed = 0; d.active = null;
+    if (job.status !== "removed") dlSave(job);
+    dlRefresh(true); renderDetail(); dlNext();
+  }
+}
+// Read the finished file back from disk and compare its SHA-256 with Hugging Face's.
+async function dlVerify(job, handle) {
+  job.status = "verifying"; job.hashed = 0; dlSave(job); dlRefresh(true);
+  const file = await handle.getFile();
+  if (file.size !== job.bytes) { job.status = "mismatch"; job.error = `The file on disk has ${file.size.toLocaleString("en")} bytes, Hugging Face says ${job.bytes.toLocaleString("en")}.`; return; }
+  if (!job.sha256) { job.status = "done"; job.finished = new Date().toISOString(); job.note = "Hugging Face gives no SHA-256 for this small file; the size is checked."; return; }
+  job.gotSha = await hashFile(file, (done) => { job.hashed = done; dlRefresh(); }, job.ctl && job.ctl.signal);
+  job.finished = new Date().toISOString();
+  if (job.gotSha === String(job.sha256).toLowerCase()) { job.status = "done"; job.note = ""; }
+  else { job.status = "mismatch"; job.error = "The SHA-256 read back from disk differs from Hugging Face. The file is damaged: do not use it. Remove the file and download it again."; }
+}
+let hashWorker = null, hashSeq = 0;
+const hashWaiters = new Map();
+function hashFile(file, onProgress, signal) {
+  if (!hashWorker) {
+    hashWorker = new Worker(URL.createObjectURL(new Blob([$("hash-worker").textContent], { type: "text/javascript" })));
+    hashWorker.onmessage = (e) => { const w = hashWaiters.get(e.data.id); if (!w) return; if (e.data.done !== undefined && !e.data.hex && !e.data.error) { w.onProgress(e.data.done); return; } hashWaiters.delete(e.data.id); e.data.error ? w.reject(new Error(e.data.error === "cancelled" ? "Paused" : e.data.error)) : w.resolve(e.data.hex); };
+  }
+  const id = ++hashSeq;
+  return new Promise((resolve, reject) => {
+    hashWaiters.set(id, { resolve, reject: (err) => reject(signal && signal.aborted ? new DOMException("Paused", "AbortError") : err), onProgress });
+    if (signal) signal.addEventListener("abort", () => hashWorker.postMessage({ cancel: id }), { once: true });
+    hashWorker.postMessage({ id, file });
+  });
+}
+async function dlCheckAgain(job) {
+  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
+  if (!(await dlFolder(true))) return;
+  state.dl.active = job; job.ctl = new AbortController(); job.error = "";
+  try {
+    const parts = job.path.split("/"), fileName = parts.pop();
+    const [pub, name] = job.repo.split("/");
+    const dir = await dlDir(state.dl.root, [pub, name, ...parts]);
+    await dlVerify(job, await dir.getFileHandle(fileName));
+  } catch (e) {
+    if (e && e.name === "AbortError") job.status = "done"; else { job.status = "failed"; job.error = e.name === "NotFoundError" ? "The file is not in the folder any more." : String(e.message || e); }
+  } finally { state.dl.active = null; dlSave(job); dlRefresh(true); dlNext(); }
+}
+async function dlAction(act, id) {
+  const job = state.dl.jobs.find((j) => j.id === id);
+  if (!job) return;
+  if (act === "pause") { if (job.ctl) job.ctl.abort(); else { job.status = "paused"; dlSave(job); dlRefresh(true); } return; }
+  if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } job.status = "queued"; job.error = ""; await dlSave(job); dlRefresh(true); dlNext(); return; }
+  if (act === "check") return dlCheckAgain(job);
+  if (act === "remove") {
+    // Removes the entry and its temporary parts. A finished model file stays on disk.
+    job.removing = true;
+    if (state.dl.active === job && job.ctl) job.ctl.abort();
+    state.dl.jobs = state.dl.jobs.filter((j) => j !== job);
+    await idbDo("jobs", "readwrite", (s) => s.delete(id)).catch(() => {});
+    try { if (await dlFolder(false)) { const [pub, name] = job.repo.split("/"); const pd = await (await (await state.dl.root.getDirectoryHandle(pub)).getDirectoryHandle(name)).getDirectoryHandle(DL_PARTS); await pd.removeEntry(dlSafe(job.path), { recursive: true }); } } catch (e) { /* nothing to clean */ }
+    dlRefresh(true); renderDetail();
+  }
+}
+function dlRow(j) {
+  const busy = state.dl.active === j;
+  const pct = (x) => Math.max(0, Math.min(100, x * 100)).toFixed(1);
+  let p = 0, text = DL_LABEL[j.status] || j.status;
+  if (j.status === "downloading") { p = (j.have + (j.live || 0)) / j.bytes; const left = j.speed > 0 ? (j.bytes - j.have - (j.live || 0)) / j.speed : 0; text += ` · ${pct(p)}% · ${(j.speed / 1e6).toFixed(0)} MB/s` + (left ? ` · about ${fmtTime(left)} left` : ""); }
+  else if (j.status === "assembling") { p = (j.joined || 0) / j.bytes; text += ` · ${pct(p)}%`; }
+  else if (j.status === "verifying") { p = (j.hashed || 0) / j.bytes; text += ` · ${pct(p)}% read from disk`; }
+  else if (j.status === "done" || j.status === "mismatch") p = 1;
+  const btn = (act, label, cls = "") => `<button class="btn small ${cls}" data-dlact="${act}" data-dlid="${esc(j.id)}">${label}</button>`;
+  const acts = [];
+  if (["downloading", "assembling", "verifying", "queued"].includes(j.status)) acts.push(btn("pause", "Pause"));
+  if (["paused", "failed"].includes(j.status)) acts.push(btn("resume", "Resume", "primary"));
+  if (["done", "mismatch"].includes(j.status) && !busy) acts.push(btn("check", "Check again"));
+  acts.push(btn("remove", "Remove", "ghost"));
+  const ok = j.status === "done" && j.gotSha;
+  return `<tr><td><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
+    <td style="min-width:260px"><div class="bar dlbar"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
+    ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: ${esc(j.gotSha)}</div>` : ""}
+    ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}</td>
+    <td class="r" style="white-space:nowrap">${acts.join(" ")}</td></tr>`;
+}
+function fmtTime(s) { s = Math.round(s); return s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; }
 function viewDownloads() {
-  return `<div class="view-head"><h1>Downloads</h1></div><section class="card"><p class="hint" style="margin-top:0">Direct downloads with a SHA-256 check come in the next step. For now: open a model, go to <b>Files</b>, press <b>Check files</b>, and use <b>Copy command</b>. The command saves into <code>${esc(LMS_FOLDER)}</code>.</p></section>`;
+  const d = state.dl, jobs = d.jobs.slice().reverse();
+  const folder = d.root ? `Folder: <b>${esc(d.root.name || "(browser test storage)")}</b>` : "No folder chosen yet";
+  return `<div class="view-head"><h1>Downloads</h1><span class="status-line"><span class="dot ${d.root ? "ok" : "warn"}"></span>${folder}</span><span class="spacer"></span><button class="btn small" id="btnDlFolder">${d.root ? "Change folder" : "Choose folder"}</button></div>
+    <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : `<p class="hint" style="margin-top:0">No downloads yet. Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file.</p>`}</section>
+    <section class="card"><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (for example <code>${esc(LMS_FOLDER)}</code>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
+    <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. The model file gets its real name only when it is complete. Joining the parts needs about twice the file size free for a short time.<br>
+    <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
+    <b>Remove</b> only removes the entry and its temporary parts. A finished model file is never deleted by TensorTailor.</p></section>`;
 }
 function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
 function setView(v) {
@@ -1466,7 +1711,7 @@ function setView(v) {
   document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
   if (v !== "models") renderView(); else renderRowsWindow();
 }
-function renderNav() { const set = (id, n) => { const el = $(id); el.hidden = !n; el.textContent = n; }; set("navMine", state.lms.online ? state.lms.models.length : 0); set("navBattle", state.compare.length); set("navDl", 0); }
+function renderNav() { const set = (id, n) => { const el = $(id); el.hidden = !n; el.textContent = n; }; set("navMine", state.lms.online ? state.lms.models.length : 0); set("navBattle", state.compare.length); set("navDl", state.dl.jobs.filter((j) => !["done"].includes(j.status)).length); }
 
 /* ===================== Compare, watch ===================== */
 function renderTray() {
@@ -1627,6 +1872,10 @@ function wire() {
     if (t.id === "btnCloseSuggest") { $("suggest").hidden = true; return; }
     const show = t.closest("[data-show]"); if (show) { const d = show.closest("dialog"); if (d) d.close(); showModel(show.dataset.show, show.dataset.gotab); return; }
     const hc = t.closest("[data-hfcheck]"); if (hc) { checkHfLink(hc.dataset.hfcheck); return; }
+    const dl = t.closest("[data-dl]"); if (dl) { const f = (state.files.get(dl.dataset.dl) || {}).files || []; const file = f.find((x) => x.path === dl.dataset.dlpath); if (file) dlAdd(dl.dataset.dl, file); return; }
+    const da = t.closest("[data-dlact]"); if (da) { dlAction(da.dataset.dlact, da.dataset.dlid); return; }
+    if (t.closest("[data-view-dl]")) { setView("downloads"); return; }
+    if (t.id === "btnDlFolder") { dlFolder(true, true).then((ok) => { if (ok) toast("Folder chosen: " + state.dl.root.name); renderView(); }, (e) => { if (e.name !== "AbortError") toast(e.message); }); return; }
     const ab = t.closest("[data-addbattle]"); if (ab) { toggleCompare(ab.dataset.addbattle, true); toast("Added to the battle."); return; }
     const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
     const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
@@ -1692,7 +1941,7 @@ function wire() {
   state.token = safeGet("sessionStorage", "tt-token") || "";
   document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.insertAdjacentHTML("afterbegin", capIcon(b.dataset.cap)));
   fillHwInputs(); renderUseCases(); renderToken(); renderUsable(); wire(); renderDetail();
-  checkLms();
+  checkLms(); dlLoad();
   try {
     const t0 = performance.now();
     banner("Unpacking the engine…", "busy");
