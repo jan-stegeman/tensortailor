@@ -27,7 +27,7 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 - **Keep favorites.** Click the star ☆ next to a model (or press `W`). **Only my favorites** shows just those,
   and My models shows the same stars.
 - **Compare.** Tick 2 to 4 models and press **Compare**, or let them fight in **Battle**.
-- **Stay up to date.** The catalog button (top right) → **Fetch new models** adds the newest models from
+- **Stay up to date.** **Tools** (top right) → **Catalog** → **Fetch new models** adds the newest models from
   Hugging Face. Or paste any Hugging Face link in the search box and press Enter.
 - **Get help.** Point at a bar, speed, verdict or score for an explanation, or press `?` for the Help window.
 

@@ -370,6 +370,24 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
 .ftable td:first-child { min-width: 0; }
 .link-copy { border: 0; background: transparent; color: var(--muted); padding: 0 4px; margin-left: 4px; border-radius: 4px; font-size: 12px; }
 .link-copy:hover { color: var(--accent); background: var(--accent-soft); }
+/* ---- package D3: Tools menu and a slightly larger type scale ---- */
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 320px; display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.22); }
+.menu[hidden] { display: none; }
+.menu .btn { width: 100%; justify-content: flex-start; }
+.menu .upd-lbl { display: inline !important; }
+h2 { font-size: 14.5px; }
+.d-title { font-size: 20px; }
+.tag { font-size: 12px; }
+.chip { font-size: 11px; }
+.hint { font-size: 13px; }
+.m-name .sub { font-size: 12.5px; }
+.stat .k { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mode, .memlabel { font-size: 12px; }
+.hash { font-size: 11.5px; }
+.dlg-head h2 { font-size: 17px; }
+.dlg-body p, .help p, .help dl { font-size: 13.5px; }
+.lmhead { font-size: 14px; } .lmwhy { font-size: 13px; }
 /* ---- package D1: keyboard and screen readers ---- */
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .tab-panel { display: flex; flex-direction: column; gap: 12px; }
@@ -429,11 +447,16 @@ details[open] > .fold-head { margin-bottom: 10px; }
     </nav>
   </div>
   <div class="top-actions">
-    <button class="btn ghost" id="btnUpdate" title="About the model catalog"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span></button>
-    <button class="btn" id="btnToken"><span class="dot" id="tokDot"></span><span id="tokText">HF token</span></button>
     <button class="btn ghost" id="btnHelp" title="Help: what everything means (?)">Help</button>
-    <button class="btn ghost" id="btnAbout" title="About and licenses">About</button>
-    <button class="btn ghost" id="btnTheme" title="Light or dark (T)" aria-label="Switch light or dark">◐</button>
+    <div class="menu-wrap">
+      <button class="btn" id="btnTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu" title="Model catalog, Hugging Face token, About, light or dark"><span class="dot" id="toolsDot"></span>Tools <span aria-hidden="true">▾</span></button>
+      <div class="menu" id="toolsMenu" role="menu" hidden>
+        <button class="btn ghost" id="btnUpdate" role="menuitem" title="About the model catalog: fetch new models"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span></button>
+        <button class="btn ghost" id="btnToken" role="menuitem"><span class="dot" id="tokDot"></span><span id="tokText">HF token</span></button>
+        <button class="btn ghost" id="btnAbout" role="menuitem" title="About and licenses">About and licenses</button>
+        <button class="btn ghost" id="btnTheme" role="menuitem" title="Light or dark (T)">◐ Light or dark</button>
+      </div>
+    </div>
   </div>
 </header>
 <div class="status-banner busy" id="statusBanner">Starting the engine…</div>
@@ -636,7 +659,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
       <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model; "MTP in file" comes from the header of your own model file. To read your files, My models asks once for LM Studio's models folder (the same folder as for Downloads); TensorTailor matches each model to its file by size and reads only the start of the file (layers, maximum context, MTP).</dd>
-      <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (catalog button or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
+      <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
@@ -675,7 +698,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
     <dl>
       <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
-      <dt>Catalog button</dt><dd>Where the list comes from, and "Fetch new models" from Hugging Face.</dd>
+      <dt>Tools (top right)</dt><dd><b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token</b>: for gated models (the dot on Tools is green when a token is set). <b>About and licenses</b>. <b>Light or dark</b> (key <kbd>T</kbd>).</dd>
       <dt>HF token</dt><dd>Read-only Hugging Face token for gated models. It stays only in this browser tab.</dd>
       <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help.</dd>
     </dl>
@@ -1195,6 +1218,12 @@ function tabKeys(e) {
   e.preventDefault();
   state.tab = tabs[j].dataset.tab; renderDetail();
   const n = $("tab-" + state.tab); if (n) n.focus();
+}
+function toggleTools(open) {
+  const m = $("toolsMenu"), show = open === undefined ? m.hidden : open;
+  if (show === !m.hidden) return;
+  m.hidden = !show; $("btnTools").setAttribute("aria-expanded", String(show));
+  if (show) { const first = m.querySelector("button"); if (first) first.focus(); }
 }
 function restoreFocus(sel) { if (!sel) return; const el = document.querySelector(sel); if (el) el.focus({ preventScroll: true }); }
 // The line under the list head while you search: what the filters hide, and a search on Hugging Face.
@@ -2730,7 +2759,7 @@ function importHardware() {
 }
 
 /* ===================== Token, theme, CSV, about ===================== */
-function renderToken() { const on = !!state.token; $("tokDot").className = "dot" + (on ? " ok" : ""); $("tokText").textContent = on ? "Token set" : "HF token"; }
+function renderToken() { const on = !!state.token; $("tokDot").className = "dot" + (on ? " ok" : ""); $("tokText").textContent = on ? "Hugging Face token: set" : "Hugging Face token: not set"; $("toolsDot").className = "dot" + (on ? " ok" : ""); $("toolsDot").title = on ? "Hugging Face token set" : "No Hugging Face token"; }
 function currentTheme() { const t = document.documentElement.dataset.theme; if (t) return t; return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
 function toggleTheme() { const next = currentTheme() === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = next; safeSet("localStorage", "tt-theme", next); }
 function exportCsv() {
@@ -2940,6 +2969,10 @@ function wire() {
     if (id === "planKeep") { state.plan.keep = Number(e.target.value); renderDetail(); $("planKeep").focus(); }
   });
   $("detail").addEventListener("keydown", tabKeys);
+  // Tools menu: open/close with its button, close after a choice, a click outside or Esc.
+  $("btnTools").addEventListener("click", (e) => { e.stopPropagation(); toggleTools(); });
+  $("toolsMenu").addEventListener("click", () => toggleTools(false));
+  document.addEventListener("click", (e) => { if (!e.target.closest(".menu-wrap")) toggleTools(false); });
   $("detail").addEventListener("change", (e) => { if (e.target.id === "srcSel") { delete state.srcIdx["repo:" + state.selected]; state.srcIdx[state.selected] = Number(e.target.value); renderDetail(); } });
   $("btnDetect").addEventListener("click", detectInBrowser);
   $("btnImport").addEventListener("click", () => { $("psSnippet").textContent = PS_LINE; $("dlgImport").showModal(); });
@@ -2967,6 +3000,7 @@ function wire() {
     // A focused slider or drop-down uses the arrow keys itself (they must not move the model selection).
     const ownArrows = ae.type === "range" || ae.tagName === "SELECT";
     if (document.querySelector("dialog[open]")) return;
+    if (e.key === "Escape" && !$("toolsMenu").hidden) { toggleTools(false); $("btnTools").focus(); return; }
     if (e.key === "/" && !typing) { e.preventDefault(); $("q").focus(); return; }
     if (e.key === "Escape" && typing) { ae.blur(); return; }
     if (e.key === "Escape" && state.view !== "models") { setView("models"); return; }
