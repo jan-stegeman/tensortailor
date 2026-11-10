@@ -102,6 +102,10 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
   of the file (Range requests), else from `config.json`, else from the name. My models shows if LM Studio uses it.
 - **Help:** point at a bar, speed, verdict or score for an explanation, or press `?` for the Help window.
 - **LM Studio:** reads your local models and can measure real speed through LM Studio's local server.
+  Tab **Run** shows the LM Studio load settings for this PC, and **Load in LM Studio with these settings** loads
+  the model through LM Studio's API (context length, flash attention, KV cache on the GPU, MTP). You see what is
+  sent first. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting
+  for those.
 
 ## Credits and license
 

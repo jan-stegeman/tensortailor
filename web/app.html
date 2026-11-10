@@ -183,6 +183,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .lmrow { padding: 8px 0; border-top: 1px solid var(--line); }
 .lmhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13.5px; }
 .lmhead b { text-align: right; } .lmwhy { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+.lmload { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.lmload .hint { margin: 0; }
+#dlgLmsLoad { width: min(640px, 94vw); }
+.lmsend { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0; }
+.lmsend td { padding: 4px 6px; border-top: 1px solid var(--line); } .lmsend td:last-child { text-align: right; font-weight: 600; }
 .q { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 10px; color: var(--muted); cursor: help; }
 .help h3 { margin: 18px 0 6px; font-size: 15px; } .help h3:first-of-type { margin-top: 8px; }
 .help p { margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
@@ -485,6 +490,12 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
   <div class="dlg-body" id="cmpBody"></div>
 </dialog>
 
+<dialog id="dlgLmsLoad">
+  <div class="dlg-head"><h2>Load in LM Studio</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body" id="lmsLoadBody"></div>
+  <div class="dlg-foot"><button class="btn" id="btnLmsLoadCancel" data-close>Cancel</button><button class="btn primary" id="btnLmsLoadGo">Load</button></div>
+</dialog>
+
 <dialog id="dlgCatalog">
   <div class="dlg-head"><h2>Model catalog</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="catBody"></div>
@@ -566,7 +577,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
     <dl>
       <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
-      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. Below it: ready commands and settings for AI agents.</dd>
+      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them. Below it: ready commands and settings for AI agents.</dd>
       <dt>Plan</dt><dd>llmfit's planner: what hardware the model needs, which routes work, how many chats fit.</dd>
     </dl>
 
@@ -713,7 +724,7 @@ const state = {
   f: { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true },
   view: "models", tab: "overview", engine: "lms",
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
-  token: "", lms: { online: false, checked: false, models: [] },
+  token: "", lms: { online: false, checked: false, models: [] }, lmsPlans: new Map(), lmsLoad: null,
   live: { models: [], meta: {}, at: "" }, liveBusy: false, liveLog: "", liveResult: null, lookup: null,
   searchAll: false, hubSearch: null, mtp: new Map(), gguf: new Map(),
   dl: { root: null, jobs: [], active: null, partBytes: 256 * 1024 * 1024, parallel: 2, loaded: false },
@@ -1339,10 +1350,99 @@ function lmsSettingsCard(r, repo, file) {
     row(LMS_SET_TIP.rem, "Remember settings for …", "tick it", "So LM Studio keeps these settings for this model."),
     row(LMS_SET_TIP.rest, "All other fields", "leave the defaults", "CPU threads, batch sizes, mmap, RoPE, seed: fine as they are.")
   ];
+  // "Load with best setting": what TensorTailor can send to LM Studio's REST API (POST /api/v1/models/load).
+  // LM Studio 0.4.28 accepts context_length, flash_attention, offload_kv_cache_to_gpu and speculative_draft_mtp,
+  // but not GPU offload layers or K/V cache quantization: those stay LM Studio's own setting for the model.
+  let loadBox;
+  if (lms && state.lms.online && !/embed/i.test(lms.type)) {
+    const loadCtx = Math.min(bestF16 ? bestF16.ctx : 8192, lms.max_context_length || Infinity);
+    const body = { model: lms.id, context_length: loadCtx, flash_attention: true, offload_kv_cache_to_gpu: true, echo_load_config: true };
+    if (mtp) body.speculative_draft_mtp = true;
+    const notes = [];
+    if (useQ8) notes.push(`The advice above needs K and V cache at Q8_0. LM Studio's API cannot set that, so TensorTailor loads with ${loadCtx.toLocaleString("en")} tokens. For ${ctxRec.toLocaleString("en")}, set Q8_0 in LM Studio's load dialog instead.`);
+    else if (loadCtx < ctxRec) notes.push(`LM Studio allows at most ${loadCtx.toLocaleString("en")} tokens for this model, so TensorTailor uses that.`);
+    if (!allGpu) notes.push("The model does not fit fully in VRAM. LM Studio chooses how many layers go to the GPU (its own setting for this model), and it may run slowly.");
+    if (drafter && !mtp) notes.push(`The repo's drafter (${drafter.path}) is not set: choose it as draft model in LM Studio if you want it.`);
+    state.lmsPlans.set(m.id, { key: lms.id, name: lms.name || lms.id, body, notes, quant });
+    loadBox = `<div class="lmload"><button class="btn primary small" data-lmsload="${esc(m.id)}">Load in LM Studio with these settings</button><span class="hint">You see what will be sent first. Nothing loads until you press Load there.</span></div>`;
+  } else {
+    loadBox = `<p class="hint">${state.lms.online ? lms ? "" : "To load it from here: download the model into LM Studio first (tab Files)." : "To load it from here: start LM Studio's server (Developer tab → server on), then open this tab again."}</p>`;
+  }
   return `<section class="card">${head}
     <p class="hint" style="margin-top:0">In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
-    <div class="lmset">${rows.join("")}</div>
+    <div class="lmset">${rows.join("")}</div>${loadBox}
     <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Memory per context (llmfit estimate, ${esc(quant)})</summary><table class="ftable"><thead><tr><th class="r">Context</th><th class="r">KV F16</th><th class="r">KV Q8_0</th></tr></thead><tbody>${e.rows.map((x) => `<tr><td class="r">${x.ctx.toLocaleString("en")}</td><td class="r" style="${fits(x.f16) ? "" : "color:var(--tight)"}">${x.f16 != null ? gb(x.f16) : "—"}</td><td class="r" style="${fits(x.q8) ? "" : "color:var(--tight)"}">${x.q8 != null ? gb(x.q8) : "—"}</td></tr>`).join("")}</tbody></table></details></section>`;
+}
+
+/* ---------- Run tab: load the model in LM Studio with these settings ---------- */
+async function lmsPost(path, body) {
+  const res = await fetch(LMS_URL + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* empty answer */ }
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || `LM Studio answered HTTP ${res.status}.`);
+  return data || {};
+}
+function openLmsLoad(id) {
+  const plan = state.lmsPlans.get(id);
+  if (!plan) return;
+  if (state.lmsLoad && state.lmsLoad.phase === "busy") { $("dlgLmsLoad").showModal(); return; }
+  state.lmsLoad = { plan, phase: "ask" };
+  renderLmsLoad();
+  $("dlgLmsLoad").showModal();
+}
+function renderLmsLoad() {
+  const j = state.lmsLoad;
+  if (!j) return;
+  const p = j.plan, b = p.body;
+  const x = state.lms.models.find((y) => y.id === p.key) || {};
+  const others = state.lms.models.filter((y) => y.loaded && y.id !== p.key);
+  const tr = (k, v) => `<tr><td>${k}</td><td>${v}</td></tr>`;
+  let html;
+  if (j.phase === "busy") html = `<div class="loading">${esc(j.step || "Working…")}</div><p class="hint">A big model can take a minute. You can close this window; the load goes on.</p>`;
+  else if (j.phase === "done") {
+    const c = (j.result && j.result.load_config) || {};
+    html = `<div class="ok-box">Loaded <b>${esc(p.name)}</b> in ${j.result && j.result.load_time_seconds != null ? Number(j.result.load_time_seconds).toFixed(1) + " s" : "LM Studio"}.</div>
+      <p>LM Studio now uses:</p><table class="lmsend">${tr("Context Length", c.context_length != null ? Number(c.context_length).toLocaleString("en") : "—")}${tr("Flash Attention", c.flash_attention == null ? "—" : c.flash_attention ? "On" : "Off")}${tr("KV cache on the GPU", c.offload_kv_cache_to_gpu == null ? "—" : c.offload_kv_cache_to_gpu ? "On" : "Off")}${c.num_experts != null ? tr("Experts", esc(c.num_experts)) : ""}${c.eval_batch_size != null ? tr("Evaluation Batch Size", esc(c.eval_batch_size)) : ""}</table>
+      <p class="hint">My models shows it as loaded. In LM Studio's Developer tab you see the same model and its settings.</p>`;
+  } else {
+    html = `<p style="margin-top:0">TensorTailor asks LM Studio's server (127.0.0.1:1234) to load <b>${esc(p.name)}</b> (${esc(p.quant)}) with:</p>
+      <table class="lmsend">${tr("Context Length", b.context_length.toLocaleString("en"))}${tr("Flash Attention", "On")}${tr("KV cache on the GPU", "On")}${tr("Speculative decoding with MTP", b.speculative_draft_mtp ? "On" : "not changed")}</table>
+      <p class="hint">LM Studio's API cannot set <b>GPU Offload</b> and <b>K/V cache quantization</b>: LM Studio uses its own setting for this model there (the one you saved with "Remember settings", else its default).</p>
+      ${p.notes.map((n) => `<div class="warn-box">${esc(n)}</div>`).join("")}
+      ${x.loaded ? `<div class="warn-box">It is loaded now${x.loadedCtx ? " with context " + x.loadedCtx.toLocaleString("en") : ""}. TensorTailor unloads it first, then loads it again with these settings.</div>` : ""}
+      ${others.length ? `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px"><input type="checkbox" id="lmsUnloadOthers"><span>Unload the other loaded models first, so this one has all the VRAM: ${others.map((o) => `<b>${esc(o.name)}</b>`).join(", ")}</span></label>` : ""}
+      ${j.phase === "error" ? `<div class="warn-box">LM Studio did not load it: ${esc(j.error)}</div>` : ""}
+      <details style="margin-top:10px"><summary class="hint" style="cursor:pointer">What is sent (JSON)</summary><pre class="block">${esc(JSON.stringify(b, null, 2))}</pre></details>`;
+  }
+  $("lmsLoadBody").innerHTML = html;
+  const go = $("btnLmsLoadGo");
+  go.hidden = j.phase === "busy" || j.phase === "done";
+  go.textContent = j.phase === "error" ? "Try again" : "Load";
+  $("btnLmsLoadCancel").textContent = j.phase === "ask" || j.phase === "error" ? "Cancel" : "Close";
+}
+async function runLmsLoad() {
+  const j = state.lmsLoad;
+  if (!j || j.phase === "busy") return;
+  const p = j.plan;
+  const unloadOthers = !!($("lmsUnloadOthers") && $("lmsUnloadOthers").checked);
+  j.phase = "busy"; j.step = "Asking LM Studio which models are loaded…"; renderLmsLoad();
+  try {
+    await checkLms();
+    if (!state.lms.online) throw new Error("LM Studio's server is not reachable at 127.0.0.1:1234.");
+    const x = state.lms.models.find((y) => y.id === p.key);
+    if (!x) throw new Error(`LM Studio does not list ${p.key} any more.`);
+    const ids = [...x.instances];
+    if (unloadOthers) for (const o of state.lms.models) if (o.loaded && o.id !== p.key) ids.push(...o.instances);
+    for (const id of ids) { j.step = `Unloading ${id}…`; renderLmsLoad(); await lmsPost("/api/v1/models/unload", { instance_id: id }); }
+    j.step = `Loading ${p.name} with context ${p.body.context_length.toLocaleString("en")}…`; renderLmsLoad();
+    j.result = await lmsPost("/api/v1/models/load", p.body);
+    j.phase = "done";
+    toast(`Loaded ${p.name} in LM Studio.`);
+  } catch (e) {
+    j.phase = "error"; j.error = e.message;
+  }
+  await checkLms();
+  renderLmsLoad(); renderView(); renderDetail();
 }
 
 /* ---------- Run tab ---------- */
@@ -1756,6 +1856,7 @@ function normLms(x) {
     // LM Studio's own setting for a loaded model (speculative decoding with the model's MTP layers).
     mtp: inst && inst.config && typeof inst.config.speculative_draft_mtp === "boolean" ? inst.config.speculative_draft_mtp : null,
     mtpName: MTP_NAME.test(x.key || "") || MTP_NAME.test(x.display_name || ""),
+    instances: (x.loaded_instances || []).map((i) => i.id).filter(Boolean),
     paramsStr: x.params_string || "" };
 }
 async function checkLms() {
@@ -2363,6 +2464,8 @@ function wire() {
     const wd = t.closest("#detail [data-watch]"); if (wd) { toggleWatch(wd.dataset.watch); return; }
     if (t.id === "btnPreview") { const r = selectedResult(); if (r) startTyping((r.best.lo + r.best.hi) / 2); return; }
     if (t.id === "btnLmsRefresh") { checkLms().then(renderView); toast("Asking LM Studio for its models…"); return; }
+    const ll = t.closest("[data-lmsload]"); if (ll) { openLmsLoad(ll.dataset.lmsload); return; }
+    if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
     if (t.id === "btnBattlePng") { battlePng(); return; }
   });
   let planTimer = 0;
