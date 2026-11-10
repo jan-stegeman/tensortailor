@@ -177,6 +177,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .live-list button { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
 .live-list button:hover { text-decoration: underline; }
 .search-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); font-size: 13px; color: var(--muted); }
+.search-bar[hidden] { display: none; }
 .search-bar b { color: var(--text); } .search-bar .msg { flex-basis: 100%; }
 #dlgHelp { width: min(860px, 94vw); }
 .help h3 { margin: 18px 0 6px; font-size: 15px; } .help h3:first-of-type { margin-top: 8px; }
@@ -531,6 +532,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
     <dl>
       <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
+      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (catalog button or a pasted link).</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
@@ -699,7 +701,7 @@ const state = {
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
   token: "", lms: { online: false, checked: false, models: [] },
   live: { models: [], meta: {}, at: "" }, liveBusy: false, liveLog: "", liveResult: null, lookup: null,
-  searchAll: false, hubSearch: null,
+  searchAll: false, hubSearch: null, mtp: new Map(), gguf: new Map(),
   dl: { root: null, jobs: [], active: null, partBytes: 256 * 1024 * 1024, parallel: 2, loaded: false },
   queue: [], plan: { target: 30, users: 4, keep: 3 },
   detail: new Map(), files: new Map(), srcIdx: {}
@@ -1242,6 +1244,10 @@ function tabFiles(r) {
     if (f && f.files) {
       // Leave out text, settings and Ollama's extension-less files (template, params, license).
       const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => c.size - a.size);
+      // Read the GGUF header of the file llmfit picks (else the smallest model file): MTP layers and more.
+      const models = shown.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file");
+      const headFile = models.find((x) => quantOfFile(x.path) === String(b.q).toUpperCase()) || models.slice().sort((a, c) => a.size - c.size)[0];
+      if (headFile) { if (!state.gguf.has(repo + "/" + headFile.path)) setTimeout(() => loadGgufHeader(m, repo, headFile.path), 0); html += ggufLine(repo, headFile.path); }
       html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th></th></tr></thead><tbody>${shown.map((x) => {
         const k = fileKind(x.path), q = quantOfFile(x.path), pick = q && q === String(b.q).toUpperCase();
         const job = dlJob(repo, x.path);
@@ -1336,12 +1342,13 @@ function renderDetail() {
   if (!r) { $("detail").innerHTML = `<div class="card empty">${state.ready ? "Pick a model to see the details." : "Starting the engine…"}</div>`; return; }
   const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
   if (!d) loadDetail(r);
+  if (!state.mtp.has(m.id)) setTimeout(() => loadMtpConfig(m.id), 0);
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   $("detail").innerHTML = `<section class="card">
     <h1 class="d-title">${esc(m.name)}</h1>
     <a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener">huggingface.co/${esc(m.id)} ↗</a>
-    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}<span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
+    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}<span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${mtpTag(m)}${m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
 }
 
@@ -1540,6 +1547,110 @@ async function checkHfLink(id) {
   }
 }
 
+/* ===================== MTP (multi-token prediction) ===================== */
+// Sources, strongest first: the GGUF header of the chosen file (<arch>.nextn_predict_layers, read with
+// Range requests), the model's config.json (num_nextn_predict_layers / mtp_num_hidden_layers), the name.
+// llmfit's catalog has no MTP field.
+const MTP_NAME = /(^|[-_./])mtp([-_./]|$)/i;
+const MTP_WHAT = "MTP (multi-token prediction): the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality.";
+async function loadMtpConfig(id) {
+  if (state.mtp.has(id)) return;
+  state.mtp.set(id, { loading: true });
+  const text = await hfConfigText(id);
+  let layers = null;
+  if (text) {
+    try {
+      const c = JSON.parse(text);
+      layers = 0;
+      for (const s of [c, c.text_config || {}]) { const v = s.num_nextn_predict_layers ?? s.mtp_num_hidden_layers; if (Number.isFinite(v)) { layers = v; break; } }
+    } catch (e) { layers = null; }
+  }
+  Object.assign(state.mtp.get(id), { loading: false, config: layers });
+  if (state.selected === id) renderDetail();
+}
+function mtpState(m) {
+  const x = state.mtp.get(m.id) || {}, byName = MTP_NAME.test(m.id);
+  if (x.gguf && x.gguf.layers > 0) return { yes: true, src: `GGUF header of ${x.gguf.file}: ${x.gguf.layers} MTP layer(s)` };
+  if (x.gguf && x.gguf.layers === 0 && x.config > 0) return { yes: true, notInFile: true, src: `config.json: the model has ${x.config} MTP layer(s), but the GGUF file ${x.gguf.file} has none (its conversion left them out). Look for a GGUF with "MTP" in the name` };
+  if (x.gguf && x.gguf.layers === 0) return { yes: false, src: `GGUF header of ${x.gguf.file}: no MTP layers` };
+  if (x.config != null && x.config > 0) return { yes: true, src: `config.json on Hugging Face: ${x.config} MTP layer(s)` };
+  if (byName) return { yes: true, name: true, src: x.config === 0 ? "the name says MTP (config.json names no MTP layers; the GGUF files may have them)" : "only the name says MTP" };
+  return { yes: false, src: x.config === 0 ? "config.json names no MTP layers" : "" };
+}
+function mtpTag(m) {
+  const s = mtpState(m);
+  return s.yes ? `<span class="tag ${s.notInFile ? "" : "okay"}" title="${esc(MTP_WHAT + "\nSource: " + s.src + ".")}">MTP${s.name ? " (from the name)" : s.notInFile ? " (not in this file)" : ""}</span>` : "";
+}
+// The key/value part of a GGUF file header, read from Hugging Face in 4 MB pieces (the tokenizer
+// lists come first, so a key like <arch>.nextn_predict_layers can sit 10 MB or more into the file).
+async function ggufHeader(url, maxBytes = 64 * 1024 * 1024) {
+  const CH = 4 * 1024 * 1024, td = new TextDecoder();
+  let buf = new Uint8Array(0), view = new DataView(buf.buffer), pos = 0, ended = false;
+  const more = async (need) => {
+    while (buf.length < need) {
+      if (ended) throw new Error("the file ended inside the header");
+      if (buf.length >= maxBytes) throw new Error(`the header is larger than ${maxBytes / 1048576} MB`);
+      const res = await fetch(url, { headers: { ...hfHeaders(), Range: `bytes=${buf.length}-${buf.length + CH - 1}` } });
+      if (res.status === 401 || res.status === 403) throw new Error("gated or private: accept the license on Hugging Face and set your token");
+      if (res.status !== 206 && res.status !== 200) throw new Error(`Hugging Face answered ${res.status}`);
+      const chunk = new Uint8Array(await res.arrayBuffer());
+      if (res.status === 200 || chunk.length < CH) ended = true;
+      const next = new Uint8Array(buf.length + chunk.length); next.set(buf); next.set(chunk, buf.length);
+      buf = next; view = new DataView(buf.buffer);
+    }
+  };
+  const SIZE = { 0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7: 1, 10: 8, 11: 8, 12: 8 };
+  const u32 = async () => { await more(pos + 4); const v = view.getUint32(pos, true); pos += 4; return v; };
+  const u64 = async () => { await more(pos + 8); const v = Number(view.getBigUint64(pos, true)); pos += 8; return v; };
+  const str = async () => { const n = await u64(); await more(pos + n); const s = td.decode(buf.subarray(pos, pos + n)); pos += n; return s; };
+  const scalar = async (t) => {
+    await more(pos + SIZE[t]);
+    const v = [() => view.getUint8(pos), () => view.getInt8(pos), () => view.getUint16(pos, true), () => view.getInt16(pos, true), () => view.getUint32(pos, true), () => view.getInt32(pos, true),
+      () => view.getFloat32(pos, true), () => view.getUint8(pos) !== 0, null, null, () => Number(view.getBigUint64(pos, true)), () => Number(view.getBigInt64(pos, true)), () => view.getFloat64(pos, true)][t]();
+    pos += SIZE[t]; return v;
+  };
+  await more(24);
+  if (td.decode(buf.subarray(0, 4)) !== "GGUF") throw new Error("not a GGUF file");
+  pos = 4;
+  const version = await u32(), tensors = await u64(), count = await u64(), kv = {};
+  for (let i = 0; i < count; i++) {
+    const key = await str(), t = await u32();
+    if (t === 8) kv[key] = await str();
+    else if (t === 9) {
+      const at = await u32(), n = await u64();
+      if (at === 8) for (let j = 0; j < n; j++) { const l = await u64(); pos += l; }
+      else if (SIZE[at]) pos += n * SIZE[at];
+      else throw new Error("unexpected nested array in the header");
+      kv[key] = `[${n} items]`;
+    } else if (SIZE[t]) kv[key] = await scalar(t);
+    else throw new Error("unknown GGUF value type " + t);
+  }
+  return { version, tensors, kv, bytesRead: buf.length };
+}
+async function loadGgufHeader(m, repo, path) {
+  const key = repo + "/" + path;
+  if (state.gguf.has(key)) return;
+  const entry = { loading: true };
+  state.gguf.set(key, entry); renderDetail();
+  try {
+    const h = await ggufHeader(dlUrl(repo, path));
+    const arch = h.kv["general.architecture"] || "";
+    const layers = Number(h.kv[arch + ".nextn_predict_layers"] || 0);
+    Object.assign(entry, { loading: false, arch, layers, blocks: h.kv[arch + ".block_count"], ctx: h.kv[arch + ".context_length"], bytes: h.bytesRead, keys: Object.keys(h.kv).length });
+    const x = state.mtp.get(m.id) || {};
+    x.gguf = { file: path.split("/").pop(), layers };
+    state.mtp.set(m.id, x);
+  } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
+  renderDetail();
+}
+function ggufLine(repo, path) {
+  const g = state.gguf.get(repo + "/" + path);
+  if (!g) return "";
+  if (g.loading) return `<div class="loading">Reading the GGUF header of ${esc(path.split("/").pop())}…</div>`;
+  if (g.error) return `<p class="hint">GGUF header of ${esc(path.split("/").pop())} not read: ${esc(g.error)}.</p>`;
+  return `<p class="hint" title="Read from the file on Hugging Face (${(g.bytes / 1048576).toFixed(0)} MB of the header, ${g.keys} keys)">GGUF header of <b>${esc(path.split("/").pop())}</b>: architecture ${esc(g.arch)} · ${g.blocks ?? "?"} blocks · context ${g.ctx ? Number(g.ctx).toLocaleString("en") : "?"} · ${g.layers > 0 ? `<span class="tag okay" title="${esc(MTP_WHAT)}">MTP: ${g.layers} layer${g.layers > 1 ? "s" : ""}</span>` : "no MTP layers"}</p>`;
+}
+
 /* ===================== My models (LM Studio) ===================== */
 function normLms(x) {
   const inst = (x.loaded_instances || [])[0];
@@ -1547,7 +1658,10 @@ function normLms(x) {
   return { id: x.key, name: x.display_name || x.key, publisher: x.publisher || "", arch: x.architecture || "", quantization: x.quantization && x.quantization.name ? x.quantization.name : "",
     sizeGB: (x.size_bytes || 0) / 1e9, params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? inst.config.context_length || 0 : 0,
     max_context_length: x.max_context_length || 0, type: x.type || "llm", vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use),
-    reasoning: !!(x.capabilities && x.capabilities.reasoning) };
+    reasoning: !!(x.capabilities && x.capabilities.reasoning),
+    // LM Studio's own setting for a loaded model (speculative decoding with the model's MTP layers).
+    mtp: inst && inst.config && typeof inst.config.speculative_draft_mtp === "boolean" ? inst.config.speculative_draft_mtp : null,
+    mtpName: MTP_NAME.test(x.key || "") || MTP_NAME.test(x.display_name || "") };
 }
 async function checkLms() {
   state.lms.checked = false;
@@ -1600,7 +1714,7 @@ function viewMine() {
     const lmsCaps = [x.vision ? "vision" : "", x.tools ? "tools" : "", x.reasoning ? "reason" : ""].filter(Boolean);
     return `<tr><td><div style="display:flex;gap:6px;align-items:center"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${[x.publisher, x.arch, x.params ? fmtParams(x.params) : ""].filter(Boolean).map(esc).join(" · ")}</div></td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
-      <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${warn}</td>
+      <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model to see if LM Studio uses it.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
       <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "")}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px">${esc(tipText)}</td>
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;

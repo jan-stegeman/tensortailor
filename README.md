@@ -95,6 +95,9 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
   folder: the file goes to `<folder>\<publisher>\<repo>\`. It comes in parts of 256 MB, so after a crash or
   restart **Resume** keeps the finished parts. The model file gets its real name only when it is complete.
   Then TensorTailor reads it back from disk and compares its SHA-256 with Hugging Face's. Edge or Chrome only.
+- **MTP (multi-token prediction):** the detail panel shows if a model has MTP layers, read from the GGUF header
+  of the file (Range requests), else from `config.json`, else from the name. My models shows if LM Studio uses it.
+- **Help:** point at a bar, speed, verdict or score for an explanation, or press `?` for the Help window.
 - **LM Studio:** reads your local models and can measure real speed through LM Studio's local server.
 
 ## Credits and license
