@@ -570,7 +570,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
-      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them. Models that are already in your LM Studio always pass "Popular".</dd>
+      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them. Models that are already in your LM Studio always pass "Popular". Your choices on the left (filters, what it is for, context length, KV cache, sort and the four verdict tiles) are kept in this browser, also after a reload. <b>Reset</b> puts the filters back to the start values.</dd>
       <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
     </dl>
 
@@ -1095,6 +1095,7 @@ function renderSearchBar() {
     ${hub ? `<span class="msg">${hub.busy ? '<span class="dot warn"></span> ' : ""}${esc(hub.msg)}</span>` : ""}`;
 }
 function renderList() {
+  savePrefs();
   if (!searchText()) state.searchAll = false;
   renderSearchBar();
   const base = state.results.filter(passFilters);
@@ -2625,6 +2626,34 @@ function startTyping(tps) {
   const perTick = tps * 0.05 * 0.75; stopTyping();
   typingTimer = setInterval(() => { acc += perTick; while (acc >= 1 && i < words.length) { i += 2; acc -= 1; } el.innerHTML = esc(words.slice(0, i).join("")) + '<span class="cur"></span>'; if (i >= words.length) stopTyping(); }, 50);
 }
+// The choices on the left (filters, use, context, KV cache, sort, verdict tiles) stay after a reload.
+const PREFS_KEY = "tt-prefs";
+function savePrefs() {
+  if (!state.ready) return;
+  const f = Object.assign({}, state.f, { caps: [...state.f.caps] });
+  safeSet("localStorage", PREFS_KEY, JSON.stringify({ f, show: state.show, useCase: state.useCase, ctxIdx: state.ctxIdx, kvq: state.kvq, sort: state.sort }));
+}
+function loadPrefs() {
+  let p = null;
+  try { p = JSON.parse(safeGet("localStorage", PREFS_KEY) || "null"); } catch (e) { p = null; }
+  if (!p || typeof p !== "object") return;
+  if (p.f && typeof p.f === "object") {
+    const caps = Array.isArray(p.f.caps) ? p.f.caps : [];
+    for (const k of Object.keys(state.f)) if (k !== "caps" && typeof p.f[k] === typeof state.f[k]) state.f[k] = p.f[k];
+    state.f.caps = new Set(caps.filter((c) => typeof c === "string"));
+  }
+  if (p.show && typeof p.show === "object") for (const k of Object.keys(state.show)) if (typeof p.show[k] === "boolean") state.show[k] = p.show[k];
+  if (typeof p.useCase === "string" && USE_CASES.some(([k]) => k === p.useCase)) state.useCase = p.useCase;
+  if (Number.isInteger(p.ctxIdx) && p.ctxIdx >= 0 && p.ctxIdx < CTX_STEPS.length) state.ctxIdx = p.ctxIdx;
+  if (typeof p.kvq === "string" && [...$("kvq").options].some((o) => o.value === p.kvq)) state.kvq = p.kvq;
+  if (typeof p.sort === "string" && [...$("sort").options].some((o) => o.value === p.sort)) state.sort = p.sort;
+  // Show them in the controls.
+  $("fLang").value = state.f.lang; $("fSize").value = state.f.size;
+  [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => { $(id).checked = !!state.f[k]; });
+  document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.setAttribute("aria-pressed", String(state.f.caps.has(b.dataset.cap))));
+  $("ctx").value = String(state.ctxIdx); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens";
+  $("kvq").value = state.kvq; $("sort").value = state.sort;
+}
 function resetFilters() {
   state.f = { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true };
   $("fLang").value = ""; $("fSize").value = "";
@@ -2637,7 +2666,7 @@ function wire() {
   $("upgrades").addEventListener("click", (e) => { const b = e.target.closest("[data-upg]"); if (!b) return; state.upg[b.dataset.upg] = !state.upg[b.dataset.upg]; renderUsable(); recompute(); });
   $("tiles").addEventListener("click", (e) => { const t = e.target.closest("[data-plain]"); if (!t) return; state.show[t.dataset.plain] = !state.show[t.dataset.plain]; renderList(); });
   $("ctx").addEventListener("input", (e) => { state.ctxIdx = Number(e.target.value); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; recomputeSoon(); });
-  $("kvq").addEventListener("change", (e) => { state.kvq = e.target.value; renderDetail(); if (state.view === "mine") renderView(); });
+  $("kvq").addEventListener("change", (e) => { state.kvq = e.target.value; savePrefs(); renderDetail(); if (state.view === "mine") renderView(); });
   $("sort").addEventListener("change", (e) => { state.sort = e.target.value; renderList(); });
   let searchTimer = 0;
   $("q").addEventListener("input", (e) => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.search = e.target.value; renderList(); }, 150); });
@@ -2755,6 +2784,7 @@ function wire() {
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   try { const w = JSON.parse(safeGet("localStorage", "tt-watch") || "[]"); if (Array.isArray(w)) state.watch = new Set(w); } catch (e) { /* ignore */ }
   try { const l = JSON.parse(safeGet("localStorage", "tt-lms-links") || "{}"); if (l && typeof l === "object" && !Array.isArray(l)) state.lmsLinks = l; } catch (e) { /* ignore */ }
+  loadPrefs();
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
   state.token = safeGet("sessionStorage", "tt-token") || "";
