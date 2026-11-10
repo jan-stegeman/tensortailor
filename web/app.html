@@ -171,6 +171,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .chip.new { background: var(--perfect-soft); color: var(--perfect); } .chip.vllm { background: var(--tight-soft); color: var(--tight); }
 .chip.lms { background: var(--good-soft); color: var(--good); } .chip.upg { background: var(--accent); color: var(--accent-text); }
 .chip.meas { background: var(--perfect-soft); color: var(--perfect); }
+/* Capability icons in LM Studio's style: eye = vision, hammer = tool use, brain = reasoning */
+.caps { display: inline-flex; gap: 3px; flex: none; align-items: center; }
+.cap { width: 19px; height: 19px; border-radius: 5px; display: inline-grid; place-items: center; border: 1.5px solid currentColor; flex: none; }
+.cap svg { width: 11px; height: 11px; display: block; }
+.m-name .sub .cap { width: 17px; height: 17px; }
+.m-name .sub .cap svg { width: 10px; height: 10px; }
+.cap.vision { color: #eab308; } .cap.tools { color: #3b82f6; } .cap.reason { color: #22c55e; }
+.chip-btn .cap { width: 17px; height: 17px; margin-right: 5px; vertical-align: -4px; }
+.chip-btn[aria-pressed="true"] .cap { color: var(--accent-text); }
+.cap-label { display: inline-flex; align-items: center; gap: 5px; }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 .r { text-align: right; }
 .tps { font-weight: 650; white-space: nowrap; }
@@ -373,10 +383,12 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
         <label class="field">Language<select id="fLang"><option value="">Any</option><option value="nl">Dutch</option><option value="en">English</option><option value="de">German</option><option value="fr">French</option><option value="zh">Chinese</option></select></label>
         <label class="field">Size<select id="fSize"><option value="">Any</option><option value="s">Up to 8B</option><option value="m">8B – 35B</option><option value="l">35B – 100B</option><option value="xl">Over 100B</option></select></label>
       </div>
-      <div class="chips" style="margin-bottom:10px">
-        <button class="chip-btn" data-cap="vision" aria-pressed="false">Sees images</button>
-        <button class="chip-btn" data-cap="tools" aria-pressed="false">Uses tools</button>
+      <div class="chips" id="capChips" style="margin-bottom:6px">
+        <button class="chip-btn" data-cap="vision" aria-pressed="false" title="Vision: the model can read images you give it (photos, screenshots). It does not make images.">Vision</button>
+        <button class="chip-btn" data-cap="tools" aria-pressed="false" title="Tool use: the model can call functions, for example for AI agents.">Tool use</button>
+        <button class="chip-btn" data-cap="reason" aria-pressed="false" title="Reasoning: the model thinks step by step before it answers.">Reasoning</button>
       </div>
+      <p class="hint" style="margin:0 0 10px">Vision = reads images (photos, screenshots); it does not make images.</p>
       <div class="check-list">
         <label><input type="checkbox" id="fLlama" checked> Runs in LM Studio (llama.cpp)</label>
         <label><input type="checkbox" id="fGguf"> Known GGUF download</label>
@@ -501,6 +513,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const gb = (v) => (v == null || !isFinite(v) ? "—" : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " GB");
 const fmtParams = (p) => (!p ? "?" : p < 1 ? Math.round(p * 1000) + "M" : (p >= 100 ? p.toFixed(0) : p.toFixed(1).replace(/\.0$/, "")) + "B");
+const fmtSize = (s) => (s == null || !isFinite(s) ? "—" : s < 1 ? Math.max(1, Math.round(s * 1000)) + " MB" : gb(s));
 const fmtCtx = (c) => (!c ? "—" : c >= 1024 ? Math.round(c / 1024) + "K" : String(c));
 const fmtT = (t) => (t < 10 ? t.toFixed(1) : t.toFixed(0));
 const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -580,11 +593,28 @@ function lookupGpu(name) { const n = name.toLowerCase(); return GPU_TABLE.find((
 
 /* ===================== Turning engine rows into the page's view ===================== */
 function ucKey(u) { return String(u || "general").toLowerCase(); }
+// Reasoning is not a llmfit capability: it comes from the use case, or from
+// well-known thinking families in the name (marked as "from the name").
+const REASONING_NAME = /think|reason|qwq|deepseek-r1|(^|[\/_-])r1([_-]|$)|gpt-oss|magistral|exaone-deep|kimi-k2-thinking|qwen3(\.\d+)?-(?!coder|embed|reranker|tts|asr)\d/i;
 function capsOf(c) {
-  const out = [];
-  for (const x of c.capabilities || []) { const s = String(x).toLowerCase(); if (s.includes("vision") || s.includes("image")) out.push("vision"); if (s.includes("tool")) out.push("tools"); }
-  if (String(c.use_case || "").toLowerCase().includes("vision") || String(c.use_case || "").toLowerCase().includes("multimodal")) out.push("vision");
-  return out;
+  const out = new Set();
+  for (const x of c.capabilities || []) { const s = String(x).toLowerCase(); if (s.includes("vision") || s.includes("image")) out.add("vision"); if (s.includes("tool")) out.add("tools"); }
+  const uc = String(c.use_case || "").toLowerCase();
+  if (uc.includes("vision") || uc.includes("multimodal") || c.pipeline_tag === "image-text-to-text") out.add("vision");
+  if (uc.includes("reasoning")) out.add("reason");
+  else if (REASONING_NAME.test(c.name || "") && !/[-_]base([-_.]|$)/i.test(c.name || "")) { out.add("reason"); out.add("reason-name"); }
+  return [...out];
+}
+const CAP_SVG = {
+  vision: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>',
+  reason: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3a3 3 0 0 0-3 3 3 3 0 0 0-2.5 4.5A3 3 0 0 0 5 16a3 3 0 0 0 4.5 4V3z"/><path d="M14.5 3a3 3 0 0 1 3 3 3 3 0 0 1 2.5 4.5A3 3 0 0 1 19 16a3 3 0 0 1-4.5 4V3z"/></svg>'
+};
+const CAP_TITLE = { vision: "Vision: reads images", tools: "Tool use: can call functions (agents)", reason: "Reasoning: thinks step by step" };
+function capIcon(k, extra) { return `<span class="cap ${k}" title="${esc(CAP_TITLE[k] + (extra || ""))}" aria-label="${esc(CAP_TITLE[k])}">${CAP_SVG[k]}</span>`; }
+function capIcons(caps) {
+  const fromName = caps.includes("reason-name") ? " (from the model name)" : "";
+  return `<span class="caps">${["vision", "tools", "reason"].filter((k) => caps.includes(k)).map((k) => capIcon(k, k === "reason" ? fromName : "")).join("")}</span>`;
 }
 const modelCache = new Map();
 function modelView(name, row, F) {
@@ -725,7 +755,7 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)" aria-label="Watch ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? '<span class="chip moe">MoE</span>' : ""}${r.upgradeOnly ? '<span class="chip upg">upgrade</span>' : ""}</div>
-      <div class="sub">${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
     <div class="num">${fmtParams(m.params)}</div>
     <div><span class="quant">${esc(b.q)}</span></div>
     <div class="membar">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
@@ -959,10 +989,11 @@ function tabFiles(r) {
     if (!f || f.loading) html += '<div class="loading">Reading the file list from Hugging Face…</div>';
     if (f && f.error) html += `<div class="warn-box">${esc(f.error)}</div>`;
     if (f && f.files) {
-      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja)$/i.test(x.path) && !/^\./.test(x.path)).sort((a, c) => c.size - a.size);
+      // Leave out text, settings and Ollama's extension-less files (template, params, license).
+      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => c.size - a.size);
       html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th></th></tr></thead><tbody>${shown.map((x) => {
         const k = fileKind(x.path), q = quantOfFile(x.path), pick = q && q === String(b.q).toUpperCase();
-        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? " ⭐" : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 ${esc(x.sha256)}</div>` : ""}</td><td class="r">${gb(x.size)}</td><td class="r"><button class="btn small" data-copy="${esc(`hf download ${repo} "${x.path}" --local-dir "${LMS_FOLDER}\\${repo.replace("/", "\\")}"`)}" data-what="Download command">Copy command</button></td></tr>`;
+        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? " ⭐" : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 ${esc(x.sha256)}</div>` : ""}</td><td class="r">${fmtSize(x.size)}</td><td class="r"><button class="btn small" data-copy="${esc(`hf download ${repo} "${x.path}" --local-dir "${LMS_FOLDER}\\${repo.replace("/", "\\")}"`)}" data-what="Download command">Copy command</button></td></tr>`;
       }).join("")}</tbody></table><p class="hint">⭐ = the quant llmfit picks for this PC (${esc(b.q)}). The command saves into <code>${esc(LMS_FOLDER)}</code>, so LM Studio sees the file at once. Direct download inside the page comes in the next step.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
       html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>SHA-256 of each large file is shown; the page will check it after a download.</li></ul>`;
@@ -1058,7 +1089,7 @@ function renderDetail() {
   $("detail").innerHTML = `<section class="card">
     <h1 class="d-title">${esc(m.name)}</h1>
     <a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener">huggingface.co/${esc(m.id)} ↗</a>
-    <div class="d-tags"><span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
+    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}<span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
 }
 
@@ -1068,7 +1099,8 @@ function normLms(x) {
   const p = /([\d.]+)\s*([BM])/i.exec(x.params_string || "");
   return { id: x.key, name: x.display_name || x.key, publisher: x.publisher || "", arch: x.architecture || "", quantization: x.quantization && x.quantization.name ? x.quantization.name : "",
     sizeGB: (x.size_bytes || 0) / 1e9, params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? inst.config.context_length || 0 : 0,
-    max_context_length: x.max_context_length || 0, type: x.type || "llm", vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use) };
+    max_context_length: x.max_context_length || 0, type: x.type || "llm", vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use),
+    reasoning: !!(x.capabilities && x.capabilities.reasoning) };
 }
 async function checkLms() {
   state.lms.checked = false;
@@ -1118,7 +1150,8 @@ function viewMine() {
     const tipText = isEmb ? "" : !tip ? "Does not fit in VRAM at any context." : tip.plain === "tight" ? `Fits in VRAM, but tight, up to ${fmtCtx(tip.ctx)}${tip.kv !== "fp16" ? " with KV " + tip.kv.toUpperCase() : ""}.` : `Runs well up to ${fmtCtx(tip.ctx)}${tip.kv !== "fp16" ? " with KV " + tip.kv.toUpperCase() : ""} (rough).`;
     const warn = x.loaded && x.loadedCtx && tip && x.loadedCtx > tip.ctx ? `<div class="hash" style="color:var(--marginal)">Loaded at ${fmtCtx(x.loadedCtx)}: more than fits comfortably.</div>` : "";
     const link = cat ? "https://huggingface.co/" + cat.m.id : "https://huggingface.co/models?search=" + encodeURIComponent(shortName(x.id));
-    return `<tr><td><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a><div class="hash">${[x.publisher, x.arch, x.params ? fmtParams(x.params) : "", x.vision ? "sees images" : "", x.tools ? "tools" : ""].filter(Boolean).map(esc).join(" · ")}</div></td>
+    const lmsCaps = [x.vision ? "vision" : "", x.tools ? "tools" : "", x.reasoning ? "reason" : ""].filter(Boolean);
+    return `<tr><td><div style="display:flex;gap:6px;align-items:center"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${[x.publisher, x.arch, x.params ? fmtParams(x.params) : ""].filter(Boolean).map(esc).join(" · ")}</div></td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
@@ -1392,6 +1425,7 @@ function wire() {
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
   state.token = safeGet("sessionStorage", "tt-token") || "";
+  document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.insertAdjacentHTML("afterbegin", capIcon(b.dataset.cap)));
   fillHwInputs(); renderUseCases(); renderToken(); renderUsable(); wire(); renderDetail();
   checkLms();
   try {
