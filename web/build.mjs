@@ -31,6 +31,13 @@ if (existsSync(hfModels)) {
 }
 const metaGz = gzipSync(Buffer.from(JSON.stringify(meta)), { level: 9 });
 
+// The licenses of the Rust crates in the engine, made by cargo-about in the build action
+// (TT_NOTICES, default dist/THIRD-PARTY-NOTICES.txt). A local build without it says so in About.
+const noticesFile = process.env.TT_NOTICES || "dist/THIRD-PARTY-NOTICES.txt";
+const notices = existsSync(noticesFile) ? readFileSync(noticesFile, "utf8") : "";
+if (!notices) console.warn(`note: ${noticesFile} not found; About will point to the release's THIRD-PARTY-NOTICES.txt`);
+const noticesGz = notices ? gzipSync(Buffer.from(notices), { level: 9 }).toString("base64") : "";
+
 const template = readFileSync(new URL("./app.html", import.meta.url), "utf8");
 const glue = readFileSync(join(pkg, "tensortailor_engine.js"), "utf8");
 const wasm = readFileSync(join(pkg, "tensortailor_engine_bg.wasm"));
@@ -40,7 +47,7 @@ const llmfitRef = (/LLMFIT_REF: &str = "([^"]+)"/.exec(libRs) || [])[1] || "unkn
 const gz = gzipSync(wasm, { level: 9 });
 const b64 = gz.toString("base64");
 
-for (const marker of ["/*__ENGINE_GLUE__*/", "__ENGINE_WASM_GZ_B64__", "__BUILD_INFO__", "__CATALOG_META_GZ_B64__"]) {
+for (const marker of ["/*__ENGINE_GLUE__*/", "__ENGINE_WASM_GZ_B64__", "__BUILD_INFO__", "__CATALOG_META_GZ_B64__", "__NOTICES_GZ_B64__"]) {
   if (!template.includes(marker)) throw new Error(`web/app.html misses the marker ${marker}`);
 }
 if (/<\/script/i.test(glue)) throw new Error("engine glue contains </script>; cannot inline it safely");
@@ -53,14 +60,16 @@ const buildInfo = {
   wasm_sha256: createHash("sha256").update(wasm).digest("hex"),
   wasm_mb: +(wasm.length / 1e6).toFixed(1),
   wasm_gz_mb: +(gz.length / 1e6).toFixed(2),
-  meta_models: meta.length
+  meta_models: meta.length,
+  notices: notices.length > 0
 };
 
 const html = template
   .replace("/*__ENGINE_GLUE__*/", () => glue)
   .replace("__ENGINE_WASM_GZ_B64__", () => b64)
   .replace("__BUILD_INFO__", () => JSON.stringify(buildInfo))
-  .replace("__CATALOG_META_GZ_B64__", () => metaGz.toString("base64"));
+  .replace("__CATALOG_META_GZ_B64__", () => metaGz.toString("base64"))
+  .replace("__NOTICES_GZ_B64__", () => noticesGz);
 
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);

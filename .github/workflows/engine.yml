@@ -31,7 +31,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tensortailor-html
-          path: dist/tensortailor.html
+          path: |
+            dist/tensortailor.html
+            dist/THIRD-PARTY-NOTICES.txt
           retention-days: 30
 
       - name: Keep the build

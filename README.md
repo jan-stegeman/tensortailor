@@ -104,5 +104,7 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 
 ## Credits and license
 
-TensorTailor is based on **llmfit**, Copyright (c) 2026 Alex Jones, released under the MIT License.
-The license of TensorTailor itself is chosen before the first public release.
+TensorTailor is under the MIT License (`LICENSE`). It is based on **llmfit**, Copyright (c) 2026 Alex Jones,
+released under the MIT License. `THIRD-PARTY-NOTICES.md` lists everything else inside the page; the exact list
+of Rust crates with their license texts is made at every build (About → **Show the licenses** in the page, and
+`THIRD-PARTY-NOTICES.txt` with every release).

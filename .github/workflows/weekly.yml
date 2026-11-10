@@ -137,7 +137,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tensortailor-html-weekly
-          path: dist/tensortailor.html
+          path: |
+            dist/tensortailor.html
+            dist/THIRD-PARTY-NOTICES.txt
           retention-days: 30
 
       - name: Decide on a release
@@ -190,8 +192,10 @@ jobs:
           - Model list: $CATALOG_WHY.${CATALOG_SHA:+ Catalog SHA-256: \`$CATALOG_SHA\`}
           - Commit: $(git rev-parse --short HEAD)
           - SHA-256 of tensortailor.html: \`$SHA\` (also in tensortailor.html.sha256)
+          - Licenses: TensorTailor and llmfit are MIT. The Rust crates inside the engine and their licenses are in
+            THIRD-PARTY-NOTICES.txt (also in the page: About → Show the licenses).
           EOF
-          gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 \
+          gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 dist/THIRD-PARTY-NOTICES.txt \
             --target "$(git rev-parse HEAD)" \
             --title "TensorTailor $DAY (llmfit $LLMFIT)" \
             --notes-file release-notes.md

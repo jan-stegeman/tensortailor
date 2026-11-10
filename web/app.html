@@ -684,6 +684,7 @@ self.onmessage = async (e) => {
 <script type="text/plain" id="engine-glue">/*__ENGINE_GLUE__*/</script>
 <script type="application/octet-stream" id="engine-wasm">__ENGINE_WASM_GZ_B64__</script>
 <script type="application/octet-stream" id="catalog-meta">__CATALOG_META_GZ_B64__</script>
+<script type="application/octet-stream" id="notices-gz">__NOTICES_GZ_B64__</script>
 
 <script>
 "use strict";
@@ -2380,9 +2381,24 @@ function renderAbout() {
     <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from llmfit's catalog (data from the Hugging Face API)${state.live.models.length ? `, plus ${state.live.models.length} fetched live` : ""}.</dd>
     <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
     <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
-    <dt>Rust libraries</dt><dd>Their licenses are listed in THIRD-PARTY-NOTICES in the repository.</dd>
+    <dt>Rust libraries</dt><dd>The engine also contains Rust crates (MIT, Apache-2.0 and similar licenses). ${b.notices ? `<button class="btn small" id="btnNotices">Show the licenses</button>` : "This local build has no list inside; see THIRD-PARTY-NOTICES.txt with each release."}</dd>
+    <dt>Measured speeds</dt><dd>llmfit's own community results (MIT) and llmfit's cache of results from localmaxxing.com.</dd>
     <dt>Models</dt><dd>Never included. Each model keeps its own license; some are gated.</dd>
-    <dt>Privacy</dt><dd>No tracking. The page only talks to huggingface.co (when you check files, fetch new models or check a link) and to LM Studio on 127.0.0.1.</dd></dl>`;
+    <dt>Privacy</dt><dd>No tracking. The page only talks to huggingface.co (when you check files, fetch new models or check a link) and to LM Studio on 127.0.0.1.</dd>
+    <dt>License</dt><dd>TensorTailor: MIT License. No warranty. <button class="btn small" id="btnLicTexts">Show the license texts</button></dd></dl>
+    <pre class="block" id="aboutLicText" hidden></pre>`;
+}
+const LIC_MIT = (holder) => `MIT License\n\nCopyright (c) 2026 ${holder}\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the "Software"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n`;
+async function showAboutText(which) {
+  const pre = $("aboutLicText");
+  if (!pre) return;
+  try {
+    pre.textContent = which === "notices"
+      ? new TextDecoder().decode(await gunzipB64("notices-gz"))
+      : "TensorTailor\n------------\n" + LIC_MIT("jan-stegeman") + "\n\nllmfit (the engine)\n-------------------\n" + LIC_MIT("Alex Jones");
+  } catch (e) { pre.textContent = "Could not read the list: " + e.message; }
+  pre.hidden = false;
+  pre.scrollIntoView({ block: "nearest" });
 }
 
 /* ===================== Events ===================== */
@@ -2478,6 +2494,8 @@ function wire() {
     if (t.id === "btnLmsRefresh") { checkLms().then(renderView); toast("Asking LM Studio for its models…"); return; }
     const ll = t.closest("[data-lmsload]"); if (ll) { openLmsLoad(ll.dataset.lmsload); return; }
     if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
+    if (t.id === "btnNotices") { showAboutText("notices"); return; }
+    if (t.id === "btnLicTexts") { showAboutText("licenses"); return; }
     if (t.id === "btnBattlePng") { battlePng(); return; }
   });
   let planTimer = 0;

@@ -129,6 +129,28 @@ runs:
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
 
+    - name: Install cargo-about
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-about
+
+    # The licenses of every Rust crate in the WebAssembly engine, with their texts. Uses the same patched
+    # llmfit-core as the WebAssembly build (the patch adds the web-time crate), through a temporary
+    # [patch] in .cargo/config.toml; both that file and Cargo.lock are restored afterwards.
+    - name: Third-party notices (cargo-about, wasm32 target)
+      shell: bash
+      working-directory: engine
+      run: |
+        set -euo pipefail
+        printf '\n[patch."https://github.com/AlexsJones/llmfit"]\nllmfit-core = { path = "%s" }\n' "$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core" >> .cargo/config.toml
+        mkdir -p ../dist
+        status=0
+        cargo about generate --features live about.hbs -o ../dist/THIRD-PARTY-NOTICES.txt || status=$?
+        git checkout -- .cargo/config.toml Cargo.lock
+        test "$status" -eq 0
+        grep -q 'serde_json' ../dist/THIRD-PARTY-NOTICES.txt
+        echo "Third-party notices: $(grep -c '^Used by:' ../dist/THIRD-PARTY-NOTICES.txt) license texts, $(wc -c < ../dist/THIRD-PARTY-NOTICES.txt) bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+
     - name: Build the single-file page
       shell: bash
       run: |
