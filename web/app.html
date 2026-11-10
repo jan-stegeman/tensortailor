@@ -1314,13 +1314,24 @@ async function loadLmsSettings(r, quant) {
   } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
   if (state.selected === r.m.id && state.tab === "run") renderDetail();
 }
+// llmfit's planner knows only these GGUF quants (plan.rs SUPPORTED_QUANTS); LM Studio files often have others
+// (Q4_K_S, IQ4_XS, Q5_K_S …). Those are counted as the nearest quant of the same bit size.
+const PLAN_QUANTS = ["F32", "F16", "BF16", "Q8_0", "Q6_K", "Q5_K_M", "Q4_K_M", "Q4_0", "Q3_K_M", "Q2_K"];
+function planQuant(q) {
+  const u = String(q || "").toUpperCase().replace(/^UD-/, "");
+  if (PLAN_QUANTS.includes(u)) return u;
+  const bits = /^I?Q(\d)/.exec(u);
+  return bits ? { 1: "Q2_K", 2: "Q2_K", 3: "Q3_K_M", 4: "Q4_K_M", 5: "Q5_K_M", 6: "Q6_K", 8: "Q8_0" }[bits[1]] || "Q4_K_M" : "Q4_K_M";
+}
 function lmsSettingsCard(r, repo, file) {
   const m = r.m, b = r.best, lms = inLms(m);
-  const quant = /^Q\d|^IQ\d|^F16|^BF16/i.test((lms && lms.quantization) || "") ? lms.quantization.toUpperCase() : /^Q\d|^IQ\d|^F16|^BF16/i.test(b.q) ? b.q : "Q4_K_M";
+  const fileQuant = /^Q\d|^IQ\d|^F16|^BF16/i.test((lms && lms.quantization) || "") ? lms.quantization.toUpperCase() : /^Q\d|^IQ\d|^F16|^BF16/i.test(b.q) ? b.q : "Q4_K_M";
+  const quant = planQuant(fileQuant);
   const key = "lmset|" + detailKey(m.id) + "|" + quant, e = state.detail.get(key);
   if (!e) setTimeout(() => loadLmsSettings(r, quant), 0);
   const usable = usableVram(false), budget = usable * 0.85;
-  const head = `<div class="card-head"><h2>LM Studio load settings for this PC</h2><span class="tag" title="llmfit's estimate for ${esc(quant)} on ${esc(state.hw.gpuName)} with ${gb(usable)} usable VRAM; budget ${gb(budget)} (85 %) leaves room for the vision projector and LM Studio's buffers">${esc(quant)} · ${gb(usable)} VRAM</span></div>`;
+  const asQ = quant !== fileQuant ? ` (counted as ${quant}: llmfit has no ${fileQuant}; the sizes are close)` : "";
+  const head = `<div class="card-head"><h2>LM Studio load settings for this PC</h2><span class="tag" title="llmfit's estimate for ${esc(fileQuant + asQ)} on ${esc(state.hw.gpuName)} with ${gb(usable)} usable VRAM; budget ${gb(budget)} (85 %) leaves room for the vision projector and LM Studio's buffers">${esc(fileQuant)}${quant !== fileQuant ? " ≈ " + esc(quant) : ""} · ${gb(usable)} VRAM</span></div>`;
   if (!e || e.loading) return `<section class="card">${head}<div class="loading">Calculating the settings…</div></section>`;
   if (e.error) return `<section class="card">${head}<p class="hint">Could not calculate: ${esc(e.error)}</p></section>`;
   const fits = (v) => v != null && v <= budget;
@@ -1329,7 +1340,7 @@ function lmsSettingsCard(r, repo, file) {
   const files = repo && state.files.get(repo) && state.files.get(repo).files || [];
   // The GGUF file of this quant (the one in LM Studio), else any model file: layers and MTP from its header.
   const modelFiles = files.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file");
-  const hf = (modelFiles.find((x) => quantOfFile(x.path) === quant) || modelFiles.find((x) => x.path === file) || modelFiles[0] || {}).path;
+  const hf = (modelFiles.find((x) => quantOfFile(x.path) === fileQuant) || modelFiles.find((x) => x.path === file) || modelFiles[0] || {}).path;
   const g = hf ? state.gguf.get(repo + "/" + hf) : null;
   if (hf && !g) setTimeout(() => loadGgufHeader(m, repo, hf), 0);
   const layers = g && g.blocks ? g.blocks : null;
@@ -1363,7 +1374,8 @@ function lmsSettingsCard(r, repo, file) {
     else if (loadCtx < ctxRec) notes.push(`LM Studio allows at most ${loadCtx.toLocaleString("en")} tokens for this model, so TensorTailor uses that.`);
     if (!allGpu) notes.push("The model does not fit fully in VRAM. LM Studio chooses how many layers go to the GPU (its own setting for this model), and it may run slowly.");
     if (drafter && !mtp) notes.push(`The repo's drafter (${drafter.path}) is not set: choose it as draft model in LM Studio if you want it.`);
-    state.lmsPlans.set(m.id, { key: lms.id, name: lms.name || lms.id, body, notes, quant });
+    if (quant !== fileQuant) notes.push(`llmfit has no ${fileQuant}, so the memory is counted as ${quant} (close in size).`);
+    state.lmsPlans.set(m.id, { key: lms.id, name: lms.name || lms.id, body, notes, quant: fileQuant });
     loadBox = `<div class="lmload"><button class="btn primary small" data-lmsload="${esc(m.id)}">Load in LM Studio with these settings</button><span class="hint">You see what will be sent first. Nothing loads until you press Load there.</span></div>`;
   } else {
     loadBox = `<p class="hint">${state.lms.online ? lms ? "" : "To load it from here: download the model into LM Studio first (tab Files)." : "To load it from here: start LM Studio's server (Developer tab → server on), then open this tab again."}</p>`;
