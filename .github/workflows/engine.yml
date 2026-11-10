@@ -22,13 +22,13 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build, compare with native llmfit, make the page
         uses: ./.github/actions/build
 
       - name: Keep the page
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tensortailor-html
           path: |
@@ -38,7 +38,7 @@ jobs:
 
       - name: Keep the build
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: engine-wasm
           path: |

@@ -36,7 +36,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get llmfit at the engine's tag
         id: llmfit
@@ -66,7 +66,7 @@ jobs:
           echo "Start: $BASE, $N entries" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -182,7 +182,7 @@ jobs:
 
       - name: Keep the result (also when not stored)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: catalog-run
           path: |
