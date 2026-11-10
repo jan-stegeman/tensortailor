@@ -1,0 +1,14 @@
+# Build output
+/dist/
+/target/
+/node_modules/
+
+# Local secrets and tokens: never commit them
+.env
+*.token
+secrets/
+
+# Editor and OS files
+.vscode/
+Thumbs.db
+desktop.ini
