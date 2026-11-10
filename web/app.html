@@ -548,7 +548,8 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
       <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model; "MTP in file" comes from the header of your own model file. To read your files, My models asks once for LM Studio's models folder (the same folder as for Downloads); TensorTailor matches each model to its file by size and reads only the start of the file (layers, maximum context, MTP).</dd>
-      <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (catalog button or a pasted link).</dd>
+      <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (catalog button or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
+      <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
@@ -569,7 +570,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
-      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them.</dd>
+      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them. Models that are already in your LM Studio always pass "Popular".</dd>
       <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
     </dl>
 
@@ -710,6 +711,7 @@ const CHIP_TIP = {
   upg: 'Only runs well with the upgrade you switched on under "What if I upgrade?".',
   meas: "The speed comes from real measurements on similar hardware (llmfit's benchmark data), not from an estimate.",
   lms: "You already have this model in LM Studio.",
+  fromLms: "In your LM Studio, not in llmfit's list, and llmfit could not read it from Hugging Face. TensorTailor made this row from what LM Studio and the model file's header say (parameters, quant, layers, context), and llmfit's formulas give the verdict. Rougher than a model from llmfit's list.",
   runtime: "This model needs {rt}, not llama.cpp. LM Studio on Windows cannot run it."
 };
 const LMS_URL = "http://127.0.0.1:1234";
@@ -730,6 +732,8 @@ const state = {
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
   token: "", lms: { online: false, checked: false, models: [] }, lmsPlans: new Map(), lmsLoad: null,
   localGguf: { busy: false, done: false, needClick: false, error: "", folder: "", files: 0, byId: new Map() },
+  // LM Studio model id -> model name in the list (for models llmfit's list did not have; see linkLmsModels).
+  lmsLinks: {}, lmsLinkInfo: null,
   live: { models: [], meta: {}, at: "" }, liveBusy: false, liveLog: "", liveResult: null, lookup: null,
   searchAll: false, hubSearch: null, mtp: new Map(), gguf: new Map(),
   dl: { root: null, jobs: [], active: null, partBytes: 256 * 1024 * 1024, parallel: 2, loaded: false },
@@ -860,7 +864,8 @@ function modelView(name, row, F) {
     gated: GATED_LICENSES.test(c.license || ""), langs: meta.langs, caps: capsOf(c),
     added: c.release_date || "", downloads: meta.downloads, likes: meta.likes, format: c.format || "",
     gguf: (c.gguf_sources || []).map((s) => ({ repo: s.repo, provider: s.provider })), runtime: row[F.runtime],
-    live: state.live.meta[name] ? state.live.meta[name].at || "yes" : ""
+    live: state.live.meta[name] ? state.live.meta[name].at || "yes" : "",
+    fromLms: !!(state.live.meta[name] && state.live.meta[name].src === "lms")
   };
   modelCache.set(name, m);
   return m;
@@ -997,9 +1002,11 @@ function lmsPairOk(x, m) {
 }
 function inLms(m) {
   if (!state.lms.models.length) return null;
-  return state.lms.models.find((x) => lmsPairOk(x, m)) || null;
+  return state.lms.models.find((x) => state.lmsLinks[x.id] === m.id) || state.lms.models.find((x) => !state.lmsLinks[x.id] && lmsPairOk(x, m)) || null;
 }
 function catalogFor(x) {
+  const link = state.lmsLinks[x.id];
+  if (link) { const r = state.results.find((y) => y.m.id === link); if (r) return r; }
   const cands = state.results.filter((r) => lmsPairOk(x, r.m));
   const pub = String(x.publisher || "").toLowerCase();
   return cands.find((r) => pub && r.m.id.toLowerCase().startsWith(pub + "/")) || cands[0] || null;
@@ -1009,7 +1016,7 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)}</span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)}</span></div></div>
     <div class="num">${fmtParams(m.params)}</div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
     <div class="membar" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
@@ -1044,7 +1051,8 @@ function passFilters(r) {
   if (f.lms && !inLms(m)) return false;
   if (f.open && !OPEN_LICENSES.test(m.license)) return false;
   if (f.gpu && r.best.mode !== "GPU") return false;
-  if (f.pop && m.downloads < 10000) return false;
+  // Your own LM Studio models always pass "Popular": you have them already.
+  if (f.pop && m.downloads < 10000 && !inLms(m)) return false;
   return true;
 }
 function sortResults(list) {
@@ -1689,9 +1697,11 @@ async function fetchNewModels() {
 async function clearLive() {
   if (state.liveBusy || !state.live.models.length) return;
   state.live = { models: [], meta: {}, at: "" }; state.liveResult = null;
+  state.lmsLinks = {}; state.lmsLinkInfo = null; safeSet("localStorage", "tt-lms-links", null);
   saveLiveStore();
   await applyLive();
   renderCatalogDlg(); toast("Fetched models removed.");
+  ensureLmsLinks();
 }
 function renderCatalogDlg() {
   const L = state.live, r = state.liveResult, ref = esc(state.info.llmfit_ref || "");
@@ -1892,7 +1902,7 @@ async function checkLms() {
     state.lms.models = (data.models || []).map(normLms); state.lms.online = state.lms.models.length > 0;
   } catch (e) { state.lms.online = false; state.lms.models = []; }
   state.lms.checked = true;
-  if (state.ready) renderList();
+  if (state.ready) { renderList(); ensureLmsLinks(); }
 }
 function roughFromFile(x, ctx, kvq) {
   const hw = hwInput(false), vram = hw.vram_gb * hw.gpu_count, ram = hw.ram_gb * 0.9;
@@ -1976,6 +1986,107 @@ async function scanLocalGguf(interactive) {
     s.busy = false;
     if (state.view === "mine") renderView();
   }
+  // With the file paths known (or no folder at all), add the LM Studio models that the list does not have.
+  if (s.done || !state.dl.root) linkLmsModels(interactive);
+}
+/* ---------- LM Studio models that llmfit's list does not have ---------- */
+// So "Already in LM Studio" in Models shows every LM Studio model: (1) the model's folder name is its Hugging Face
+// repo: llmfit's own conversion reads it live (label "live"), unless llmfit's parameter count is far from LM
+// Studio's (seen: 1.8B for a 27B GGUF repo); (2) else a row made from LM Studio's data and the file header
+// (label "from LM Studio"). state.lmsLinks remembers which row belongs to which LM Studio model.
+const LMS_BPP = { F32: 4, F16: 2, BF16: 2, Q8_0: 1.05, Q6_K: 0.8, Q5_K_M: 0.68, Q4_K_M: 0.58, Q4_0: 0.58, Q3_K_M: 0.48, Q2_K: 0.37 };
+function lmsParamsOk(m, x) {
+  if (!x.params) return true;
+  const p = m.parameters_raw ? m.parameters_raw / 1e9 : parseFloat(m.parameter_count) || 0;
+  return p > 0 && p / x.params > 0.7 && p / x.params < 1.4;
+}
+function lmsModelEntry(x, loc, repo) {
+  const q = planQuant(x.quantization || (loc ? quantOfFile(loc.path) : "") || "Q4_K_M");
+  const bpp = LMS_BPP[q] || 0.58;
+  const P = x.params || (x.sizeBytes ? x.sizeBytes / 1e9 / bpp : 0);
+  if (!P) return null;
+  const inBase = (n) => state.catalog.some((c) => c.name.toLowerCase() === n.toLowerCase()) && !state.live.models.some((y) => y.name.toLowerCase() === n.toLowerCase());
+  let name = repo || "lmstudio/" + x.id.replace(/^.*\//, "");
+  if (inBase(name)) name = "lmstudio/" + x.id.replace(/^.*\//, "");
+  if (inBase(name)) return null;
+  const caps = [x.vision ? "vision" : "", x.tools ? "tool_use" : ""].filter(Boolean);
+  return {
+    name, provider: name.split("/")[0], parameter_count: (P >= 10 ? Math.round(P) : P.toFixed(1)) + "B", parameters_raw: Math.round(P * 1e9),
+    min_ram_gb: P * 0.37 + 0.5, recommended_ram_gb: P * bpp + 1, min_vram_gb: P * bpp + 0.5, quantization: q,
+    context_length: (loc && loc.ctx) || x.max_context_length || 4096,
+    use_case: x.vision ? "Multimodal, vision and text" : /cod(e|er|estral)/i.test(x.id) ? "Code generation and completion" : "General purpose text generation",
+    is_moe: false, num_experts: null, active_experts: null, active_parameters: null, release_date: null, gguf_sources: [], capabilities: caps,
+    format: "gguf", num_attention_heads: null, num_key_value_heads: null, num_hidden_layers: (loc && loc.blocks) || null, head_dim: null,
+    attention_layout: null, license: "unknown", hidden_size: null, moe_intermediate_size: null, vocab_size: null,
+    shared_expert_intermediate_size: null, architecture: (loc && loc.arch) || x.arch || null
+  };
+}
+function ensureLmsLinks() {
+  if (!state.ready || !state.lms.online || state.lmsLinkBusy || state.localGguf.busy) return;
+  if (!state.lms.models.some((x) => !/embed/i.test(x.type) && !catalogFor(x) && !state.lmsLinks[x.id])) return;
+  if (state.dl.root && !state.localGguf.done && !state.localGguf.needClick) scanLocalGguf(false);
+  else if (!state.dl.root || state.localGguf.done) linkLmsModels(false);
+}
+async function linkLmsModels(relink) {
+  if (state.lmsLinkBusy || !state.ready || !state.lms.online) return;
+  const isLmsRow = (n) => !!(state.live.meta[n] && state.live.meta[n].src === "lms");
+  const todo = state.lms.models.filter((x) => !/embed/i.test(x.type) && (relink && isLmsRow(state.lmsLinks[x.id]) ? true : !catalogFor(x) && !state.lmsLinks[x.id]));
+  if (!todo.length) return;
+  state.lmsLinkBusy = true;
+  const info = { live: [], lms: [], linked: [], failed: [] }, before = JSON.stringify(state.live), linksBefore = JSON.stringify(state.lmsLinks);
+  let changed = false;
+  try {
+    const fields = state.info.live ? await hubFields().catch(() => null) : null;
+    for (const x of todo) {
+      const loc = state.localGguf.byId.get(x.id) || null;
+      const parts = loc && !loc.error ? loc.path.split("/") : [];
+      const repo = parts.length >= 3 ? parts[0] + "/" + parts[1] : null;
+      let name = null;
+      if (repo && fields) {
+        try {
+          const e = await hfJson(`https://huggingface.co/api/models/${repo}?${fields}`);
+          const known = !(await call("unknownIds", JSON.stringify([e.id]))).length;
+          const c = known ? state.catalog.find((y) => y.name.toLowerCase() === e.id.toLowerCase()) : null;
+          if (c && !isLmsRow(c.name) && lmsParamsOk(c, x)) { name = c.name; info.linked.push(x.name); }
+          else if (!c || isLmsRow(c.name)) {
+            const m = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
+            if (m && lmsParamsOk(m, x)) { addLive(m, e); name = m.name; info.live.push(x.name); changed = true; }
+          }
+        } catch (err) { /* offline, gated or not on Hugging Face: LM Studio's own data below */ }
+      }
+      if (!name) {
+        const m = lmsModelEntry(x, loc, repo);
+        if (m) {
+          state.live.models = state.live.models.filter((y) => y.name !== m.name).concat([m]);
+          state.live.meta[m.name] = { downloads: 0, likes: 0, langs: [], at: new Date().toISOString().slice(0, 10), src: "lms" };
+          name = m.name; info.lms.push(x.name); changed = true;
+        } else info.failed.push(x.name);
+      }
+      if (name) state.lmsLinks[x.id] = name;
+    }
+    if (changed) {
+      // Never lose the fetched models: if llmfit refuses the new list, put the old one back.
+      try { await applyLive(); }
+      catch (e) { state.live = JSON.parse(before); state.lmsLinks = JSON.parse(linksBefore); await applyLive(); throw new Error("llmfit could not read the new rows (" + e.message + "); nothing was changed"); }
+      saveLiveStore();
+    }
+    safeSet("localStorage", "tt-lms-links", JSON.stringify(state.lmsLinks));
+  } catch (e) { info.error = e.message; }
+  finally {
+    state.lmsLinkBusy = false; state.lmsLinkInfo = info;
+    renderList(); if (state.view === "mine") renderView();
+  }
+}
+function lmsLinkLine() {
+  const i = state.lmsLinkInfo;
+  if (state.lmsLinkBusy) return `<div class="loading">Adding your LM Studio models that llmfit's list does not have…</div>`;
+  if (!i) return "";
+  const parts = [];
+  if (i.live.length) parts.push(`read live from Hugging Face with llmfit's own code: ${i.live.map(esc).join(", ")}`);
+  if (i.linked.length) parts.push(`found in the list under their Hugging Face name: ${i.linked.map(esc).join(", ")}`);
+  if (i.lms.length) parts.push(`made from LM Studio's data and the file header (label "from LM Studio"): ${i.lms.map(esc).join(", ")}`);
+  if (i.failed.length) parts.push(`not possible (no size or parameters known): ${i.failed.map(esc).join(", ")}`);
+  return (parts.length ? `<p class="hint">Added to Models, so "Already in LM Studio" shows them: ${parts.join("; ")}.</p>` : "") + (i.error ? `<div class="warn-box">${esc(i.error)}</div>` : "");
 }
 function localGgufLine() {
   const s = state.localGguf, n = state.lms.models.length;
@@ -2024,7 +2135,7 @@ function viewMine() {
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card">${localGgufLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <section class="card">${localGgufLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports.</p></section>`;
 }
 
@@ -2643,6 +2754,7 @@ function wire() {
   const theme = safeGet("localStorage", "tt-theme");
   if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
   try { const w = JSON.parse(safeGet("localStorage", "tt-watch") || "[]"); if (Array.isArray(w)) state.watch = new Set(w); } catch (e) { /* ignore */ }
+  try { const l = JSON.parse(safeGet("localStorage", "tt-lms-links") || "{}"); if (l && typeof l === "object" && !Array.isArray(l)) state.lmsLinks = l; } catch (e) { /* ignore */ }
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
   state.token = safeGet("sessionStorage", "tt-token") || "";
@@ -2675,6 +2787,7 @@ function wire() {
     state.ready = true;
     state.bootMs = Math.round(performance.now() - t0);
     await recompute();
+    ensureLmsLinks();
   } catch (e) {
     banner("The engine could not start: " + e.message, "err");
   }
