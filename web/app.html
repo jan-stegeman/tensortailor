@@ -7,13 +7,14 @@
 <style>
 :root {
   --bg: #f4f5f7; --panel: #ffffff; --panel-2: #f1f3f6; --line: #e1e5eb; --line-2: #d3d8e0;
-  --text: #14171c; --muted: #586170; --faint: #8a93a1;
+  --text: #14171c; --muted: #586170; --faint: #626d7c;
   --accent: #4f46e5; --accent-soft: #eceefe; --accent-text: #ffffff;
-  --perfect: #15803d; --perfect-soft: #e2f4e7;
+  --perfect: #116b34; --perfect-soft: #e2f4e7;
   --good: #0369a1; --good-soft: #def0fa;
-  --marginal: #b45309; --marginal-soft: #fcefd9;
+  --marginal: #984508; --marginal-soft: #fcefd9;
   --tight: #b91c1c; --tight-soft: #fbe3e3;
   --star: #d97706;
+  --cap-vision: #a16207; --cap-tools: #0369a1; --cap-reason: #15803d;
   --seg-w: #4f46e5; --seg-kv: #0ea5e9; --seg-oh: #9aa1ad; --seg-ram: #f59e0b;
   --shadow: 0 1px 2px rgba(16,24,40,.05), 0 2px 6px rgba(16,24,40,.06);
   --radius: 12px;
@@ -24,21 +25,23 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0c0f13; --panel: #141920; --panel-2: #1a2029; --line: #252d38; --line-2: #313b48;
-    --text: #e6eaf0; --muted: #9ba5b3; --faint: #6c7684;
+    --text: #e6eaf0; --muted: #9ba5b3; --faint: #95a0b0;
     --accent: #8b8cf8; --accent-soft: #232551; --accent-text: #0c0f13;
     --perfect: #4ade80; --perfect-soft: #13301f; --good: #38bdf8; --good-soft: #0d2a3b;
     --marginal: #fbbf24; --marginal-soft: #382a0c; --tight: #f87171; --tight-soft: #3b1616;
+    --cap-vision: #eab308; --cap-tools: #60a5fa; --cap-reason: #4ade80;
     --star: #fbbf24; --seg-w: #8b8cf8; --seg-kv: #38bdf8; --seg-oh: #566070; --seg-ram: #fbbf24;
     --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0c0f13; --panel: #141920; --panel-2: #1a2029; --line: #252d38; --line-2: #313b48;
-  --text: #e6eaf0; --muted: #9ba5b3; --faint: #6c7684;
+  --text: #e6eaf0; --muted: #9ba5b3; --faint: #95a0b0;
   --accent: #8b8cf8; --accent-soft: #232551; --accent-text: #0c0f13;
   --perfect: #4ade80; --perfect-soft: #13301f; --good: #38bdf8; --good-soft: #0d2a3b;
   --marginal: #fbbf24; --marginal-soft: #382a0c; --tight: #f87171; --tight-soft: #3b1616;
-  --star: #fbbf24; --seg-w: #8b8cf8; --seg-kv: #38bdf8; --seg-oh: #566070; --seg-ram: #fbbf24;
+  --cap-vision: #eab308; --cap-tools: #60a5fa; --cap-reason: #4ade80;
+    --star: #fbbf24; --seg-w: #8b8cf8; --seg-kv: #38bdf8; --seg-oh: #566070; --seg-ram: #fbbf24;
   --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -147,7 +150,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .list-tools { display: flex; gap: 8px; align-items: center; }
 .sort { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
 .table { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.cols, .row { display: grid; align-items: center; gap: 10px; grid-template-columns: 46px minmax(170px, 2fr) 52px 76px minmax(112px, 1.2fr) 76px 116px 42px; padding: 0 12px 0 8px; }
+.cols, .row { display: grid; align-items: center; gap: 10px; grid-template-columns: 46px minmax(210px, 2.4fr) 76px minmax(112px, 1.2fr) 76px 116px 42px; padding: 0 12px 0 8px; }
 .cols { height: 34px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); border-bottom: 1px solid var(--line); background: var(--panel-2); }
 .rows { overflow: auto; flex: 1; position: relative; }
 .row { height: 60px; border-bottom: 1px solid var(--line); cursor: pointer; overflow: hidden; }
@@ -205,7 +208,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .cap svg { width: 11px; height: 11px; display: block; }
 .m-name .sub .cap { width: 17px; height: 17px; }
 .m-name .sub .cap svg { width: 10px; height: 10px; }
-.cap.vision { color: #eab308; } .cap.tools { color: #3b82f6; } .cap.reason { color: #22c55e; }
+.cap.vision { color: var(--cap-vision); } .cap.tools { color: var(--cap-tools); } .cap.reason { color: var(--cap-reason); }
 .chip-btn .cap { width: 17px; height: 17px; margin-right: 5px; vertical-align: -4px; }
 .chip-btn[aria-pressed="true"] .cap { color: var(--accent-text); }
 .cap-label { display: inline-flex; align-items: center; gap: 5px; }
@@ -318,6 +321,38 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
 .lic dt { color: var(--faint); } .lic dd { margin: 0; word-break: break-word; }
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); opacity: 0; padding: 10px 16px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: 13px; transition: opacity .18s, transform .18s; pointer-events: none; z-index: 10; max-width: 640px; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- GUI review 2026-11-10, package A (quick polish) ---- */
+/* Thin, quiet scrollbars instead of the thick classic ones. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); background-clip: padding-box; border: 2px solid transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+/* The list keeps room for its scrollbar, so the column titles stay above their columns. */
+.rows { scrollbar-gutter: stable; }
+.cols { padding-right: 22px; }
+/* Break long ids and hashes only where needed, never in the middle of normal words. */
+.d-id, .hash, .fname { word-break: normal; overflow-wrap: anywhere; }
+/* A verdict tile that is switched off stays readable: dashed and quiet, with "hidden". */
+.tile[aria-pressed="false"] { opacity: 1; background: transparent; box-shadow: none; border-style: dashed; }
+.tile[aria-pressed="false"] .n { color: var(--muted); }
+.tile .off { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+/* A clear focus ring on the search box and the number fields (keyboard use). */
+.search:focus-within, .unit-input:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* "Load in LM Studio" at the top of the Run card. */
+.lmload.top { margin: 0 0 12px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--accent-soft); }
+/* A finished, checked download: green bar. */
+.dlbar.done span { background: var(--perfect); }
+/* The "best file" mark in Files: words instead of a star (the star means favorite). */
+.rec { font: 600 10.5px var(--font); padding: 1px 6px; border-radius: 5px; background: var(--perfect-soft); color: var(--perfect); margin-left: 6px; white-space: nowrap; vertical-align: 1px; }
+/* Downloads: the long help folds away. */
+details.help-fold > summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+details.help-fold[open] > summary { margin-bottom: 6px; }
+/* Downloads has nothing to filter: no left panel there, the table gets the width. */
+.layout.full { grid-template-columns: minmax(0, 1fr); }
+.layout.full .side { display: none; }
+.layout.full .view-pane { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -337,7 +372,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
   <div class="top-mid">
     <label class="search">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <input id="q" type="search" placeholder="Search models, or paste a Hugging Face link and press Enter" autocomplete="off" aria-label="Search models or paste a Hugging Face link">
+      <input id="q" type="search" placeholder="Search or paste a HF link" autocomplete="off" aria-label="Search models or paste a Hugging Face link">
       <kbd>/</kbd>
     </label>
     <nav class="nav" id="nav" aria-label="Views">
@@ -451,7 +486,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
     </div>
     <div class="search-bar" id="searchBar" hidden></div>
     <div class="table">
-      <div class="cols" aria-hidden="true"><span></span><span title="Model name, its labels and who made it">Model</span><span class="r" title="Number of parameters (B = billion, M = million)">Size</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
+      <div class="cols" aria-hidden="true"><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
       <div class="rows" id="rows" role="listbox" aria-label="Models"></div>
     </div>
     <div class="tray" id="tray" hidden>
@@ -980,7 +1015,8 @@ function memLabel(b) {
 }
 function ring(score) {
   const r = 17, c = 2 * Math.PI * r, v = clamp(score || 0, 0, 100);
-  const col = v >= 70 ? "var(--perfect)" : v >= 50 ? "var(--good)" : v >= 30 ? "var(--marginal)" : "var(--tight)";
+  // Neutral colour: the score is a ranking number; the verdict next to it carries the green/amber/red meaning.
+  const col = "var(--accent)";
   return `<svg class="ring" width="42" height="42" viewBox="0 0 42 42" role="img" aria-label="Score ${v.toFixed(0)}"><circle cx="21" cy="21" r="${r}" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="21" cy="21" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * v / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 21 21)"/><text x="21" y="25" text-anchor="middle">${v.toFixed(0)}</text></svg>`;
 }
 const verdict = (p) => `<span class="badge ${PLAIN[p].cls}">${PLAIN[p].label}</span>`;
@@ -1016,8 +1052,7 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)}</span></div></div>
-    <div class="num">${fmtParams(m.params)}</div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
     <div class="membar" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
@@ -1069,7 +1104,7 @@ function sortResults(list) {
 function renderTiles(base) {
   const counts = { well: 0, tight: 0, slower: 0, nofit: 0 }, extra = { well: 0, tight: 0, slower: 0, nofit: 0 };
   base.forEach((r) => { counts[r.best.plain]++; if (r.upgradeOnly) extra[r.best.plain]++; });
-  $("tiles").innerHTML = ["well", "tight", "slower", "nofit"].map((k) => `<button class="tile ${PLAIN[k].cls}" data-plain="${k}" aria-pressed="${state.show[k]}" title="Show or hide: ${PLAIN[k].label}"><span class="n">${counts[k].toLocaleString("en")}${extra[k] ? `<small>+${extra[k]} by upgrade</small>` : ""}</span><span class="l">${PLAIN[k].label}</span></button>`).join("");
+  $("tiles").innerHTML = ["well", "tight", "slower", "nofit"].map((k) => `<button class="tile ${PLAIN[k].cls}" data-plain="${k}" aria-pressed="${state.show[k]}" title="Show or hide: ${PLAIN[k].label}"><span class="n">${counts[k].toLocaleString("en")}${extra[k] ? `<small>+${extra[k]} by upgrade</small>` : ""}</span><span class="l">${PLAIN[k].label}${state.show[k] ? "" : ` · <span class="off">hidden</span>`}</span></button>`).join("");
 }
 function renderRowsWindow() {
   const el = $("rows"), n = state.visible.length;
@@ -1290,8 +1325,8 @@ function tabFiles(r) {
       html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th></th></tr></thead><tbody>${shown.map((x) => {
         const k = fileKind(x.path), q = quantOfFile(x.path), pick = q && q === String(b.q).toUpperCase();
         const job = dlJob(repo, x.path);
-        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? " ⭐" : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 ${esc(x.sha256)}</div>` : ""}</td><td class="r">${fmtSize(x.size)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small primary" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`} <button class="btn small ghost" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link">Link</button></td></tr>`;
-      }).join("")}</tbody></table><p class="hint">⭐ = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (for example <code>${esc(LMS_FOLDER)}</code>) and LM Studio sees the file at once.</p>`;
+        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="r">${fmtSize(x.size)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`} <button class="btn small ghost" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link">Link</button></td></tr>`;
+      }).join("")}</tbody></table><p class="hint"><b>best for this PC</b> = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>) and LM Studio sees the file at once.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
       html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>SHA-256 of each large file is shown; the page will check it after a download.</li></ul>`;
     }
@@ -1390,13 +1425,13 @@ function lmsSettingsCard(r, repo, file) {
     if (drafter && !mtp) notes.push(`The repo's drafter (${drafter.path}) is not set: choose it as draft model in LM Studio if you want it.`);
     if (quant !== fileQuant) notes.push(`llmfit has no ${fileQuant}, so the memory is counted as ${quant} (close in size).`);
     state.lmsPlans.set(m.id, { key: lms.id, name: lms.name || lms.id, body, notes, quant: fileQuant });
-    loadBox = `<div class="lmload"><button class="btn primary small" data-lmsload="${esc(m.id)}">Load in LM Studio with these settings</button><span class="hint">You see what will be sent first. Nothing loads until you press Load there.</span></div>`;
+    loadBox = `<div class="lmload top"><button class="btn primary" data-lmsload="${esc(m.id)}">Load in LM Studio with these settings</button><span class="hint">You see what will be sent first. Nothing loads until you press Load there.</span></div>`;
   } else {
     loadBox = `<p class="hint">${state.lms.online ? lms ? "" : "To load it from here: download the model into LM Studio first (tab Files)." : "To load it from here: start LM Studio's server (Developer tab → server on), then open this tab again."}</p>`;
   }
-  return `<section class="card">${head}
-    <p class="hint" style="margin-top:0">In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
-    <div class="lmset">${rows.join("")}</div>${loadBox}
+  return `<section class="card">${head}${loadBox}
+    <p class="hint" style="margin-top:0">${loadBox.includes("data-lmsload") ? "Or set it by hand. " : ""}In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
+    <div class="lmset">${rows.join("")}</div>
     <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Memory per context (llmfit estimate, ${esc(quant)})</summary><table class="ftable"><thead><tr><th class="r">Context</th><th class="r">KV F16</th><th class="r">KV Q8_0</th></tr></thead><tbody>${e.rows.map((x) => `<tr><td class="r">${x.ctx.toLocaleString("en")}</td><td class="r" style="${fits(x.f16) ? "" : "color:var(--tight)"}">${x.f16 != null ? gb(x.f16) : "—"}</td><td class="r" style="${fits(x.q8) ? "" : "color:var(--tight)"}">${x.q8 != null ? gb(x.q8) : "—"}</td></tr>`).join("")}</tbody></table></details></section>`;
 }
 
@@ -1601,7 +1636,7 @@ async function applyLive() {
 function renderCatalogText() {
   const n = state.live.models.length;
   $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models` + (n ? ` (${n} live)` : "");
-  $("q").placeholder = `Search ${state.catalog.length.toLocaleString("en")} models, or paste a Hugging Face link and press Enter`;
+  $("q").placeholder = "Search or paste a HF link"; $("q").title = `Search ${state.catalog.length.toLocaleString("en")} models by name or publisher, or paste a Hugging Face link and press Enter to check it live`;
 }
 function hfRepoId(s) {
   const raw = String(s || "").trim(), isUrl = /^https?:\/\//i.test(raw);
@@ -2466,11 +2501,11 @@ function dlRow(j) {
   if (["paused", "failed"].includes(j.status)) acts.push(btn("resume", "Resume", "primary"));
   if (j.rename && !busy) acts.push(btn("rename", "Rename now", "primary"));
   if (["done", "mismatch"].includes(j.status) && !busy) acts.push(btn("check", "Check again"));
-  acts.push(btn("remove", "Remove", "ghost"));
+  acts.push(btn("remove", j.status === "done" ? "Remove from list" : "Remove", "ghost"));
   const ok = j.status === "done" && j.gotSha;
   return `<tr><td><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
-    <td style="min-width:260px"><div class="bar dlbar"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
-    ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: ${esc(j.gotSha)}</div>` : ""}
+    <td style="min-width:260px"><div class="bar dlbar${j.status === "done" && j.gotSha ? " done" : ""}"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
+    ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: <span data-copy="${esc(j.gotSha)}" data-what="SHA-256" title="${esc(j.gotSha)}&#10;Click to copy" style="cursor:copy">${esc(j.gotSha.slice(0, 16))}…</span></div>` : ""}
     ${j.rename ? `<div class="warn-box" style="margin-top:6px">The file is still called <b>${esc(j.path.split("/").pop())}.tt-tmp</b>, so LM Studio does not see it yet. Windows did not allow the rename (${esc(j.rename)}). Press <b>Rename now</b>, or in Explorer remove <b>.tt-tmp</b> from the end of the name.</div>` : ""}
     ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}${j.why ? `<div class="hash">${esc(j.why)}</div>` : ""}</td>
     <td class="r" style="white-space:nowrap">${acts.join(" ")}</td></tr>`;
@@ -2481,15 +2516,15 @@ function viewDownloads() {
   const folder = d.root ? `Folder: <b>${esc(d.root.name || "(browser test storage)")}</b>` : "No folder chosen yet";
   return `<div class="view-head"><h1>Downloads</h1><span class="status-line"><span class="dot ${d.root ? "ok" : "warn"}"></span>${folder}</span><span class="spacer"></span><button class="btn small" id="btnDlFolder">${d.root ? "Change folder" : "Choose folder"}</button></div>
     <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : `<p class="hint" style="margin-top:0">No downloads yet. Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file.</p>`}</section>
-    <section class="card"><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>; LM Studio shows yours under <b>My Models</b>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
+    <section class="card"><details class="help-fold"><summary>How downloads work (folder, parts, check, vision, remove)</summary><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>; LM Studio shows yours under <b>My Models</b>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
     <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
     <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
     <b>Vision:</b> when you download a model file from a repo with a vision projector (mmproj), the projector is taken along. LM Studio needs it in the same folder to read images.<br>
-    <b>Remove</b> only removes the entry and its temporary parts. A finished model file is never deleted by TensorTailor.</p></section>`;
+    <b>Remove</b> only removes the entry and its temporary parts. A finished model file is never deleted by TensorTailor.</p></details></section>`;
 }
 function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
 function setView(v) {
-  state.view = v; $("layout").classList.toggle("wide", v !== "models");
+  state.view = v; $("layout").classList.toggle("wide", v !== "models"); $("layout").classList.toggle("full", v === "downloads");
   document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
   if (v !== "models") renderView(); else renderRowsWindow();
 }
@@ -2762,6 +2797,8 @@ function wire() {
   document.addEventListener("keydown", (e) => {
     const ae = document.activeElement;
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== "range" && ae.type !== "checkbox";
+    // A focused slider or drop-down uses the arrow keys itself (they must not move the model selection).
+    const ownArrows = ae.type === "range" || ae.tagName === "SELECT";
     if (document.querySelector("dialog[open]")) return;
     if (e.key === "/" && !typing) { e.preventDefault(); $("q").focus(); return; }
     if (e.key === "Escape" && typing) { ae.blur(); return; }
@@ -2770,6 +2807,7 @@ function wire() {
     if (typing || e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key >= "1" && e.key <= "4") { setView(["models", "mine", "battle", "downloads"][Number(e.key) - 1]); return; }
     if (state.view !== "models") return;
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && ownArrows) return;
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); moveSelection(1); }
     else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); moveSelection(-1); }
     else if (e.key === "c" || e.key === "C") toggleCompare(state.selected);
