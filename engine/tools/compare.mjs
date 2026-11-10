@@ -1,7 +1,7 @@
 // Checks that the WebAssembly engine gives the same answers as the native
 // build of the same code, for every test profile. Exit code 1 on any difference.
 //
-// Usage: node tools/compare.mjs golden-native.json   (run from engine/)
+// Usage (run from engine/): node tools/compare.mjs golden-native.json [mapcheck-native.json]
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -101,6 +101,52 @@ try {
 } catch (e) {
   console.log("FAIL page functions:", e && e.stack ? e.stack : e);
   problems++;
+}
+
+// Live models (feature "live"): the same Hugging Face entries must give the
+// same llmfit models, the same "unknown" ids, and the same fits as the native
+// run (examples/mapcheck.rs). Last, because it adds models to the list.
+if (process.argv[3]) {
+  const want = JSON.parse(readFileSync(process.argv[3], "utf8"));
+  const fixtures = JSON.parse(readFileSync(new URL("./hf-fixtures.json", import.meta.url), "utf8"));
+  const same = (a, b) => {
+    if (typeof a === "number" && typeof b === "number") return close(a, b);
+    if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return a === b;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    const ka = Object.keys(a), kb = Object.keys(b);
+    return ka.length === kb.length && ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && same(a[k], b[k]));
+  };
+  const check = (label, ok, detail = "") => { console.log(`${ok ? "OK  " : "FAIL"} live: ${label}${detail}`); if (!ok) problems++; };
+  try {
+    check("engine built with the live feature", JSON.parse(engine.engineInfo()).live === true);
+    const mapped = [], models = [];
+    for (const f of fixtures) {
+      const m = JSON.parse(engine.mapHf(JSON.stringify(f.entry), f.config ?? undefined));
+      mapped.push({ id: f.entry.id, model: m });
+      if (m !== null) models.push(m);
+    }
+    for (let i = 0; i < mapped.length; i++) {
+      const w = want.mapped[i];
+      check(`map ${mapped[i].id}`, !!w && w.id === mapped[i].id && same(mapped[i].model, w.model),
+        mapped[i].model === null ? " (not listed by llmfit)" : ` -> ${mapped[i].model.parameter_count}, ${mapped[i].model.context_length} ctx, ${mapped[i].model.use_case}`);
+    }
+    check("same number of entries", mapped.length === want.mapped.length);
+    const unknown = JSON.parse(engine.unknownIds(JSON.stringify(fixtures.map((f) => f.entry.id))));
+    check("unknown ids", same(unknown, want.unknown), ` (${unknown.length} not in the list: ${unknown.join(", ")})`);
+    const size = engine.setExtraModels(JSON.stringify(models));
+    check("list size with extras", size === want.size, ` (${size})`);
+    const fits = JSON.parse(engine.fitKeys(JSON.stringify(profiles[0].hardware)));
+    let diff = 0;
+    if (fits.length !== want.fits.length) diff = Math.abs(fits.length - want.fits.length) || 1;
+    else for (let i = 0; i < fits.length; i++) if (!same(fits[i], want.fits[i])) { if (diff < 5) console.log(`  diff #${i}: wasm=${JSON.stringify(fits[i])} native=${JSON.stringify(want.fits[i])}`); diff++; }
+    check("fits with extras", diff === 0, ` (${fits.length} models, ${diff} different)`);
+    check("update URLs", same(JSON.parse(engine.updateUrls()), want.urls), ` (${want.urls.length} URLs)`);
+    const again = JSON.parse(engine.unknownIds(JSON.stringify(fixtures.map((f) => f.entry.id))));
+    check("added models are known afterwards", again.length === 0 || again.every((id) => !models.some((m) => m.name === id)), ` (${again.length} still unknown)`);
+  } catch (e) {
+    console.log("FAIL live functions:", e && e.stack ? e.stack : e);
+    problems++;
+  }
 }
 
 if (problems) { console.log(`\n${problems} problems.`); process.exit(1); }

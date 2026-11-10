@@ -6,6 +6,7 @@ engine/pkg-node/
 engine/pkg-web/
 engine/pkg-nomod/
 engine/golden-native.json
+engine/mapcheck-native.json
 vendor/
 
 # Local secrets and tokens: never commit them

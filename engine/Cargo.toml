@@ -9,6 +9,15 @@ description = "llmfit's fit and speed math, callable from WebAssembly for Tensor
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# Live models from Hugging Face ("Fetch new models", pasted links). Needs the
+# patched llmfit-core from tools/patch-llmfit.sh; the golden run builds without it.
+live = []
+
+[[example]]
+name = "mapcheck"
+required-features = ["live"]
+
 [dependencies]
 # The engine itself: llmfit by Alex Jones (MIT). Pinned to a release tag;
 # keep LLMFIT_REF in src/lib.rs in step with this tag.

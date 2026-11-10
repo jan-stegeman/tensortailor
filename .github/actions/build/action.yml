@@ -36,11 +36,24 @@ runs:
       working-directory: engine
       run: bash tools/patch-llmfit.sh "$GITHUB_WORKSPACE/vendor/llmfit"
 
+    - name: llmfit's own tests on the patched copy
+      shell: bash
+      working-directory: vendor/llmfit
+      run: "cargo test --release -p llmfit-core --lib -- update:: models::"
+
+    - name: Native run of the live-model functions (patched copy)
+      shell: bash
+      working-directory: engine
+      run: >
+        cargo run --release --features live --example mapcheck
+        --config "patch.\"https://github.com/AlexsJones/llmfit\".llmfit-core.path=\"$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core\""
+        -- tools/hf-fixtures.json mapcheck-native.json
+
     - name: Build WebAssembly
       shell: bash
       working-directory: engine
       run: >
-        cargo build --release --target wasm32-unknown-unknown --lib
+        cargo build --release --target wasm32-unknown-unknown --lib --features live
         --config "patch.\"https://github.com/AlexsJones/llmfit\".llmfit-core.path=\"$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core\""
 
     - name: Install wasm-bindgen CLI (same version as the crate)
@@ -68,7 +81,7 @@ runs:
     - name: Compare WebAssembly with native
       shell: bash
       working-directory: engine
-      run: node tools/compare.mjs golden-native.json
+      run: node tools/compare.mjs golden-native.json mapcheck-native.json
 
     - name: Size report
       shell: bash

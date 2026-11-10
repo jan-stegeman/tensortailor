@@ -2,7 +2,9 @@
 //!
 //! The browser cannot detect RAM or VRAM, so the page passes the hardware in as
 //! JSON. Everything else (the model catalog, the fit rules, the speed formula,
-//! the community measurements) is llmfit-core itself, unchanged.
+//! the community measurements) is llmfit-core itself, unchanged. The "live"
+//! feature adds models from Hugging Face through llmfit's own conversion code,
+//! made callable by tools/patch-llmfit.sh.
 
 use llmfit_core::analysis::{analyze_with_optional_config, build_model_fits_with_config};
 use llmfit_core::fit::CalcConfig;
@@ -14,7 +16,7 @@ use llmfit_core::{
 };
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
-use std::sync::OnceLock;
+use std::sync::{Arc, RwLock};
 
 /// The llmfit release this engine is built from. Must match the tag in Cargo.toml.
 pub const LLMFIT_REF: &str = "v1.1.20";
@@ -134,16 +136,24 @@ pub fn specs_from(hw: &HardwareInput) -> SystemSpecs {
     }
 }
 
-fn database() -> &'static ModelDatabase {
-    static DB: OnceLock<ModelDatabase> = OnceLock::new();
-    DB.get_or_init(ModelDatabase::embedded)
+/// The model list: llmfit's embedded catalog, plus the models the page fetched
+/// live from Hugging Face (feature "live", see `live::set_extra_models_json`).
+static DB: RwLock<Option<Arc<ModelDatabase>>> = RwLock::new(None);
+
+fn database() -> Arc<ModelDatabase> {
+    if let Some(db) = DB.read().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        return Arc::clone(db);
+    }
+    let db = Arc::new(ModelDatabase::embedded());
+    *DB.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::clone(&db));
+    db
 }
 
 /// Every catalog model analysed for this hardware, in catalog order (unsorted).
 pub fn fit_all(hw: &HardwareInput, context_limit: Option<u32>) -> Vec<ModelFit> {
     let specs = specs_from(hw);
     build_model_fits_with_config(
-        database(),
+        &database(),
         &specs,
         &InstalledIndex::empty(),
         context_limit,
@@ -230,9 +240,8 @@ pub const LITE_FIELDS: &[&str] = &[
     "measured_tps",
 ];
 
-fn find_model<'a>(name: &str) -> Result<&'a LlmModel, String> {
-    database()
-        .get_all_models()
+fn find_model<'a>(db: &'a ModelDatabase, name: &str) -> Result<&'a LlmModel, String> {
+    db.get_all_models()
         .iter()
         .find(|m| m.name == name)
         .ok_or_else(|| format!("model not in the catalog: {name}"))
@@ -253,7 +262,8 @@ pub fn fit_detail_json(
     name: &str,
 ) -> Result<String, String> {
     let hw = parse_hardware(hardware_json)?;
-    let model = find_model(name)?;
+    let db = database();
+    let model = find_model(&db, name)?;
     let specs = specs_from(&hw);
     let config = config_from(&hw);
     let fit = analyze_with_optional_config(model, &specs, context_limit, Some(&config));
@@ -290,7 +300,8 @@ pub fn plan_json(
     target_tps: Option<f64>,
 ) -> Result<String, String> {
     let hw = parse_hardware(hardware_json)?;
-    let model = find_model(name)?;
+    let db = database();
+    let model = find_model(&db, name)?;
     let kv = kv_quant.as_deref().and_then(KvQuant::parse);
     let plan = plan_for(&hw, model, context, quant, kv, target_tps)?;
     serde_json::to_string(&plan).map_err(|e| e.to_string())
@@ -305,7 +316,8 @@ pub fn ladder_json(
     kv_quant: Option<String>,
 ) -> Result<String, String> {
     let hw = parse_hardware(hardware_json)?;
-    let model = find_model(name)?;
+    let db = database();
+    let model = find_model(&db, name)?;
     let kv = kv_quant.as_deref().and_then(KvQuant::parse);
     let rows: Vec<Value> = QUANT_HIERARCHY
         .iter()
@@ -376,9 +388,67 @@ pub fn engine_info_json() -> String {
     json!({
         "engine": env!("CARGO_PKG_VERSION"),
         "llmfit_ref": LLMFIT_REF,
-        "catalog_models": database().get_all_models().len()
+        "catalog_models": database().get_all_models().len(),
+        "live": cfg!(feature = "live")
     })
     .to_string()
+}
+
+/// Live models from Hugging Face, the way `llmfit update` adds them, but the
+/// page does the fetching (a browser engine has no network code). Every step
+/// is llmfit's own code (patched in by tools/patch-llmfit.sh).
+#[cfg(feature = "live")]
+pub mod live {
+    use super::{Arc, DB, LlmModel, ModelDatabase, database};
+    use llmfit_core::UpdateOptions;
+    use llmfit_core::models::tt_canonical_slug;
+    use llmfit_core::update::{tt_map_hf_json, tt_update_urls};
+    use std::collections::HashSet;
+
+    /// llmfit's Hub list URLs for its default update (100 trending, 50 most
+    /// downloaded, spread over the model kinds llmfit lists).
+    pub fn update_urls_json() -> String {
+        let o = UpdateOptions::default();
+        serde_json::to_string(&tt_update_urls(o.trending_limit, o.downloads_limit))
+            .unwrap_or_else(|_| "[]".to_string())
+    }
+
+    /// The Hub ids the list does not have yet (llmfit's "same model" key), in
+    /// order and without repeats. llmfit skips the others before it fetches
+    /// config.json, so the page does too.
+    pub fn unknown_ids_json(ids_json: &str) -> Result<String, String> {
+        let ids: Vec<String> =
+            serde_json::from_str(ids_json).map_err(|e| format!("ids: {e}"))?;
+        let db = database();
+        let mut known: HashSet<String> = db
+            .get_all_models()
+            .iter()
+            .map(|m| tt_canonical_slug(&m.name))
+            .collect();
+        let fresh: Vec<String> = ids
+            .into_iter()
+            .filter(|id| known.insert(tt_canonical_slug(id)))
+            .collect();
+        serde_json::to_string(&fresh).map_err(|e| e.to_string())
+    }
+
+    /// llmfit's conversion of one Hub entry plus the text of its config.json.
+    /// "null" means llmfit does not list this kind of model.
+    pub fn map_hf_json(entry_json: &str, config_json: Option<&str>) -> Result<String, String> {
+        let model = tt_map_hf_json(entry_json, config_json)?;
+        serde_json::to_string(&model).map_err(|e| e.to_string())
+    }
+
+    /// Replace the extra models (a JSON list of llmfit models) and rebuild the
+    /// list. Returns the new number of models.
+    pub fn set_extra_models_json(models_json: &str) -> Result<usize, String> {
+        let extra: Vec<LlmModel> =
+            serde_json::from_str(models_json).map_err(|e| format!("extra models: {e}"))?;
+        let db = Arc::new(ModelDatabase::embedded_with_extra(extra));
+        let count = db.get_all_models().len();
+        *DB.write().unwrap_or_else(|e| e.into_inner()) = Some(db);
+        Ok(count)
+    }
 }
 
 /// The functions the web page calls.
@@ -446,5 +516,31 @@ mod web {
         kv_quant: Option<String>,
     ) -> Result<String, JsError> {
         super::ladder_json(hardware_json, name, context, kv_quant).map_err(|e| JsError::new(&e))
+    }
+
+    #[cfg(feature = "live")]
+    #[wasm_bindgen(js_name = updateUrls)]
+    pub fn update_urls() -> String {
+        super::live::update_urls_json()
+    }
+
+    #[cfg(feature = "live")]
+    #[wasm_bindgen(js_name = unknownIds)]
+    pub fn unknown_ids(ids_json: &str) -> Result<String, JsError> {
+        super::live::unknown_ids_json(ids_json).map_err(|e| JsError::new(&e))
+    }
+
+    #[cfg(feature = "live")]
+    #[wasm_bindgen(js_name = mapHf)]
+    pub fn map_hf(entry_json: &str, config_json: Option<String>) -> Result<String, JsError> {
+        super::live::map_hf_json(entry_json, config_json.as_deref()).map_err(|e| JsError::new(&e))
+    }
+
+    #[cfg(feature = "live")]
+    #[wasm_bindgen(js_name = setExtraModels)]
+    pub fn set_extra_models(models_json: &str) -> Result<u32, JsError> {
+        super::live::set_extra_models_json(models_json)
+            .map(|n| u32::try_from(n).unwrap_or(u32::MAX))
+            .map_err(|e| JsError::new(&e))
     }
 }
