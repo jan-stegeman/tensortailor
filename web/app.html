@@ -180,6 +180,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .search-bar[hidden] { display: none; }
 .search-bar b { color: var(--text); } .search-bar .msg { flex-basis: 100%; }
 #dlgHelp { width: min(860px, 94vw); }
+.lmrow { padding: 8px 0; border-top: 1px solid var(--line); }
+.lmhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13.5px; }
+.lmhead b { text-align: right; } .lmwhy { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+.q { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 10px; color: var(--muted); cursor: help; }
 .help h3 { margin: 18px 0 6px; font-size: 15px; } .help h3:first-of-type { margin-top: 8px; }
 .help p { margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
 .help dl { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 7px 14px; margin: 0 0 6px; font-size: 13px; }
@@ -562,7 +566,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
     <dl>
       <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
-      <dt>Run</dt><dd>Ready commands for LM Studio and settings for AI agents.</dd>
+      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. Below it: ready commands and settings for AI agents.</dd>
       <dt>Plan</dt><dd>llmfit's planner: what hardware the model needs, which routes work, how many chats fit.</dd>
     </dl>
 
@@ -1270,11 +1274,86 @@ function tabFiles(r) {
   return html + "</section>";
 }
 
+/* ---------- Run tab: LM Studio load settings for this PC ---------- */
+// What each field of LM Studio's "load model" dialog does, in plain words (hover texts).
+const LMS_SET_TIP = {
+  ctx: "Context Length: how much text the model keeps in mind (your chat, files you paste, its own answers). More context needs more memory for the KV cache.",
+  gpu: "GPU Offload: how many of the model's layers run on the graphics card. All layers on the GPU is fastest; layers left on the CPU are much slower.",
+  fa: "Flash Attention: a faster, memory-saving way to compute attention. Needed for K/V cache quantization.",
+  kv: "K Cache / V Cache Quantization Type: stores the KV cache (the memory for the context) at lower precision. Q8_0 halves it with almost no quality loss; Q4_0 saves more but loses quality. Off = F16, the normal size.",
+  par: "Max Concurrent Predictions: how many chats the model can answer at the same time. With Unified KV Cache on, they share the same context; one chat can still use all of it.",
+  spec: "Speculative Decoding: a small helper (a draft model, or the model's own MTP layers) guesses the next tokens and the big model checks them. Same answers, often faster.",
+  rem: "Remember settings: LM Studio keeps these settings for this model, so you do not set them again next time.",
+  rest: "CPU Thread Pool Size, Evaluation/Physical Batch Size, Try mmap(), Keep Model in Memory, RoPE, Seed: the defaults are fine when the whole model runs on the GPU."
+};
+const LMS_CTX_STEPS = [8192, 16384, 32768, 49152, 65536, 98304, 131072, 196608, 262144];
+async function loadLmsSettings(r, quant) {
+  const key = "lmset|" + detailKey(r.m.id) + "|" + quant;
+  if (state.detail.has(key)) return;
+  const entry = { loading: true }; state.detail.set(key, entry);
+  try {
+    const hw = JSON.stringify(hwInput(false)), rows = [];
+    const max = r.m.ctx || 32768;
+    for (const ctx of LMS_CTX_STEPS.filter((c) => c <= max)) {
+      const p = await call("plan", hw, r.m.id, ctx, quant, "fp16", null);
+      const k = (q) => (p.kv_alternatives || []).find((a) => a.kv_quant === q) || null;
+      rows.push({ ctx, f16: k("fp16") ? k("fp16").memory_required_gb : null, q8: k("q8_0") ? k("q8_0").memory_required_gb : null, file: p.disk_size_gb });
+    }
+    Object.assign(entry, { loading: false, rows });
+  } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
+  if (state.selected === r.m.id && state.tab === "run") renderDetail();
+}
+function lmsSettingsCard(r, repo, file) {
+  const m = r.m, b = r.best, lms = inLms(m);
+  const quant = /^Q\d|^IQ\d|^F16|^BF16/i.test((lms && lms.quantization) || "") ? lms.quantization.toUpperCase() : /^Q\d|^IQ\d|^F16|^BF16/i.test(b.q) ? b.q : "Q4_K_M";
+  const key = "lmset|" + detailKey(m.id) + "|" + quant, e = state.detail.get(key);
+  if (!e) setTimeout(() => loadLmsSettings(r, quant), 0);
+  const usable = usableVram(false), budget = usable * 0.85;
+  const head = `<div class="card-head"><h2>LM Studio load settings for this PC</h2><span class="tag" title="llmfit's estimate for ${esc(quant)} on ${esc(state.hw.gpuName)} with ${gb(usable)} usable VRAM; budget ${gb(budget)} (85 %) leaves room for the vision projector and LM Studio's buffers">${esc(quant)} · ${gb(usable)} VRAM</span></div>`;
+  if (!e || e.loading) return `<section class="card">${head}<div class="loading">Calculating the settings…</div></section>`;
+  if (e.error) return `<section class="card">${head}<p class="hint">Could not calculate: ${esc(e.error)}</p></section>`;
+  const fits = (v) => v != null && v <= budget;
+  const bestF16 = e.rows.filter((x) => fits(x.f16)).pop(), bestQ8 = e.rows.filter((x) => fits(x.q8)).pop();
+  const allGpu = !!bestF16 || !!bestQ8;
+  const files = repo && state.files.get(repo) && state.files.get(repo).files || [];
+  // The GGUF file of this quant (the one in LM Studio), else any model file: layers and MTP from its header.
+  const modelFiles = files.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file");
+  const hf = (modelFiles.find((x) => quantOfFile(x.path) === quant) || modelFiles.find((x) => x.path === file) || modelFiles[0] || {}).path;
+  const g = hf ? state.gguf.get(repo + "/" + hf) : null;
+  if (hf && !g) setTimeout(() => loadGgufHeader(m, repo, hf), 0);
+  const layers = g && g.blocks ? g.blocks : null;
+  const drafter = files.find((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0].startsWith("draft head"));
+  const mtp = g && g.layers > 0;
+  const ctxRec = bestF16 ? bestF16.ctx : bestQ8 ? bestQ8.ctx : 8192;
+  const useQ8 = !bestF16 && !!bestQ8;
+  const longer = bestF16 && bestQ8 && bestQ8.ctx > bestF16.ctx ? bestQ8 : null;
+  const row = (tip, name, value, why) => `<div class="lmrow"><div class="lmhead"><span title="${esc(tip)}">${name} <span class="q">?</span></span><b>${value}</b></div><div class="lmwhy">${why}</div></div>`;
+  const rec = allGpu ? (useQ8 ? bestQ8 : bestF16) : e.rows[0];
+  const rows = [
+    row(LMS_SET_TIP.ctx, "Context Length", ctxRec.toLocaleString("en"), allGpu ? `Fits with room: about ${gb(useQ8 ? rec.q8 : rec.f16)} of ${gb(usable)} usable VRAM (llmfit estimate).${longer ? ` Longer works too: ${longer.ctx.toLocaleString("en")} with K and V cache at Q8_0 (about ${gb(longer.q8)}).` : ""}` : "The model does not fit fully in VRAM even with a short context: keep the context small."),
+    row(LMS_SET_TIP.gpu, "GPU Offload", allGpu ? (layers ? `${layers} (all layers)` : "max (all layers)") : "as many as fit", allGpu ? "The whole model fits on the GPU: fastest." : "Lower it until LM Studio's estimate at the top stays below your VRAM; the rest runs on the CPU, slower."),
+    row(LMS_SET_TIP.fa, "Flash Attention", "On", "Faster and saves memory; needed for K/V cache quantization."),
+    row(LMS_SET_TIP.kv, "K Cache / V Cache Quantization", useQ8 || !allGpu ? "Q8_0 (both)" : "Off (F16)", !allGpu ? "Saves VRAM, so more layers fit on the GPU." : useQ8 ? "Needed to fit this context in VRAM." : longer ? `Not needed up to ${ctxRec.toLocaleString("en")}; turn both on (Q8_0) only for a longer context.` : "Not needed: the context fits at normal size."),
+    row(LMS_SET_TIP.par, "Max Concurrent Predictions", "leave as it is", "Only matters when several chats or agents ask at the same time."),
+    row(LMS_SET_TIP.spec, "Speculative Decoding", mtp ? "MTP" : drafter ? "optional: draft model" : "Off", mtp ? "This GGUF file has MTP layers: choose MTP for faster answers." : drafter ? `The repo has a drafter: <code>${esc(drafter.path)}</code> (${fmtSize(drafter.size)}). Download it (tab Files) and choose it as draft model to try faster answers.` : "No drafter or MTP layers known for this file."),
+    row(LMS_SET_TIP.rem, "Remember settings for …", "tick it", "So LM Studio keeps these settings for this model."),
+    row(LMS_SET_TIP.rest, "All other fields", "leave the defaults", "CPU threads, batch sizes, mmap, RoPE, seed: fine as they are.")
+  ];
+  return `<section class="card">${head}
+    <p class="hint" style="margin-top:0">In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
+    <div class="lmset">${rows.join("")}</div>
+    <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Memory per context (llmfit estimate, ${esc(quant)})</summary><table class="ftable"><thead><tr><th class="r">Context</th><th class="r">KV F16</th><th class="r">KV Q8_0</th></tr></thead><tbody>${e.rows.map((x) => `<tr><td class="r">${x.ctx.toLocaleString("en")}</td><td class="r" style="${fits(x.f16) ? "" : "color:var(--tight)"}">${x.f16 != null ? gb(x.f16) : "—"}</td><td class="r" style="${fits(x.q8) ? "" : "color:var(--tight)"}">${x.q8 != null ? gb(x.q8) : "—"}</td></tr>`).join("")}</tbody></table></details></section>`;
+}
+
 /* ---------- Run tab ---------- */
 function cmdLine(who, text) { return `<div class="cmd"><span class="who">${who}</span><code title="${esc(text)}">${esc(text)}</code><button class="btn small" data-copy="${esc(text)}" data-what="Command">Copy</button></div>`; }
 function tabRun(r) {
   const m = r.m, b = r.best, lms = inLms(m);
   const repo = chosenRepo(m);
+  // The settings card reads layers, MTP and a drafter from the GGUF repo, or else from the model's own repo
+  // (many fine-tunes keep their .gguf files there).
+  const setRepo = repo || m.id;
+  if (!state.files.get(setRepo)) setTimeout(() => loadFiles(setRepo), 0);
   const f = repo ? state.files.get(repo) : null;
   const file = f && f.files ? (f.files.find((x) => x.path.endsWith(".gguf") && quantOfFile(x.path) === String(b.q).toUpperCase()) || {}).path : null;
   const ctx = r.ctx || CTX_STEPS[state.ctxIdx], kv = state.kvq;
@@ -1295,7 +1374,7 @@ function tabRun(r) {
   }
   const opencode = JSON.stringify({ provider: { local: { npm: "@ai-sdk/openai-compatible", options: { baseURL: base }, models: { [lmsId]: {} } } } }, null, 2);
   const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = "${lmsId}"`;
-  return `<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
+  return `${state.engine === "lms" && b.plain !== "nofit" ? lmsSettingsCard(r, setRepo, file) : ""}<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
     <p class="hint" style="margin-top:0">${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)} · context ${fmtCtx(ctx)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
   <section class="card"><div class="card-head"><h2>Use it in an AI agent</h2></div>
     <p class="hint" style="margin-top:0">Base address <code>${base}</code> · model <code>${esc(lmsId)}</code></p>
