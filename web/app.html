@@ -367,6 +367,12 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
 .ftable td:first-child { min-width: 0; }
 .link-copy { border: 0; background: transparent; color: var(--muted); padding: 0 4px; margin-left: 4px; border-radius: 4px; font-size: 12px; }
 .link-copy:hover { color: var(--accent); background: var(--accent-soft); }
+/* ---- package D1: keyboard and screen readers ---- */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.tab-panel { display: flex; flex-direction: column; gap: 12px; }
+button.q { padding: 0; background: transparent; cursor: pointer; width: 18px; height: 18px; font-size: 11px; vertical-align: 1px; }
+button.q:hover, button.q[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.qtip { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 12.5px; }
 /* ---- package C: left panel and filters ---- */
 .hw-edit { margin-top: 10px; }
 .hw-edit > summary, .fold-head { cursor: pointer; list-style: none; }
@@ -462,13 +468,13 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <div class="card-head"><h2>Context length</h2><span class="ctx-value" id="ctxText">32K tokens</span></div>
       <input type="range" id="ctx" min="0" max="5" step="1" value="3" aria-label="Context length">
       <div class="ticks"><span>4K</span><span>8K</span><span>16K</span><span>32K</span><span>64K</span><span>128K</span></div>
-      <div class="field" style="margin-top:10px">KV cache (memory for the context)
+      <label class="field" for="kvq" style="margin-top:10px">KV cache (memory for the context)
         <select id="kvq">
           <option value="fp16">F16 — normal</option>
           <option value="q8_0">Q8_0 — half the memory, almost no loss</option>
           <option value="q4_0">Q4_0 — quarter, some loss</option>
         </select>
-      </div>
+      </label>
       <p class="hint">The list uses F16. The KV choice changes the detail panel and the plan.</p>
     </section>
 
@@ -537,22 +543,24 @@ details[open] > .fold-head { margin-bottom: 10px; }
     </div>
   </section>
 
-  <aside class="detail" id="detail" aria-live="polite"></aside>
+  <aside class="detail" id="detail"></aside>
+  <div class="sr-only" id="srStatus" role="status" aria-live="polite"></div>
   <section class="view-pane" id="viewPane"></section>
 </main>
 
-<dialog id="dlgToken">
-  <div class="dlg-head"><h2>Hugging Face token</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgToken" aria-labelledby="dlgToken-title">
+  <div class="dlg-head"><h2 id="dlgToken-title">Hugging Face token</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body">
     <p>The token lets TensorTailor read gated models (such as Llama and Gemma) and gives higher limits. Use a <b>read-only</b> token. Make one on huggingface.co → Settings → Access Tokens.</p>
+    <label for="tokInput" style="font-size:13px;font-weight:600">Read-only Hugging Face token</label>
     <input type="password" id="tokInput" placeholder="hf_…" autocomplete="off" aria-label="Hugging Face token">
     <p>The token stays only in this browser tab. It is never written into the HTML file and never goes to GitHub. Close the tab and it is gone.</p>
   </div>
   <div class="dlg-foot"><button class="btn" id="btnTokClear">Remove token</button><button class="btn primary" id="btnTokSave">Use token</button></div>
 </dialog>
 
-<dialog id="dlgImport">
-  <div class="dlg-head"><h2>Import your hardware</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgImport" aria-labelledby="dlgImport-title">
+  <div class="dlg-head"><h2 id="dlgImport-title">Import your hardware</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body">
     <p>1. Copy this line. 2. Paste it in PowerShell and press Enter. It copies your hardware, the VRAM in use right now and the free space on D: as text. 3. Paste that text in the box below.</p>
     <pre class="snippet" id="psSnippet"></pre>
@@ -562,25 +570,25 @@ details[open] > .fold-head { margin-bottom: 10px; }
   <div class="dlg-foot"><button class="btn primary" id="btnImportApply">Use this hardware</button></div>
 </dialog>
 
-<dialog id="dlgCompare">
-  <div class="dlg-head"><h2>Compare models</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgCompare" aria-labelledby="dlgCompare-title">
+  <div class="dlg-head"><h2 id="dlgCompare-title">Compare models</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="cmpBody"></div>
 </dialog>
 
-<dialog id="dlgLmsLoad">
-  <div class="dlg-head"><h2>Load in LM Studio</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgLmsLoad" aria-labelledby="dlgLmsLoad-title">
+  <div class="dlg-head"><h2 id="dlgLmsLoad-title">Load in LM Studio</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="lmsLoadBody"></div>
   <div class="dlg-foot"><button class="btn" id="btnLmsLoadCancel" data-close>Cancel</button><button class="btn primary" id="btnLmsLoadGo">Load</button></div>
 </dialog>
 
-<dialog id="dlgCatalog">
-  <div class="dlg-head"><h2>Model catalog</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgCatalog" aria-labelledby="dlgCatalog-title">
+  <div class="dlg-head"><h2 id="dlgCatalog-title">Model catalog</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="catBody"></div>
   <div class="dlg-foot"><button class="btn" id="btnLiveClear">Remove fetched models</button><button class="btn primary" id="btnLiveFetch">Fetch new models</button></div>
 </dialog>
 
-<dialog id="dlgHelp">
-  <div class="dlg-head"><h2>Help: what everything means</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgHelp" aria-labelledby="dlgHelp-title">
+  <div class="dlg-head"><h2 id="dlgHelp-title">Help: what everything means</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body help">
     <p>Point at a bar, a speed, a verdict or a score in the list to see a short explanation with that model's own numbers. Press <kbd>?</kbd> to open this window, <kbd>Esc</kbd> to close it.</p>
 
@@ -671,8 +679,8 @@ details[open] > .fold-head { margin-bottom: 10px; }
   </div>
 </dialog>
 
-<dialog id="dlgAbout">
-  <div class="dlg-head"><h2>About TensorTailor</h2><button class="btn ghost small" data-close>Close</button></div>
+<dialog id="dlgAbout" aria-labelledby="dlgAbout-title">
+  <div class="dlg-head"><h2 id="dlgAbout-title">About TensorTailor</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="aboutBody"></div>
 </dialog>
 
@@ -1153,10 +1161,39 @@ function renderTiles(base) {
 function renderRowsWindow() {
   const el = $("rows"), n = state.visible.length;
   if (!n) return;
+  const focusKey = focusKeyOf(el);
   const top = el.scrollTop, h = el.clientHeight || 600;
   const start = Math.max(0, Math.floor(top / ROW_H) - 8), end = Math.min(n, Math.ceil((top + h) / ROW_H) + 8);
   el.innerHTML = `<div style="height:${n * ROW_H}px;position:relative"><div style="position:absolute;top:${start * ROW_H}px;left:0;right:0">${state.visible.slice(start, end).map(rowHTML).join("")}</div></div>`;
+  restoreFocus(focusKey);
 }
+// Keep keyboard focus on "the same" control when a part of the page is drawn again.
+function focusKeyOf(root) {
+  const a = document.activeElement;
+  if (!a || !root.contains(a)) return null;
+  for (const k of ["data-tab", "data-watch", "data-cmp", "data-headload", "data-lmsload", "data-engine"]) if (a.hasAttribute(k)) return `[${k}="${CSS.escape(a.getAttribute(k))}"]`;
+  return a.id ? "#" + CSS.escape(a.id) : null;
+}
+// A "?" button opens its explanation under the row (and closes it again): works with mouse and keyboard.
+function toggleTip(btn) {
+  const row = btn.closest(".lmrow") || btn.parentElement;
+  const open = row.querySelector(":scope > .qtip");
+  if (open) { open.remove(); btn.setAttribute("aria-expanded", "false"); return; }
+  const div = document.createElement("div");
+  div.className = "qtip"; div.textContent = btn.dataset.tip;
+  row.appendChild(div); btn.setAttribute("aria-expanded", "true");
+}
+// Left/Right, Home/End move between the detail tabs (the tabs pattern).
+function tabKeys(e) {
+  const tab = e.target.closest('[role="tab"]');
+  if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  const tabs = [...document.querySelectorAll('#detail [role="tab"]')], i = tabs.indexOf(tab);
+  const j = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+  e.preventDefault();
+  state.tab = tabs[j].dataset.tab; renderDetail();
+  const n = $("tab-" + state.tab); if (n) n.focus();
+}
+function restoreFocus(sel) { if (!sel) return; const el = document.querySelector(sel); if (el) el.focus({ preventScroll: true }); }
 // The line under the list head while you search: what the filters hide, and a search on Hugging Face.
 function renderSearchBar() {
   const el = $("searchBar"), s = searchText(), raw = state.search.trim();
@@ -1466,7 +1503,7 @@ function lmsSettingsCard(r, repo, file) {
   const ctxRec = bestF16 ? bestF16.ctx : bestQ8 ? bestQ8.ctx : 8192;
   const useQ8 = !bestF16 && !!bestQ8;
   const longer = bestF16 && bestQ8 && bestQ8.ctx > bestF16.ctx ? bestQ8 : null;
-  const row = (tip, name, value, why) => `<div class="lmrow"><div class="lmhead"><span title="${esc(tip)}">${name} <span class="q">?</span></span><b>${value}</b></div><div class="lmwhy">${why}</div></div>`;
+  const row = (tip, name, value, why) => `<div class="lmrow"><div class="lmhead"><span title="${esc(tip)}">${name} <button type="button" class="q" data-tip="${esc(tip)}" aria-expanded="false" aria-label="What is ${esc(name)}?">?</button></span><b>${value}</b></div><div class="lmwhy">${why}</div></div>`;
   const rec = allGpu ? (useQ8 ? bestQ8 : bestF16) : e.rows[0];
   const rows = [
     row(LMS_SET_TIP.ctx, "Context Length", ctxRec.toLocaleString("en"), allGpu ? `Fits with room: about ${gb(useQ8 ? rec.q8 : rec.f16)} of ${gb(usable)} usable VRAM (llmfit estimate).${longer ? ` Longer works too: ${longer.ctx.toLocaleString("en")} with K and V cache at Q8_0 (about ${gb(longer.q8)}).` : ""}` : "The model does not fit fully in VRAM even with a short context: keep the context small."),
@@ -1664,6 +1701,7 @@ function tabPlan(r, d) {
 }
 function renderDetail() {
   stopTyping();
+  const focusKey = focusKeyOf($("detail"));
   const r = selectedResult();
   if (!r) { $("detail").innerHTML = `<div class="card empty">${state.ready ? "Pick a model to see the details." : "Starting the engine…"}</div>`; return; }
   const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
@@ -1685,7 +1723,8 @@ function renderDetail() {
     <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}</div>
     <div class="d-meta">${meta.map(esc).join(" · ")}</div>
     <div class="d-answer">${verdict(b.plain)}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
-    <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
+    <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
+  restoreFocus(focusKey);
 }
 
 /* ===================== Live models from Hugging Face ===================== */
@@ -2728,6 +2767,8 @@ async function showAboutText(which) {
 /* ===================== Events ===================== */
 function selectModel(id, scroll) {
   state.selected = id;
+  const sr = state.results.find((x) => x.m.id === id);
+  if (sr) $("srStatus").textContent = `${sr.m.name}: ${PLAIN[sr.best.plain].label}, best file ${sr.best.q}.`;
   if (scroll) { const i = state.visible.findIndex((r) => r.m.id === id); const el = $("rows"); if (i >= 0) { const y = i * ROW_H; if (y < el.scrollTop) el.scrollTop = y; else if (y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = y + ROW_H - el.clientHeight; } }
   renderRowsWindow(); renderDetail();
 }
@@ -2768,7 +2809,7 @@ function loadPrefs() {
   if (typeof p.kvq === "string" && [...$("kvq").options].some((o) => o.value === p.kvq)) state.kvq = p.kvq;
   if (typeof p.sort === "string" && [...$("sort").options].some((o) => o.value === p.sort)) state.sort = p.sort;
   syncFilterUi();
-  $("ctx").value = String(state.ctxIdx); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens";
+  $("ctx").value = String(state.ctxIdx); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; $("ctx").setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens");
   $("kvq").value = state.kvq; $("sort").value = state.sort;
 }
 const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open license"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
@@ -2812,7 +2853,7 @@ function wire() {
   $("useCases").addEventListener("click", (e) => { const b = e.target.closest("[data-uc]"); if (!b) return; state.useCase = b.dataset.uc; renderUseCases(); renderList(); });
   $("upgrades").addEventListener("click", (e) => { const b = e.target.closest("[data-upg]"); if (!b) return; state.upg[b.dataset.upg] = !state.upg[b.dataset.upg]; renderUsable(); recompute(); });
   $("tiles").addEventListener("click", (e) => { const t = e.target.closest("[data-plain]"); if (!t) return; state.show[t.dataset.plain] = !state.show[t.dataset.plain]; renderList(); });
-  $("ctx").addEventListener("input", (e) => { state.ctxIdx = Number(e.target.value); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; recomputeSoon(); });
+  $("ctx").addEventListener("input", (e) => { state.ctxIdx = Number(e.target.value); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; e.target.setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"); recomputeSoon(); });
   $("kvq").addEventListener("change", (e) => { state.kvq = e.target.value; savePrefs(); renderDetail(); if (state.view === "mine") renderView(); });
   $("sort").addEventListener("change", (e) => { state.sort = e.target.value; renderList(); });
   let searchTimer = 0;
@@ -2874,6 +2915,7 @@ function wire() {
     const ll = t.closest("[data-lmsload]"); if (ll) { openLmsLoad(ll.dataset.lmsload); return; }
     const hl = t.closest("[data-headload]"); if (hl) { headLoad(hl.dataset.headload); return; }
     const uf = t.closest("[data-unfilter]"); if (uf) { removeFilter(uf.dataset.unfilter); return; }
+    const qb = t.closest("button.q[data-tip]"); if (qb) { toggleTip(qb); return; }
     if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
     if (t.id === "btnNotices") { showAboutText("notices"); return; }
     if (t.id === "btnLocalGguf") { scanLocalGguf(true); return; }
@@ -2887,6 +2929,7 @@ function wire() {
     if (id === "planUsers") { state.plan.users = Number(e.target.value); renderDetail(); $("planUsers").focus(); }
     if (id === "planKeep") { state.plan.keep = Number(e.target.value); renderDetail(); $("planKeep").focus(); }
   });
+  $("detail").addEventListener("keydown", tabKeys);
   $("detail").addEventListener("change", (e) => { if (e.target.id === "srcSel") { delete state.srcIdx["repo:" + state.selected]; state.srcIdx[state.selected] = Number(e.target.value); renderDetail(); } });
   $("btnDetect").addEventListener("click", detectInBrowser);
   $("btnImport").addEventListener("click", () => { $("psSnippet").textContent = PS_LINE; $("dlgImport").showModal(); });
