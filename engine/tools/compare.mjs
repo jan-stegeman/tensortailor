@@ -89,7 +89,11 @@ try {
   for (const r of lad) {
     console.log("  ", r.quant, r.error ?? `${r.plan.disk_size_gb.toFixed(1)} GB file, ${r.plan.current.fit_level} ${r.plan.current.run_mode} ${r.plan.current.estimated_tps.toFixed(1)} tok/s`);
   }
-  const plan = JSON.parse(engine.plan(hwText, sample[0], 32768, "Q4_K_M", "q8_0", 30));
+  // A target speed that no run path reaches is a normal llmfit answer (an error
+  // text), so the page must show it instead of crashing.
+  try { engine.plan(hwText, sample[0], 32768, "Q8_0", "fp16", 500); console.log("plan with target 500 tok/s: answered"); }
+  catch (e) { console.log("plan with target 500 tok/s: error text as expected:", String(e.message || e)); }
+  const plan = JSON.parse(engine.plan(hwText, sample[0], 32768, "Q4_K_M", "q8_0", undefined));
   console.log("plan minimum:", JSON.stringify(plan.minimum), "recommended:", JSON.stringify(plan.recommended));
   console.log("plan run_paths:", JSON.stringify(plan.run_paths).slice(0, 500));
   console.log("plan upgrades:", JSON.stringify(plan.upgrade_deltas).slice(0, 400));
