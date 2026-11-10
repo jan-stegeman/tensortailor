@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "engine/**"
+      - "web/**"
       - ".github/workflows/engine.yml"
   workflow_dispatch:
 
@@ -84,6 +85,17 @@ jobs:
             ls -l pkg-web
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build the single-file page
+        working-directory: .
+        run: node web/build.mjs engine/pkg-nomod dist/tensortailor.html vendor/llmfit/llmfit-core/data/hf_models.json
+
+      - name: Keep the page
+        uses: actions/upload-artifact@v4
+        with:
+          name: tensortailor-html
+          path: dist/tensortailor.html
+          retention-days: 30
 
       - name: Keep the build
         if: always()

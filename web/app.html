@@ -1,0 +1,1411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TensorTailor</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --panel-2: #f1f3f6; --line: #e1e5eb; --line-2: #d3d8e0;
+  --text: #14171c; --muted: #586170; --faint: #8a93a1;
+  --accent: #4f46e5; --accent-soft: #eceefe; --accent-text: #ffffff;
+  --perfect: #15803d; --perfect-soft: #e2f4e7;
+  --good: #0369a1; --good-soft: #def0fa;
+  --marginal: #b45309; --marginal-soft: #fcefd9;
+  --tight: #b91c1c; --tight-soft: #fbe3e3;
+  --star: #d97706;
+  --seg-w: #4f46e5; --seg-kv: #0ea5e9; --seg-oh: #9aa1ad; --seg-ram: #f59e0b;
+  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 2px 6px rgba(16,24,40,.06);
+  --radius: 12px;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0f13; --panel: #141920; --panel-2: #1a2029; --line: #252d38; --line-2: #313b48;
+    --text: #e6eaf0; --muted: #9ba5b3; --faint: #6c7684;
+    --accent: #8b8cf8; --accent-soft: #232551; --accent-text: #0c0f13;
+    --perfect: #4ade80; --perfect-soft: #13301f; --good: #38bdf8; --good-soft: #0d2a3b;
+    --marginal: #fbbf24; --marginal-soft: #382a0c; --tight: #f87171; --tight-soft: #3b1616;
+    --star: #fbbf24; --seg-w: #8b8cf8; --seg-kv: #38bdf8; --seg-oh: #566070; --seg-ram: #fbbf24;
+    --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c0f13; --panel: #141920; --panel-2: #1a2029; --line: #252d38; --line-2: #313b48;
+  --text: #e6eaf0; --muted: #9ba5b3; --faint: #6c7684;
+  --accent: #8b8cf8; --accent-soft: #232551; --accent-text: #0c0f13;
+  --perfect: #4ade80; --perfect-soft: #13301f; --good: #38bdf8; --good-soft: #0d2a3b;
+  --marginal: #fbbf24; --marginal-soft: #382a0c; --tight: #f87171; --tight-soft: #3b1616;
+  --star: #fbbf24; --seg-w: #8b8cf8; --seg-kv: #38bdf8; --seg-oh: #566070; --seg-ram: #fbbf24;
+  --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--font); min-width: 1180px; display: flex; flex-direction: column; overflow: hidden; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h2 { font-size: 13px; font-weight: 650; margin: 0; letter-spacing: .01em; }
+h3 { font-size: 14px; margin: 0 0 6px; }
+small { color: var(--muted); }
+code { font: 12px var(--mono); }
+a { color: var(--accent); }
+kbd { font: 11px var(--mono); padding: 1px 6px; border: 1px solid var(--line-2); border-bottom-width: 2px; border-radius: 5px; color: var(--muted); background: var(--panel); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.top { display: grid; grid-template-columns: 300px minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.brand { display: flex; gap: 10px; align-items: center; }
+.brand-name { font-weight: 750; font-size: 15px; letter-spacing: .01em; }
+.brand-sub { font-size: 12px; color: var(--muted); }
+.top-mid { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.search { flex: 1; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 6px 0 10px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; min-width: 240px; }
+.search:focus-within { border-color: var(--accent); background: var(--panel); }
+.search input { flex: 1; border: 0; background: transparent; outline: none; min-width: 0; }
+.search svg { color: var(--faint); flex: none; }
+@media (max-width: 1420px) { .top { grid-template-columns: auto minmax(0, 1fr) auto; } .brand-sub, .upd-lbl { display: none; } }
+.nav { display: flex; gap: 2px; padding: 3px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; flex: none; }
+.nav button { height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.nav button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.nav .count { font-size: 11px; padding: 0 6px; border-radius: 99px; background: var(--accent); color: var(--accent-text); }
+.top-actions { display: flex; gap: 6px; align-items: center; }
+.btn { height: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--panel); display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; text-decoration: none; color: var(--text); }
+.btn:hover:not(:disabled) { background: var(--panel-2); }
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: var(--panel-2); }
+.btn.small { height: 28px; padding: 0 10px; font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); display: inline-block; flex: none; }
+.dot.ok { background: var(--perfect); } .dot.warn { background: var(--marginal); }
+.status-banner { padding: 6px 16px; font-size: 12.5px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
+.status-banner.busy { color: var(--good); background: var(--good-soft); }
+.status-banner.err { color: var(--tight); background: var(--tight-soft); }
+.status-banner[hidden] { display: none; }
+
+.layout { flex: 1; min-height: 0; display: grid; gap: 16px; padding: 16px; grid-template-columns: 290px minmax(0, 1fr) 430px; }
+.side, .detail, .view-pane { overflow: auto; min-height: 0; }
+.side { display: flex; flex-direction: column; gap: 12px; }
+.center { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.view-pane { grid-column: 2 / 4; display: flex; flex-direction: column; gap: 12px; }
+.layout.wide .center, .layout.wide .detail { display: none; }
+.layout:not(.wide) .view-pane { display: none; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+.tag { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.tag.browser { color: var(--good); background: var(--good-soft); border-color: transparent; }
+.tag.imported, .tag.okay { color: var(--perfect); background: var(--perfect-soft); border-color: transparent; }
+.tag.warnish { color: var(--marginal); background: var(--marginal-soft); border-color: transparent; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+
+.hw-gpu { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 10px; background: var(--panel-2); }
+.hw-icon { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 11px; }
+.hw-name { font-weight: 600; }
+.hw-meta { font-size: 12px; color: var(--muted); }
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.field-grid label, .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.unit-input { display: flex; align-items: center; height: 32px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); padding-right: 8px; }
+.unit-input:focus-within { border-color: var(--accent); }
+.unit-input input { width: 100%; border: 0; background: transparent; padding: 0 8px; outline: none; color: var(--text); }
+.unit-input span { color: var(--faint); font-size: 12px; }
+select { height: 32px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); padding: 0 8px; color: var(--text); }
+.usable { margin-top: 10px; padding: 8px 10px; border-radius: 9px; background: var(--panel-2); font-size: 12.5px; color: var(--muted); }
+.usable b { color: var(--text); font-variant-numeric: tabular-nums; }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; }
+.btn-row .btn { flex: 1; justify-content: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn { height: 28px; padding: 0 11px; border-radius: 99px; border: 1px solid var(--line-2); background: var(--panel); font-size: 13px; white-space: nowrap; }
+.chip-btn:hover { background: var(--panel-2); }
+.chip-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+.ctx-value { font-weight: 650; font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2px; }
+.ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); }
+.check-list { display: grid; gap: 6px; }
+.check-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.check-list input { accent-color: var(--accent); width: 15px; height: 15px; }
+.two-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+
+.suggest { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 10px; margin-bottom: 12px; align-items: stretch; }
+.suggest[hidden] { display: none; }
+.sug { padding: 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sug .k { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); font-weight: 700; }
+.sug .n { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sug .m { font-size: 12.5px; color: var(--muted); }
+.sug .acts { display: flex; gap: 6px; margin-top: 6px; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+.tile { text-align: left; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 2px; }
+.tile .n { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 8px; }
+.tile .n small { font-size: 12px; font-weight: 600; color: var(--accent); }
+.tile .l { font-size: 12.5px; color: var(--muted); }
+.tile[aria-pressed="false"] { opacity: .45; }
+.tile.perfect .n { color: var(--perfect); } .tile.good .n { color: var(--good); } .tile.marginal .n { color: var(--marginal); } .tile.tight .n { color: var(--tight); }
+
+.list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; }
+.list-head .count { color: var(--muted); font-size: 13px; }
+.list-tools { display: flex; gap: 8px; align-items: center; }
+.sort { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.table { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.cols, .row { display: grid; align-items: center; gap: 10px; grid-template-columns: 46px minmax(170px, 2fr) 52px 76px minmax(112px, 1.2fr) 76px 116px 42px; padding: 0 12px 0 8px; }
+.cols { height: 34px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.rows { overflow: auto; flex: 1; position: relative; }
+.row { height: 60px; border-bottom: 1px solid var(--line); cursor: pointer; overflow: hidden; }
+.row:hover { background: var(--panel-2); }
+.row[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.row.is-tight .m-name, .row.is-tight .num { opacity: .6; }
+.row-acts { display: flex; align-items: center; gap: 4px; }
+.row input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+.star { border: 0; background: transparent; width: 22px; height: 22px; border-radius: 6px; color: var(--faint); font-size: 15px; line-height: 1; padding: 0; }
+.star:hover { background: var(--line); }
+.star[aria-pressed="true"] { color: var(--star); }
+.m-name { min-width: 0; }
+.m-name .nm { font-weight: 600; display: flex; gap: 5px; align-items: center; white-space: nowrap; overflow: hidden; }
+.m-name .nm .t { overflow: hidden; text-overflow: ellipsis; }
+.m-name .sub { font-size: 12px; color: var(--faint); white-space: nowrap; overflow: hidden; display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+.m-name .sub .idt { overflow: hidden; text-overflow: ellipsis; }
+.hf-link { color: var(--faint); text-decoration: none; font-size: 12px; padding: 0 3px; border-radius: 4px; flex: none; }
+.hf-link:hover { color: var(--accent); background: var(--accent-soft); }
+.chip { font-size: 10.5px; font-weight: 650; padding: 0 6px; border-radius: 5px; line-height: 17px; white-space: nowrap; flex: none; }
+.chip.moe { background: var(--accent-soft); color: var(--accent); } .chip.lock { background: var(--marginal-soft); color: var(--marginal); }
+.chip.new { background: var(--perfect-soft); color: var(--perfect); } .chip.vllm { background: var(--tight-soft); color: var(--tight); }
+.chip.lms { background: var(--good-soft); color: var(--good); } .chip.upg { background: var(--accent); color: var(--accent-text); }
+.chip.meas { background: var(--perfect-soft); color: var(--perfect); }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.r { text-align: right; }
+.tps { font-weight: 650; white-space: nowrap; }
+.tps small { font-weight: 400; font-size: 11px; display: block; }
+.quant { font: 12px var(--mono); padding: 2px 6px; border-radius: 6px; background: var(--panel-2); border: 1px solid var(--line); white-space: nowrap; }
+.membar { display: flex; flex-direction: column; gap: 4px; }
+.bar { height: 8px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; display: flex; }
+.bar > span { display: block; height: 100%; }
+.seg-w { background: var(--seg-w); } .seg-kv { background: var(--seg-kv); } .seg-oh { background: var(--seg-oh); }
+.seg-ram { background: repeating-linear-gradient(45deg, var(--seg-ram) 0 4px, transparent 4px 7px); }
+.memlabel { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.row .badge { font-size: 11.5px; padding: 2px 7px; }
+.badge.perfect { color: var(--perfect); background: var(--perfect-soft); } .badge.good { color: var(--good); background: var(--good-soft); }
+.badge.marginal { color: var(--marginal); background: var(--marginal-soft); } .badge.tight { color: var(--tight); background: var(--tight-soft); }
+.mode { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+.ring { display: block; }
+.ring text { font: 600 11px var(--font); fill: var(--text); }
+.empty { padding: 28px; text-align: center; color: var(--muted); }
+.lookup { margin: 14px; padding: 16px; border: 1px dashed var(--line-2); border-radius: var(--radius); background: var(--panel-2); }
+.lookup p { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
+.tray { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.tray[hidden] { display: none; }
+.tray .lbl { font-size: 12.5px; color: var(--muted); }
+.tray-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 10px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12.5px; }
+.tray-chip button { border: 0; background: transparent; width: 20px; height: 20px; border-radius: 50%; color: var(--muted); }
+.spacer { flex: 1; }
+
+.detail { display: flex; flex-direction: column; gap: 12px; }
+.d-title { font-size: 18px; font-weight: 700; margin: 0; word-break: break-word; }
+.d-id { font-size: 12.5px; color: var(--accent); text-decoration: none; word-break: break-all; }
+.d-id:hover { text-decoration: underline; }
+.d-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.tabs { display: flex; gap: 2px; margin: 12px -14px -14px; padding: 0 10px; border-top: 1px solid var(--line); }
+.tabs button { height: 38px; padding: 0 12px; border: 0; background: transparent; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stat { padding: 9px 10px; border-radius: 10px; background: var(--panel-2); min-width: 0; }
+.stat .k { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; }
+.stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .v small { font-size: 11px; font-weight: 400; }
+.verdict-big { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.verdict-big .badge { font-size: 14px; padding: 4px 12px; }
+.math { margin-top: 10px; font: 12.5px var(--mono); color: var(--muted); padding: 8px 10px; border-radius: 9px; background: var(--panel-2); }
+.pool { margin-top: 12px; }
+.pool .bar { height: 14px; border-radius: 6px; position: relative; }
+.pool-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.pool-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.pool-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.typing { margin-top: 10px; min-height: 92px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.typing .cur { display: inline-block; width: 7px; height: 14px; background: var(--accent); vertical-align: -2px; margin-left: 1px; }
+.ladder, .ftable, .mtable, .ptable { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ladder th, .ftable th, .mtable th, .ptable th { text-align: left; font-size: 11px; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px 6px; }
+.ladder td, .ftable td, .mtable td, .ptable td { padding: 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+.ladder tr.pick td, .ftable tr.pick td { background: var(--accent-soft); }
+.ladder tr.pick td:first-child, .ftable tr.pick td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.checks li { display: flex; gap: 8px; align-items: flex-start; }
+.checks .ok { color: var(--perfect); font-weight: 700; } .checks .no { color: var(--marginal); font-weight: 700; }
+.fname { font: 12px var(--mono); word-break: break-all; }
+.hash { font: 11px var(--mono); color: var(--faint); word-break: break-all; }
+.cmd { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; margin-top: 8px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
+.cmd code { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmd .who { font-size: 11px; color: var(--faint); min-width: 60px; }
+pre.block { margin: 8px 0 0; padding: 10px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); font: 12px/1.5 var(--mono); white-space: pre; overflow: auto; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
+.seg button { height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.warn-box { margin-top: 10px; padding: 8px 10px; border-radius: 9px; font-size: 12.5px; background: var(--marginal-soft); color: var(--marginal); }
+.ok-box { margin-top: 10px; padding: 8px 10px; border-radius: 9px; font-size: 12.5px; background: var(--perfect-soft); color: var(--perfect); }
+.big-num { font-size: 22px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.loading { color: var(--muted); font-size: 13px; padding: 6px 0; }
+
+.view-head { display: flex; align-items: center; gap: 12px; }
+.view-head h1 { font-size: 18px; margin: 0; }
+.status-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.folder-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.folder-row code { flex: 1; }
+.fighters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.fighter { position: relative; }
+.fighter.win { border-color: var(--perfect); box-shadow: 0 0 0 2px var(--perfect-soft), var(--shadow); }
+.fighter.out { opacity: .6; }
+.crown { position: absolute; top: -10px; right: 12px; font-size: 11px; font-weight: 750; padding: 2px 8px; border-radius: 99px; background: var(--perfect); color: var(--panel); }
+.pts { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.round { display: grid; grid-template-columns: 70px 1fr 34px; gap: 8px; align-items: center; font-size: 12.5px; margin-top: 6px; color: var(--muted); }
+.round .bar { height: 6px; } .round .bar > span { background: var(--accent); }
+
+dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--panel); color: var(--text); box-shadow: 0 20px 50px rgba(0,0,0,.25); width: 580px; max-width: calc(100vw - 32px); }
+dialog::backdrop { background: rgba(10,12,16,.45); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { font-size: 15px; }
+.dlg-body { padding: 16px; display: grid; gap: 12px; max-height: 600px; overflow: auto; }
+.dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.dlg-body p { margin: 0; color: var(--muted); font-size: 13px; }
+.dlg-body input[type="password"], .dlg-body textarea { width: 100%; border: 1px solid var(--line-2); border-radius: 9px; background: var(--panel); padding: 8px 10px; }
+.dlg-body textarea { font: 12px var(--mono); min-height: 90px; resize: vertical; }
+pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; }
+#dlgCompare { width: 900px; }
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cmp-table th, .cmp-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.cmp-table th { color: var(--faint); font-weight: 600; font-size: 12px; width: 140px; }
+.cmp-table td.best { font-weight: 700; color: var(--perfect); }
+.lic { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; font-size: 13px; }
+.lic dt { color: var(--faint); } .lic dd { margin: 0; word-break: break-word; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); opacity: 0; padding: 10px 16px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: 13px; transition: opacity .18s, transform .18s; pointer-events: none; z-index: 10; max-width: 640px; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+      <rect width="34" height="34" rx="9" fill="var(--accent)"/>
+      <path d="M8 9h18M17 9v17" stroke="var(--accent-text)" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M11 22c2 2.5 4 3.5 6 3.5s4-1 6-3.5" stroke="var(--accent-text)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-dasharray="2 2.4" opacity=".8"/>
+    </svg>
+    <div>
+      <div class="brand-name">TensorTailor</div>
+      <div class="brand-sub" id="brandSub">Engine: llmfit · WebAssembly</div>
+    </div>
+  </div>
+  <div class="top-mid">
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="q" type="search" placeholder="Search models, or paste a Hugging Face link and press Enter" autocomplete="off" aria-label="Search models or paste a Hugging Face link">
+      <kbd>/</kbd>
+    </label>
+    <nav class="nav" id="nav" aria-label="Views">
+      <button data-view="models" aria-pressed="true">Models</button>
+      <button data-view="mine" aria-pressed="false">My models <span class="count" id="navMine" hidden></span></button>
+      <button data-view="battle" aria-pressed="false">Battle <span class="count" id="navBattle" hidden></span></button>
+      <button data-view="downloads" aria-pressed="false">Downloads <span class="count" id="navDl" hidden></span></button>
+    </nav>
+  </div>
+  <div class="top-actions">
+    <button class="btn ghost" id="btnUpdate" title="About the model catalog"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span></button>
+    <button class="btn" id="btnToken"><span class="dot" id="tokDot"></span><span id="tokText">HF token</span></button>
+    <button class="btn ghost" id="btnAbout" title="About and licenses">About</button>
+    <button class="btn ghost" id="btnTheme" title="Light or dark (T)" aria-label="Switch light or dark">◐</button>
+  </div>
+</header>
+<div class="status-banner busy" id="statusBanner">Starting the engine…</div>
+
+<main class="layout" id="layout">
+  <aside class="side">
+    <section class="card">
+      <div class="card-head"><h2>Your hardware</h2><span class="tag" id="hwSource">saved profile</span></div>
+      <div class="hw-gpu">
+        <div class="hw-icon">GPU</div>
+        <div><div class="hw-name" id="gpuName">NVIDIA GeForce RTX 3090</div><div class="hw-meta" id="bwText">GPU memory speed: from llmfit's table</div></div>
+      </div>
+      <div class="field-grid">
+        <label>VRAM per GPU<span class="unit-input"><input id="vram" type="number" min="0" max="192" step="1" value="24"><span>GB</span></span></label>
+        <label>Number of GPUs<select id="gpus"><option value="0">0 (CPU only)</option><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+        <label>System RAM<span class="unit-input"><input id="ram" type="number" min="4" max="2048" step="4" value="128"><span>GB</span></span></label>
+        <label title="VRAM that Windows and your screens use. Not available for models.">Kept for Windows<span class="unit-input"><input id="reserve" type="number" min="0" max="8" step="0.25" value="1"><span>GB</span></span></label>
+        <label title="Speed of system RAM. Used when part of a model runs from RAM. Threadripper 3990X quad-channel DDR4-3200: about 90.">RAM speed<span class="unit-input"><input id="ramBw" type="number" min="5" max="1000" step="5" value="90"><span>GB/s</span></span></label>
+        <label>CPU cores<span class="unit-input"><input id="cores" type="number" min="1" max="512" step="1" value="64"></span></label>
+      </div>
+      <div class="usable" id="usableText"></div>
+      <div class="btn-row"><button class="btn" id="btnDetect">Detect in browser</button><button class="btn" id="btnImport">Import…</button></div>
+      <p class="hint" id="cpuName">AMD Ryzen Threadripper 3990X 64-Core Processor</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>What if I upgrade?</h2><span class="tag" id="upgTag">off</span></div>
+      <div class="chips" id="upgrades">
+        <button class="chip-btn" data-upg="gpu" aria-pressed="false">+1 same GPU</button>
+        <button class="chip-btn" data-upg="ram" aria-pressed="false">+128 GB RAM</button>
+      </div>
+      <p class="hint">Models that only run well with the upgrade get an <span class="chip upg">upgrade</span> label.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>What is it for?</h2></div>
+      <div class="chips" id="useCases"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Context length</h2><span class="ctx-value" id="ctxText">32K tokens</span></div>
+      <input type="range" id="ctx" min="0" max="5" step="1" value="3" aria-label="Context length">
+      <div class="ticks"><span>4K</span><span>8K</span><span>16K</span><span>32K</span><span>64K</span><span>128K</span></div>
+      <div class="field" style="margin-top:10px">KV cache (memory for the context)
+        <select id="kvq">
+          <option value="fp16">F16 — normal</option>
+          <option value="q8_0">Q8_0 — half the memory, almost no loss</option>
+          <option value="q4_0">Q4_0 — quarter, some loss</option>
+        </select>
+      </div>
+      <p class="hint">The list uses F16. The KV choice changes the detail panel and the plan.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Filters</h2><button class="btn ghost small" id="btnResetFilters">Reset</button></div>
+      <div class="two-sel">
+        <label class="field">Language<select id="fLang"><option value="">Any</option><option value="nl">Dutch</option><option value="en">English</option><option value="de">German</option><option value="fr">French</option><option value="zh">Chinese</option></select></label>
+        <label class="field">Size<select id="fSize"><option value="">Any</option><option value="s">Up to 8B</option><option value="m">8B – 35B</option><option value="l">35B – 100B</option><option value="xl">Over 100B</option></select></label>
+      </div>
+      <div class="chips" style="margin-bottom:10px">
+        <button class="chip-btn" data-cap="vision" aria-pressed="false">Sees images</button>
+        <button class="chip-btn" data-cap="tools" aria-pressed="false">Uses tools</button>
+      </div>
+      <div class="check-list">
+        <label><input type="checkbox" id="fLlama" checked> Runs in LM Studio (llama.cpp)</label>
+        <label><input type="checkbox" id="fGguf"> Known GGUF download</label>
+        <label><input type="checkbox" id="fNew"> Released in the last 60 days</label>
+        <label><input type="checkbox" id="fWatch"> On my watch list ☆</label>
+        <label><input type="checkbox" id="fLms"> Already in LM Studio</label>
+        <label><input type="checkbox" id="fOpen"> Open license (Apache, MIT)</label>
+        <label><input type="checkbox" id="fGpu"> Fits fully in VRAM</label>
+        <label><input type="checkbox" id="fPop" checked> Popular (10,000+ downloads)</label>
+      </div>
+    </section>
+  </aside>
+
+  <section class="center">
+    <div class="suggest" id="suggest" hidden></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="list-head">
+      <div class="count" id="countText"></div>
+      <div class="list-tools">
+        <button class="btn small primary" id="btnSuggest">Suggest for this PC</button>
+        <button class="btn small" id="btnExport" title="Save the list as a CSV file">Export CSV</button>
+        <label class="sort">Sort
+          <select id="sort">
+            <option value="score">Best match</option><option value="tps">Fastest</option><option value="mem">Smallest</option>
+            <option value="params">Largest</option><option value="ctx">Longest usable context</option><option value="added">Newest</option>
+            <option value="pop">Most downloaded</option><option value="name">Name</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="table">
+      <div class="cols" aria-hidden="true"><span></span><span>Model</span><span class="r">Size</span><span>Best file</span><span>Memory</span><span class="r">Speed</span><span>Verdict</span><span>Score</span></div>
+      <div class="rows" id="rows" role="listbox" aria-label="Models"></div>
+    </div>
+    <div class="tray" id="tray" hidden>
+      <span class="lbl">Selected:</span><span id="trayChips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="spacer"></span>
+      <button class="btn small ghost" id="btnClearCmp">Clear</button><button class="btn small" id="btnCompare">Compare</button><button class="btn small primary" id="btnToBattle">Battle</button>
+    </div>
+  </section>
+
+  <aside class="detail" id="detail" aria-live="polite"></aside>
+  <section class="view-pane" id="viewPane"></section>
+</main>
+
+<dialog id="dlgToken">
+  <div class="dlg-head"><h2>Hugging Face token</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body">
+    <p>The token lets TensorTailor read gated models (such as Llama and Gemma) and gives higher limits. Use a <b>read-only</b> token. Make one on huggingface.co → Settings → Access Tokens.</p>
+    <input type="password" id="tokInput" placeholder="hf_…" autocomplete="off" aria-label="Hugging Face token">
+    <p>The token stays only in this browser tab. It is never written into the HTML file and never goes to GitHub. Close the tab and it is gone.</p>
+  </div>
+  <div class="dlg-foot"><button class="btn" id="btnTokClear">Remove token</button><button class="btn primary" id="btnTokSave">Use token</button></div>
+</dialog>
+
+<dialog id="dlgImport">
+  <div class="dlg-head"><h2>Import your hardware</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body">
+    <p>1. Copy this line. 2. Paste it in PowerShell and press Enter. It copies your hardware, the VRAM in use right now and the free space on D: as text. 3. Paste that text in the box below.</p>
+    <pre class="snippet" id="psSnippet"></pre>
+    <div><button class="btn small" id="btnCopySnippet">Copy the PowerShell line</button></div>
+    <textarea id="importText" placeholder='{"ram_gb":128,"gpu_name":"NVIDIA GeForce RTX 3090","vram_gb":24,"vram_used_gb":1.1,"gpu_count":1,"cpu_threads":128,"free_d_gb":1800}' aria-label="Hardware text"></textarea>
+  </div>
+  <div class="dlg-foot"><button class="btn primary" id="btnImportApply">Use this hardware</button></div>
+</dialog>
+
+<dialog id="dlgCompare">
+  <div class="dlg-head"><h2>Compare models</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body" id="cmpBody"></div>
+</dialog>
+
+<dialog id="dlgAbout">
+  <div class="dlg-head"><h2>About TensorTailor</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body" id="aboutBody"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<!-- The engine: llmfit compiled to WebAssembly (gzip, base64) and its JavaScript glue.
+     Filled in by web/build.mjs. They run only inside a Web Worker. -->
+<script type="application/json" id="build-info">__BUILD_INFO__</script>
+<script type="text/plain" id="engine-glue">/*__ENGINE_GLUE__*/</script>
+<script type="application/octet-stream" id="engine-wasm">__ENGINE_WASM_GZ_B64__</script>
+<script type="application/octet-stream" id="catalog-meta">__CATALOG_META_GZ_B64__</script>
+
+<script>
+"use strict";
+
+/* ===================== Constants ===================== */
+const USE_CASES = [["all", "All"], ["general", "General"], ["coding", "Coding"], ["reasoning", "Reasoning"], ["chat", "Chat"], ["multimodal", "Images + text"], ["embedding", "Embedding"]];
+const CTX_STEPS = [4096, 8192, 16384, 32768, 65536, 131072];
+const QUANT_BPW = { Q8_0: 8.5, Q6_K: 6.56, Q5_K_M: 5.69, Q4_K_M: 4.85, Q3_K_M: 3.91, Q2_K: 3.0, F16: 16, BF16: 16 };
+const GPU_TABLE = [["5090", 32, 1792], ["4090", 24, 1008], ["3090 ti", 24, 1008], ["3090", 24, 936], ["7900 xtx", 24, 960], ["a6000", 48, 768], ["4080", 16, 717], ["3080", 10, 760], ["4070", 12, 504], ["3060", 12, 360]];
+const READING_PACE = 7, ROW_H = 60;
+const PLAIN = { well: { label: "Runs well", cls: "perfect" }, tight: { label: "Runs, but tight", cls: "marginal" }, slower: { label: "Runs, but slower", cls: "good" }, nofit: { label: "Won't fit", cls: "tight" } };
+const LLMFIT_LABEL = { perfect: "Perfect", good: "Good", marginal: "Marginal", tight: "Too tight" };
+const LEVEL = { Perfect: "perfect", Good: "good", Marginal: "marginal", TooTight: "tight" };
+const MODE = { Gpu: "GPU", TensorParallel: "GPU", MoeOffload: "MoE offload", CpuOffload: "CPU+GPU", CpuOnly: "CPU" };
+const OPEN_LICENSES = /^(apache-2\.0|mit|bsd|cc-by-4\.0|openrail|bigscience)/i;
+const GATED_LICENSES = /llama|gemma|mnpl|non-production|cc-by-nc|research/i;
+const LMS_URL = "http://127.0.0.1:1234";
+const LMS_FOLDER = "D:\\AI\\Models\\lm-studio";
+const DEFAULT_HW = { gpuName: "NVIDIA GeForce RTX 3090", vram: 24, gpus: 1, ram: 128, reserve: 1, ramBw: 90, cores: 64, cpuName: "AMD Ryzen Threadripper 3990X 64-Core Processor", freeDisk: null };
+
+/* ===================== State ===================== */
+const state = {
+  ready: false, busy: false, build: {}, info: {},
+  catalog: [], byName: new Map(), meta: new Map(),
+  hw: Object.assign({}, DEFAULT_HW), upg: { gpu: false, ram: false },
+  useCase: "all", ctxIdx: 3, kvq: "fp16", sort: "score", search: "",
+  show: { well: true, tight: true, slower: true, nofit: false },
+  f: { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true },
+  view: "models", tab: "overview", engine: "lms",
+  selected: null, compare: [], watch: new Set(), results: [], visible: [],
+  token: "", lms: { online: false, checked: false, models: [] },
+  queue: [], plan: { target: 30, users: 4, keep: 3 },
+  detail: new Map(), files: new Map(), srcIdx: {}
+};
+
+/* ===================== Helpers ===================== */
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const gb = (v) => (v == null || !isFinite(v) ? "—" : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " GB");
+const fmtParams = (p) => (!p ? "?" : p < 1 ? Math.round(p * 1000) + "M" : (p >= 100 ? p.toFixed(0) : p.toFixed(1).replace(/\.0$/, "")) + "B");
+const fmtCtx = (c) => (!c ? "—" : c >= 1024 ? Math.round(c / 1024) + "K" : String(c));
+const fmtT = (t) => (t < 10 ? t.toFixed(1) : t.toFixed(0));
+const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+const shortName = (id) => String(id).split("/").pop();
+function safeGet(store, key) { try { return window[store].getItem(key); } catch (e) { return null; } }
+function safeSet(store, key, val) { try { if (val === null) window[store].removeItem(key); else window[store].setItem(key, val); } catch (e) { /* storage blocked */ } }
+let toastTimer = 0;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
+async function copyText(text, what) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select(); try { ok = document.execCommand("copy"); } catch (e2) { ok = false; } ta.remove();
+  }
+  toast(ok ? what + " copied." : "Copy did not work. Select the text and press Ctrl+C.");
+}
+function saveFile(name, blob) { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function banner(text, kind) { const b = $("statusBanner"); if (!text) { b.hidden = true; return; } b.hidden = false; b.className = "status-banner " + (kind || "busy"); b.textContent = text; }
+
+/* ===================== Engine (Web Worker) ===================== */
+let worker = null, callId = 0;
+const pending = new Map();
+async function gunzipB64(id) {
+  const b64 = $(id).textContent.trim();
+  if (!b64 || b64.startsWith("__")) throw new Error("This page has no engine inside. Build it with web/build.mjs.");
+  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+const engineBytes = () => gunzipB64("engine-wasm");
+// Downloads, likes and languages per model (llmfit's engine drops them).
+async function loadMeta() {
+  try {
+    const rows = JSON.parse(new TextDecoder().decode(await gunzipB64("catalog-meta")));
+    for (const [name, downloads, likes, langs] of rows) state.meta.set(name, { downloads, likes, langs: langs ? langs.split(",") : [] });
+  } catch (e) { /* page still works, without popularity and languages */ }
+}
+function startWorker() {
+  const glue = $("engine-glue").textContent;
+  const src = glue + `
+;self.onmessage = async (e) => {
+  const { id, fn, args, bytes } = e.data;
+  try {
+    if (fn === "__init") { await wasm_bindgen({ module_or_path: bytes }); self.postMessage({ id, ok: true, value: JSON.parse(wasm_bindgen.engineInfo()) }); return; }
+    const out = wasm_bindgen[fn](...args);
+    self.postMessage({ id, ok: true, value: typeof out === "string" ? JSON.parse(out) : out });
+  } catch (err) { self.postMessage({ id, ok: false, error: String((err && err.message) || err) }); }
+};`;
+  const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" }));
+  worker = new Worker(url);
+  worker.onmessage = (e) => { const p = pending.get(e.data.id); if (!p) return; pending.delete(e.data.id); e.data.ok ? p.resolve(e.data.value) : p.reject(new Error(e.data.error)); };
+  worker.onerror = (e) => { banner("The engine stopped: " + (e.message || "unknown error") + ". Reload the page (F5).", "err"); };
+}
+function call(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    const id = ++callId; pending.set(id, { resolve, reject });
+    const msg = { id, fn, args };
+    if (fn === "__init") { msg.bytes = args[0]; msg.args = []; worker.postMessage(msg, [args[0].buffer]); } else worker.postMessage(msg);
+  });
+}
+
+/* ===================== Hardware ===================== */
+function backendFor(name, gpus) {
+  if (!gpus) return "cpu_x86";
+  return /nvidia|geforce|rtx|quadro|tesla/i.test(name) ? "cuda" : "vulkan";
+}
+function hwInput(withUpgrade) {
+  const h = state.hw;
+  const gpus = h.gpus + (withUpgrade && state.upg.gpu && h.gpus > 0 ? 1 : 0);
+  const ram = h.ram + (withUpgrade && state.upg.ram ? 128 : 0);
+  const perCard = gpus > 0 ? Math.max(0.5, h.vram - h.reserve / gpus) : 0;
+  return { gpu_name: h.gpuName, vram_gb: perCard, gpu_count: gpus, ram_gb: ram, cpu_cores: h.cores, cpu_name: h.cpuName, backend: backendFor(h.gpuName, gpus), ram_bandwidth_gbps: h.ramBw };
+}
+function usableVram(withUpgrade) { const x = hwInput(withUpgrade); return x.vram_gb * x.gpu_count; }
+function hwKey(withUpgrade) { return JSON.stringify(hwInput(withUpgrade)) + "|" + CTX_STEPS[state.ctxIdx]; }
+function lookupGpu(name) { const n = name.toLowerCase(); return GPU_TABLE.find(([k]) => n.includes(k)) || null; }
+
+/* ===================== Turning engine rows into the page's view ===================== */
+function ucKey(u) { return String(u || "general").toLowerCase(); }
+function capsOf(c) {
+  const out = [];
+  for (const x of c.capabilities || []) { const s = String(x).toLowerCase(); if (s.includes("vision") || s.includes("image")) out.push("vision"); if (s.includes("tool")) out.push("tools"); }
+  if (String(c.use_case || "").toLowerCase().includes("vision") || String(c.use_case || "").toLowerCase().includes("multimodal")) out.push("vision");
+  return out;
+}
+const modelCache = new Map();
+function modelView(name, row, F) {
+  let m = modelCache.get(name);
+  if (m) return m;
+  const c = state.byName.get(name) || { name };
+  const meta = state.meta.get(name) || { downloads: 0, likes: 0, langs: [] };
+  const params = c.parameters_raw ? c.parameters_raw / 1e9 : parseFloat(c.parameter_count) * (/M$/i.test(c.parameter_count || "") ? 0.001 : 1) || 0;
+  m = {
+    id: name, name: shortName(name), provider: c.provider || name.split("/")[0], params,
+    active: c.active_parameters ? c.active_parameters / 1e9 : null, moe: !!c.is_moe,
+    ctx: c.context_length || 0, uses: [ucKey(row[F.use_case])], license: c.license || "unknown",
+    gated: GATED_LICENSES.test(c.license || ""), langs: meta.langs, caps: capsOf(c),
+    added: c.release_date || "", downloads: meta.downloads, likes: meta.likes, format: c.format || "",
+    gguf: (c.gguf_sources || []).map((s) => ({ repo: s.repo, provider: s.provider })), runtime: row[F.runtime]
+  };
+  modelCache.set(name, m);
+  return m;
+}
+function plainOf(level, mode) {
+  if (level === "tight") return "nofit";
+  if (mode === "GPU") return level === "marginal" ? "tight" : "well";
+  return "slower";
+}
+function bestView(row, F, vram) {
+  const need = row[F.memory_required_gb], pool = row[F.memory_available_gb];
+  const mode = MODE[row[F.run_mode]] || row[F.run_mode], level = LEVEL[row[F.fit_level]] || "tight";
+  const conf = row[F.estimate_confidence];
+  const measured = row[F.measured_tps];
+  const tps = row[F.estimated_tps] || 0;
+  let inGpu = need, inRam = 0;
+  if (mode === "CPU") { inGpu = 0; inRam = need; }
+  else if (mode === "MoE offload") { inRam = row[F.moe_offloaded_gb] || 0; inGpu = Math.max(0, need - inRam); }
+  else if (mode === "CPU+GPU") { inGpu = Math.min(need, vram); inRam = Math.max(0, need - vram); }
+  const band = String(conf).startsWith("measured") ? [0.95, 1.05] : mode === "GPU" ? [0.75, 1] : [0.6, 1];
+  const sc = row[F.score_components] || [0, 0, 0, 0];
+  return {
+    q: row[F.best_quant], need, pool, vram, mode, level, tps, lo: tps * band[0], hi: tps * band[1],
+    util: (row[F.utilization_pct] || 0) / 100, inGpu, inRam, score: row[F.score], conf, measured,
+    parts: { quality: sc[0], speed: sc[1], fit: sc[2], context: sc[3] }, plain: plainOf(level, mode)
+  };
+}
+function toResults(lite, vram) {
+  const F = {}; lite.fields.forEach((f, i) => { F[f] = i; });
+  return lite.rows.map((row) => {
+    const m = modelView(row[F.name], row, F);
+    return { m, best: bestView(row, F, vram), ctx: row[F.effective_context_length], ctxFit: row[F.usable_context] };
+  });
+}
+
+/* ===================== Compute ===================== */
+let computeSeq = 0;
+async function recompute() {
+  if (!state.ready) return;
+  const seq = ++computeSeq;
+  const ctx = CTX_STEPS[state.ctxIdx];
+  const upgOn = state.upg.gpu || state.upg.ram;
+  banner(`Calculating ${state.catalog.length.toLocaleString("en")} models for this hardware…`, "busy");
+  const t0 = performance.now();
+  try {
+    const now = await call("fitLite", JSON.stringify(hwInput(upgOn)), ctx);
+    let results = toResults(now, usableVram(upgOn));
+    if (upgOn) {
+      const base = await call("fitLite", JSON.stringify(hwInput(false)), ctx);
+      const baseMap = new Map(toResults(base, usableVram(false)).map((r) => [r.m.id, r.best.plain]));
+      for (const r of results) { const b = baseMap.get(r.m.id) || "nofit"; r.upgradeOnly = (b === "nofit" || b === "slower") && (r.best.plain === "well" || r.best.plain === "tight"); }
+    }
+    if (seq !== computeSeq) return;
+    state.results = results;
+    state.detail.clear();
+    banner("");
+    state.lastMs = Math.round(performance.now() - t0);
+    renderList();
+  } catch (e) {
+    banner("The engine could not calculate: " + e.message, "err");
+  }
+}
+let recomputeTimer = 0;
+function recomputeSoon() { clearTimeout(recomputeTimer); recomputeTimer = setTimeout(recompute, 250); }
+
+/* ===================== Render: sidebar ===================== */
+function renderUseCases() { $("useCases").innerHTML = USE_CASES.map(([k, l]) => `<button class="chip-btn" data-uc="${k}" aria-pressed="${state.useCase === k}">${l}</button>`).join(""); }
+function renderUsable() {
+  const h = state.hw;
+  $("usableText").innerHTML = h.gpus === 0 ? "No GPU: models run on the CPU and RAM." :
+    `Usable for models: <b>${h.vram * h.gpus} GB − ${h.reserve} GB = ${gb(usableVram(false))}</b> VRAM` +
+    (state.upg.gpu || state.upg.ram ? `<br>With upgrade: <b>${gb(usableVram(true))}</b> VRAM · <b>${hwInput(true).ram_gb} GB</b> RAM` : "");
+  const on = state.upg.gpu || state.upg.ram;
+  $("upgTag").textContent = on ? "on" : "off"; $("upgTag").className = "tag" + (on ? " okay" : "");
+  document.querySelectorAll("[data-upg]").forEach((b) => b.setAttribute("aria-pressed", String(state.upg[b.dataset.upg])));
+}
+
+/* ===================== Render: list ===================== */
+function memBar(b) {
+  const scale = b.vram > 0 ? b.vram : b.pool || 1;
+  const gpuPart = clamp((Math.min(b.inGpu, scale) / scale) * 100, 0, 100);
+  const ramFlag = b.inRam > 0.05 ? `<span class="seg-ram" style="width:${clamp(100 - gpuPart, 4, 100).toFixed(1)}%"></span>` : "";
+  return `<div class="bar" aria-hidden="true"><span class="seg-w" style="width:${gpuPart.toFixed(1)}%"></span>${ramFlag}</div>`;
+}
+function memLabel(b) {
+  if (b.vram === 0) return `${gb(b.need)} in RAM`;
+  if (b.inRam > 0.05) return `${gb(b.inGpu)} VRAM + ${gb(b.inRam)} RAM`;
+  return `${gb(b.need)} of ${gb(b.vram)}`;
+}
+function ring(score) {
+  const r = 17, c = 2 * Math.PI * r, v = clamp(score || 0, 0, 100);
+  const col = v >= 70 ? "var(--perfect)" : v >= 50 ? "var(--good)" : v >= 30 ? "var(--marginal)" : "var(--tight)";
+  return `<svg class="ring" width="42" height="42" viewBox="0 0 42 42" role="img" aria-label="Score ${v.toFixed(0)}"><circle cx="21" cy="21" r="${r}" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="21" cy="21" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * v / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 21 21)"/><text x="21" y="25" text-anchor="middle">${v.toFixed(0)}</text></svg>`;
+}
+const verdict = (p) => `<span class="badge ${PLAIN[p].cls}">${PLAIN[p].label}</span>`;
+const speedRange = (b) => (!b || b.tps <= 0 ? "—" : `${fmtT(b.lo)}–${fmtT(b.hi)}`);
+const isNew = (m) => { if (!m.added) return false; const d = Date.parse(m.added); return isFinite(d) && Date.now() - d < 60 * 86400000; };
+// LM Studio key (e.g. "mistralai/codestral-22b-v0.1") vs catalog name (e.g.
+// "mistralai/Codestral-22B-v0.1"): same name, or the key ends with the model's
+// short name. A fine-tune ("huihui-qwen3.8-27b-abliterated") does not match its base.
+function lmsMatches(lmsKey, m) {
+  const a = norm(m.name), b = norm(lmsKey), c = norm(shortName(lmsKey));
+  return a.length > 5 && (c === a || b === norm(m.id) || b.endsWith(a));
+}
+// Also check the maker: a name match from another publisher only counts when the
+// short names are exactly equal (so "huihui-ai/..." does not pair with "wangzhang/...").
+function lmsPairOk(x, m) {
+  if (!lmsMatches(x.id, m)) return false;
+  const pub = String(x.publisher || "").toLowerCase();
+  return (pub && m.id.toLowerCase().startsWith(pub + "/")) || norm(m.name) === norm(shortName(x.id)) || !pub;
+}
+function inLms(m) {
+  if (!state.lms.models.length) return null;
+  return state.lms.models.find((x) => lmsPairOk(x, m)) || null;
+}
+function catalogFor(x) {
+  const cands = state.results.filter((r) => lmsPairOk(x, r.m));
+  const pub = String(x.publisher || "").toLowerCase();
+  return cands.find((r) => pub && r.m.id.toLowerCase().startsWith(pub + "/")) || cands[0] || null;
+}
+function rowHTML(r) {
+  const m = r.m, b = r.best, lms = state.lms.online ? inLms(m) : null;
+  return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
+    <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)" aria-label="Watch ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
+    <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? '<span class="chip moe">MoE</span>' : ""}${r.upgradeOnly ? '<span class="chip upg">upgrade</span>' : ""}</div>
+      <div class="sub">${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
+    <div class="num">${fmtParams(m.params)}</div>
+    <div><span class="quant">${esc(b.q)}</span></div>
+    <div class="membar">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
+    <div class="num tps">${speedRange(b)}<small>tok/s</small></div>
+    <div>${verdict(b.plain)}<div class="mode">${b.mode}</div></div>
+    <div>${ring(b.score)}</div></div>`;
+}
+const sizeBucket = (p) => (p <= 8 ? "s" : p <= 35 ? "m" : p <= 100 ? "l" : "xl");
+function passFilters(r) {
+  const m = r.m, s = state.search.trim().toLowerCase(), f = state.f;
+  if (state.useCase !== "all" && !m.uses.includes(state.useCase)) return false;
+  if (s && !/^https?:/.test(s) && !m.id.toLowerCase().includes(s) && !(m.provider || "").toLowerCase().includes(s)) return false;
+  if (f.llama && m.runtime !== "LlamaCpp") return false;
+  if (f.gguf && !m.gguf.length) return false;
+  if (f.lang && !m.langs.includes(f.lang)) return false;
+  if (f.size && sizeBucket(m.params) !== f.size) return false;
+  for (const c of f.caps) if (!m.caps.includes(c)) return false;
+  if (f.isNew && !isNew(m)) return false;
+  if (f.watch && !state.watch.has(m.id)) return false;
+  if (f.lms && !inLms(m)) return false;
+  if (f.open && !OPEN_LICENSES.test(m.license)) return false;
+  if (f.gpu && r.best.mode !== "GPU") return false;
+  if (f.pop && m.downloads < 10000) return false;
+  return true;
+}
+function sortResults(list) {
+  const order = { well: 0, tight: 0, slower: 0, nofit: 1 };
+  const by = {
+    score: (a, b) => b.best.score - a.best.score || b.m.downloads - a.m.downloads,
+    tps: (a, b) => b.best.tps - a.best.tps, mem: (a, b) => a.best.need - b.best.need,
+    params: (a, b) => b.m.params - a.m.params, ctx: (a, b) => b.ctxFit - a.ctxFit,
+    added: (a, b) => String(b.m.added).localeCompare(String(a.m.added)), pop: (a, b) => b.m.downloads - a.m.downloads,
+    name: (a, b) => a.m.name.localeCompare(b.m.name)
+  }[state.sort];
+  return list.sort((a, b) => (order[a.best.plain] - order[b.best.plain]) || by(a, b));
+}
+function renderTiles(base) {
+  const counts = { well: 0, tight: 0, slower: 0, nofit: 0 }, extra = { well: 0, tight: 0, slower: 0, nofit: 0 };
+  base.forEach((r) => { counts[r.best.plain]++; if (r.upgradeOnly) extra[r.best.plain]++; });
+  $("tiles").innerHTML = ["well", "tight", "slower", "nofit"].map((k) => `<button class="tile ${PLAIN[k].cls}" data-plain="${k}" aria-pressed="${state.show[k]}" title="Show or hide: ${PLAIN[k].label}"><span class="n">${counts[k].toLocaleString("en")}${extra[k] ? `<small>+${extra[k]} by upgrade</small>` : ""}</span><span class="l">${PLAIN[k].label}</span></button>`).join("");
+}
+function renderRowsWindow() {
+  const el = $("rows"), n = state.visible.length;
+  if (!n) return;
+  const top = el.scrollTop, h = el.clientHeight || 600;
+  const start = Math.max(0, Math.floor(top / ROW_H) - 8), end = Math.min(n, Math.ceil((top + h) / ROW_H) + 8);
+  el.innerHTML = `<div style="height:${n * ROW_H}px;position:relative"><div style="position:absolute;top:${start * ROW_H}px;left:0;right:0">${state.visible.slice(start, end).map(rowHTML).join("")}</div></div>`;
+}
+function renderList() {
+  const base = state.results.filter(passFilters);
+  renderTiles(base);
+  state.visible = sortResults(base.filter((r) => state.show[r.best.plain]));
+  const hidden = base.length - state.visible.length;
+  $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden by the tiles` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` in ${(state.lastMs / 1000).toFixed(1)} s` : "");
+  const el = $("rows");
+  if (!state.visible.length) {
+    const s = state.search.trim();
+    el.innerHTML = /^(https?:\/\/huggingface\.co\/)?[\w.-]+\/[\w.-]+\/?$/.test(s)
+      ? `<div class="lookup"><h3>Not in llmfit's list: ${esc(s.replace(/^https?:\/\/huggingface\.co\//, ""))}</h3><p>Open it on Hugging Face. A live check of models outside the list comes in a later version.</p><a class="btn small" target="_blank" rel="noopener" href="https://huggingface.co/${esc(s.replace(/^https?:\/\/huggingface\.co\//, ""))}">Open on Hugging Face ↗</a></div>`
+      : `<div class="empty">No models match. Turn on more tiles above, reset the filters, or clear the search.</div>`;
+  } else {
+    if (el.scrollTop > state.visible.length * ROW_H) el.scrollTop = 0;
+    renderRowsWindow();
+  }
+  if ((!state.selected || !state.results.some((r) => r.m.id === state.selected)) && state.visible.length) state.selected = state.visible[0].m.id;
+  renderUsable(); renderDetail(); renderTray(); renderNav();
+  if (state.view !== "models") renderView();
+}
+
+/* ===================== Suggest ===================== */
+function renderSuggest() {
+  const ok = state.results.filter((r) => passFilters(r) && r.best.plain !== "nofit" && !r.m.uses.includes("embedding"));
+  const bestOverall = ok.filter((r) => r.best.lo >= 12).sort((a, b) => b.best.score - a.best.score)[0];
+  const smartest = ok.filter((r) => r.best.lo >= READING_PACE).sort((a, b) => b.best.parts.quality - a.best.parts.quality || b.best.score - a.best.score)[0];
+  const fastest = ok.filter((r) => r.best.parts.quality >= 60).sort((a, b) => b.best.tps - a.best.tps)[0];
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k">${k}</span><span class="n" title="${esc(r.m.id)}">${esc(r.m.name)}</span><span class="m">${esc(r.best.q)} · ${speedRange(r.best)} tok/s · ${why}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">Show</button><button class="btn small" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+    : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
+  const el = $("suggest");
+  el.innerHTML = card("Best overall", bestOverall, "highest score at 12+ tok/s") + card("Smartest", smartest, "best quality at reading pace") + card("Fastest", fastest, "quickest that still answers well") + `<button class="btn ghost small" id="btnCloseSuggest" aria-label="Close suggestions" style="align-self:start">✕</button>`;
+  el.hidden = false;
+}
+
+/* ===================== Detail ===================== */
+let typingTimer = 0;
+function stopTyping() { clearInterval(typingTimer); typingTimer = 0; }
+function selectedResult() { return state.results.find((x) => x.m.id === state.selected) || null; }
+function detailKey(id) { return id + "|" + hwKey(state.upg.gpu || state.upg.ram) + "|" + state.kvq; }
+async function loadDetail(r) {
+  const key = detailKey(r.m.id);
+  if (state.detail.has(key)) return state.detail.get(key);
+  const hw = JSON.stringify(hwInput(state.upg.gpu || state.upg.ram));
+  const ctx = r.ctx || CTX_STEPS[state.ctxIdx];
+  const entry = { loading: true };
+  state.detail.set(key, entry);
+  try {
+    const [detail, ladder] = await Promise.all([call("fitDetail", hw, CTX_STEPS[state.ctxIdx], r.m.id), call("ladder", hw, r.m.id, ctx, state.kvq)]);
+    let plan = null, planErr = null;
+    try { plan = await call("plan", hw, r.m.id, ctx, /^Q\d|^F16|^BF16/i.test(r.best.q) ? r.best.q : null, state.kvq, null); } catch (e) { planErr = e.message; }
+    Object.assign(entry, { loading: false, detail, ladder, plan, planErr });
+  } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
+  if (state.selected === r.m.id) renderDetail();
+  return entry;
+}
+function notesFor(r, d) {
+  const m = r.m, b = r.best, n = [];
+  if (b.mode === "MoE offload") n.push(`Mixture of experts: memory follows all ${fmtParams(m.params)} parameters, speed follows the active ones. Unused experts wait in RAM.`);
+  if (b.mode === "CPU+GPU") n.push(`Too big for VRAM. ${gb(b.inRam)} goes to system RAM, which is much slower than VRAM.`);
+  if (b.tps > 0 && b.lo < READING_PACE) n.push(`Slower than reading pace (${READING_PACE} tok/s). Fine for jobs that may run in the background.`);
+  if (m.runtime && m.runtime !== "LlamaCpp") n.push(`This model needs ${m.runtime}, not llama.cpp. LM Studio on Windows cannot run it.`);
+  if (m.gated) n.push(`License "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
+  for (const t of (d && d.detail && d.detail.fit.notes) || []) n.push("llmfit: " + t);
+  return n;
+}
+function poolBar(b, d) {
+  const total = b.mode === "GPU" ? b.vram : b.pool || b.need;
+  const p = (v) => clamp((v / total) * 100, 0, 100).toFixed(2) + "%";
+  let weights = b.need, kv = 0;
+  const plan = d && d.plan;
+  if (plan) { weights = Math.min(b.need, plan.disk_size_gb); const alt = (plan.kv_alternatives || []).find((a) => a.kv_quant === state.kvq) || (plan.kv_alternatives || [])[0]; if (alt) kv = Math.min(alt.kv_cache_gb, Math.max(0, b.need - weights)); }
+  const engine = Math.max(0, b.need - weights - kv);
+  const gpuW = Math.min(weights, b.inGpu), ramW = Math.max(0, weights - gpuW);
+  const vMark = b.mode === "GPU" || !b.vram ? "" : `<span style="position:absolute;left:${p(b.vram)};top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.6"></span>`;
+  return `<div class="pool"><div class="bar"><span class="seg-w" style="width:${p(gpuW)}"></span><span class="seg-ram" style="width:${p(ramW)}"></span><span class="seg-kv" style="width:${p(kv)}"></span><span class="seg-oh" style="width:${p(engine)}"></span>${vMark}</div>
+    <div class="pool-scale"><span>0</span>${b.mode !== "GPU" && b.vram ? `<span>VRAM ends at ${gb(b.vram)}</span>` : ""}<span>${gb(total)} ${b.mode === "GPU" ? "usable VRAM" : "memory pool"}</span></div>
+    <div class="pool-legend"><span><i class="seg-w"></i>Model file ${gb(weights)}</span>${ramW > 0.05 ? `<span><i class="seg-ram"></i>of which in RAM ${gb(ramW)}</span>` : ""}${plan ? `<span><i class="seg-kv"></i>KV cache ${gb(kv)}</span><span><i class="seg-oh"></i>Engine + other ${gb(engine)}</span>` : ""}</div></div>`;
+}
+function mathLine(b) {
+  if (b.mode === "GPU") return `${gb(b.vram)} usable VRAM − ${gb(b.need)} needed = ${gb(b.vram - b.need)} free`;
+  if (b.level === "tight") return `${gb(b.need)} needed > ${gb(b.pool)} available: does not fit`;
+  if (b.mode === "CPU") return `${gb(b.need)} needed from ${gb(b.pool)} RAM (no GPU)`;
+  return `${gb(b.need)} needed − ${gb(b.vram)} VRAM = ${gb(b.inRam)} in RAM (slower)`;
+}
+function tabOverview(r, d) {
+  const b = r.best, basis = d && d.detail ? d.detail.fit.estimate_basis : null;
+  const ladder = d && d.ladder;
+  return `<section class="card">
+    <div class="verdict-big">${verdict(b.plain)}<span class="tag">${b.mode}</span><span class="tag">llmfit: ${LLMFIT_LABEL[b.level]}</span><span class="tag ${String(b.conf).startsWith("measured") ? "okay" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
+    <div class="stats">
+      <div class="stat"><div class="k">Speed tok/s</div><div class="v">${speedRange(b)}</div></div>
+      <div class="stat"><div class="k">Memory</div><div class="v">${b.need.toFixed(1)} <small>GB</small></div></div>
+      <div class="stat"><div class="k">Best file</div><div class="v" style="font-size:14px" title="${esc(b.q)}">${esc(b.q)}</div></div>
+      <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Usable context</div><div class="v">${fmtCtx(r.ctxFit)}</div></div>
+    </div>
+    <div class="math">${mathLine(b)}</div>
+    ${poolBar(b, d)}
+    ${basis ? `<p class="hint">Speed basis: ${esc(basis.method.replace(/_/g, " "))}${basis.gpu_bandwidth_gbps ? ` · GPU ${basis.gpu_bandwidth_gbps} GB/s` : ""}${basis.ddr_bandwidth_gbps ? ` · RAM ${basis.ddr_bandwidth_gbps} GB/s` : ""} · efficiency ${basis.efficiency} · at ${fmtCtx(basis.assumed_context)} context.</p>` : ""}
+    <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button class="btn small" id="btnPreview" ${b.tps <= 0 ? "disabled" : ""}>Preview speed</button><small>Shows how fast text appears at ${b.tps > 0 ? fmtT((b.lo + b.hi) / 2) : "—"} tok/s.</small></div>
+    <div class="typing" id="typing" hidden></div>
+  </section>
+  <section class="card"><div class="card-head"><h2>Which file fits?</h2><small>llmfit planner · ${fmtCtx(r.ctx)} context · KV ${state.kvq.toUpperCase()}</small></div>
+    ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : d.error ? `<div class="warn-box">${esc(d.error)}</div>` : `<table class="ladder"><thead><tr><th>Quant</th><th class="r">File</th><th>Runs on</th><th>Verdict</th><th class="r">tok/s</th></tr></thead><tbody>${ladder.map((x) => {
+      if (x.error) return `<tr><td><span class="quant">${esc(x.quant)}</span></td><td colspan="4"><small>${esc(x.error)}</small></td></tr>`;
+      const c = x.plan.current, lv = LEVEL[c.fit_level] || "tight", md = MODE[c.run_mode] || c.run_mode, t = c.estimated_tps;
+      return `<tr class="${x.quant === b.q ? "pick" : ""}"><td><span class="quant">${esc(x.quant)}</span></td><td class="r">${gb(x.plan.disk_size_gb)}</td><td>${md}</td><td>${verdict(plainOf(lv, md))}</td><td class="r">${t > 0 ? fmtT(t) : "—"}</td></tr>`;
+    }).join("")}</tbody></table><p class="hint">llmfit's planner keeps extra room, so it can be stricter than the list: a file the list puts in VRAM may show "CPU+GPU" here.</p>`}
+  </section>
+  <section class="card"><div class="card-head"><h2>Why this result</h2></div><ul class="notes">${notesFor(r, d).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section>`;
+}
+
+/* ---------- Files tab: live from Hugging Face ---------- */
+function hfHeaders() { return state.token ? { Authorization: "Bearer " + state.token } : {}; }
+async function hfJson(url) {
+  const res = await fetch(url, { headers: hfHeaders() });
+  if (res.status === 401 || res.status === 403) throw new Error("This repository is gated or private. Accept its license on Hugging Face and set your token.");
+  if (res.status === 429) throw new Error("Hugging Face asks to slow down (too many requests). Wait a minute, or set your token.");
+  if (!res.ok) throw new Error("Hugging Face answered " + res.status + ".");
+  return res.json();
+}
+async function loadFiles(repo) {
+  const cached = state.files.get(repo);
+  if (cached && (cached.loading || Date.now() - cached.at < 12 * 3600000)) return cached;
+  const entry = { loading: true, at: Date.now() };
+  state.files.set(repo, entry);
+  try {
+    const tree = await hfJson(`https://huggingface.co/api/models/${repo}/tree/main?recursive=true`);
+    entry.files = tree.filter((t) => t.type === "file").map((t) => ({ path: t.path, size: (t.lfs ? t.lfs.size : t.size) / 1e9, sha256: t.lfs ? t.lfs.oid : null }));
+    entry.loading = false;
+  } catch (e) { entry.loading = false; entry.error = e.message; }
+  renderDetail();
+  return entry;
+}
+async function searchGgufCopies(m) {
+  const key = "search:" + m.id;
+  const entry = { loading: true, at: Date.now() };
+  state.files.set(key, entry); renderDetail();
+  try {
+    const list = await hfJson(`https://huggingface.co/api/models?library=gguf&search=${encodeURIComponent(m.name)}&sort=downloads&limit=8`);
+    entry.repos = list.map((x) => ({ repo: x.id || x.modelId, downloads: x.downloads || 0 }));
+    entry.loading = false;
+  } catch (e) { entry.loading = false; entry.error = e.message; }
+  renderDetail();
+}
+function quantOfFile(path) { const mm = /(IQ\d_[A-Z]+|Q\d_K_[SMLP]|Q\d_K|Q\d_\d|Q\d_[A-Z]|BF16|F16|F32|MXFP4)/i.exec(path); return mm ? mm[1].toUpperCase() : ""; }
+function fileKind(path) {
+  const p = path.toLowerCase();
+  if (p.includes("mmproj")) return ["vision projector — needed for images", "tag okay"];
+  if (/mtp|draft/.test(p) && p.endsWith(".gguf")) return ["draft head — optional speed-up", "tag"];
+  if (p.endsWith(".gguf")) return ["model file", "tag"];
+  if (/\.(bin|pt|pth|pkl|ckpt)$/.test(p)) return ["pickle file — can run code", "tag warnish"];
+  if (p.endsWith(".safetensors")) return ["safetensors", "tag"];
+  if (p.endsWith(".imatrix") || p.includes("imatrix")) return ["helper file — not a model", "tag"];
+  return ["other", "tag"];
+}
+function tabFiles(r) {
+  const m = r.m, b = r.best;
+  const sources = m.gguf.length ? m.gguf : [];
+  const idx = clamp(state.srcIdx[m.id] || 0, 0, Math.max(0, sources.length - 1));
+  const custom = state.srcIdx["repo:" + m.id];
+  const repo = custom || (sources[idx] && sources[idx].repo) || null;
+  const search = state.files.get("search:" + m.id);
+  let html = `<section class="card"><div class="card-head"><h2>Files on Hugging Face</h2><span class="tag">kept 12 h</span></div>`;
+  if (sources.length) html += `<label class="field" style="margin-bottom:10px">GGUF source<select id="srcSel">${sources.map((s, i) => `<option value="${i}" ${!custom && i === idx ? "selected" : ""}>${esc(s.repo)}</option>`).join("")}${custom ? `<option selected>${esc(custom)}</option>` : ""}</select></label>`;
+  else html += `<p class="hint" style="margin-top:0">llmfit knows no GGUF copy of this model. Search Hugging Face for one:</p><button class="btn small" id="btnFindGguf">Find GGUF copies</button>`;
+  if (search) {
+    html += search.loading ? '<div class="loading">Searching Hugging Face…</div>' : search.error ? `<div class="warn-box">${esc(search.error)}</div>` :
+      search.repos.length ? `<div style="margin-top:8px">${search.repos.map((x) => `<div class="folder-row"><code>${esc(x.repo)}</code><small>${x.downloads.toLocaleString("en")} downloads</small><button class="btn small" data-userepo="${esc(x.repo)}">Use</button></div>`).join("")}</div>` : '<p class="hint">No GGUF copies found.</p>';
+  }
+  if (repo) {
+    const f = state.files.get(repo);
+    html += `<div class="folder-row"><code>${esc(repo)}</code><a class="btn small" href="https://huggingface.co/${esc(repo)}" target="_blank" rel="noopener">Open ↗</a>${!f ? `<button class="btn small primary" data-loadfiles="${esc(repo)}">Check files</button>` : ""}</div>`;
+    if (f && f.loading) html += '<div class="loading">Reading the file list from Hugging Face…</div>';
+    if (f && f.error) html += `<div class="warn-box">${esc(f.error)}</div>`;
+    if (f && f.files) {
+      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja)$/i.test(x.path) && !/^\./.test(x.path)).sort((a, c) => c.size - a.size);
+      html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th></th></tr></thead><tbody>${shown.map((x) => {
+        const k = fileKind(x.path), q = quantOfFile(x.path), pick = q && q === String(b.q).toUpperCase();
+        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}${pick ? " ⭐" : ""}</div><span class="${k[1]}">${k[0]}</span>${x.sha256 ? `<div class="hash">SHA-256 ${esc(x.sha256)}</div>` : ""}</td><td class="r">${gb(x.size)}</td><td class="r"><button class="btn small" data-copy="${esc(`hf download ${repo} "${x.path}" --local-dir "${LMS_FOLDER}\\${repo.replace("/", "\\")}"`)}" data-what="Download command">Copy command</button></td></tr>`;
+      }).join("")}</tbody></table><p class="hint">⭐ = the quant llmfit picks for this PC (${esc(b.q)}). The command saves into <code>${esc(LMS_FOLDER)}</code>, so LM Studio sees the file at once. Direct download inside the page comes in the next step.</p>`;
+      const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
+      html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>SHA-256 of each large file is shown; the page will check it after a download.</li></ul>`;
+    }
+  }
+  return html + "</section>";
+}
+
+/* ---------- Run tab ---------- */
+function cmdLine(who, text) { return `<div class="cmd"><span class="who">${who}</span><code title="${esc(text)}">${esc(text)}</code><button class="btn small" data-copy="${esc(text)}" data-what="Command">Copy</button></div>`; }
+function tabRun(r) {
+  const m = r.m, b = r.best, lms = inLms(m);
+  const repo = state.srcIdx["repo:" + m.id] || (m.gguf[clamp(state.srcIdx[m.id] || 0, 0, Math.max(0, m.gguf.length - 1))] || {}).repo || null;
+  const f = repo ? state.files.get(repo) : null;
+  const file = f && f.files ? (f.files.find((x) => x.path.endsWith(".gguf") && quantOfFile(x.path) === String(b.q).toUpperCase()) || {}).path : null;
+  const ctx = r.ctx || CTX_STEPS[state.ctxIdx], kv = state.kvq;
+  const lmsId = lms ? lms.id : (m.name || "").toLowerCase();
+  let body = "", base = "";
+  if (state.engine === "lms") {
+    base = "http://127.0.0.1:1234/v1";
+    body = (lms ? `<div class="ok-box">Already in LM Studio as <b>${esc(lms.id)}</b>.</div>` : repo ? cmdLine("download", `lms get ${repo}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) +
+      cmdLine("load", `lms load ${lmsId} --gpu max --context-length ${ctx}`) + cmdLine("server", "lms server start") +
+      (kv !== "fp16" ? `<p class="hint">KV cache ${kv.toUpperCase()}: in LM Studio open the model's load settings and set K and V cache quantization to ${kv.toUpperCase()}.</p>` : "");
+  } else if (state.engine === "llama") {
+    base = "http://127.0.0.1:8080/v1";
+    const path = file ? `${LMS_FOLDER}\\${repo.replace("/", "\\")}\\${file.replace(/\//g, "\\")}` : "<path to the .gguf file>";
+    body = cmdLine("start", `llama-server -m "${path}" -ngl 99 -c ${ctx} -fa on` + (kv !== "fp16" ? ` --cache-type-k ${kv} --cache-type-v ${kv}` : "") + " --host 127.0.0.1 --port 8080") + `<p class="hint">Needs a separate llama.cpp. LM Studio already contains llama.cpp.</p>`;
+  } else {
+    base = "http://127.0.0.1:11434/v1";
+    body = (kv !== "fp16" ? cmdLine("setting", `$env:OLLAMA_FLASH_ATTENTION = "1"; $env:OLLAMA_KV_CACHE_TYPE = "${kv}"`) : "") + (repo ? cmdLine("run", `ollama run hf.co/${repo}:${b.q}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) + `<p class="hint">Needs Ollama.</p>`;
+  }
+  const opencode = JSON.stringify({ provider: { local: { npm: "@ai-sdk/openai-compatible", options: { baseURL: base }, models: { [lmsId]: {} } } } }, null, 2);
+  const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = "${lmsId}"`;
+  return `<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
+    <p class="hint" style="margin-top:0">${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)} · context ${fmtCtx(ctx)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
+  <section class="card"><div class="card-head"><h2>Use it in an AI agent</h2></div>
+    <p class="hint" style="margin-top:0">Base address <code>${base}</code> · model <code>${esc(lmsId)}</code></p>
+    <div class="card-head" style="margin:10px 0 0"><small>OpenCode — opencode.json</small><button class="btn small" data-copy="${esc(opencode)}" data-what="OpenCode settings">Copy</button></div><pre class="block">${esc(opencode)}</pre>
+    <div class="card-head" style="margin:10px 0 0"><small>Codex — config.toml</small><button class="btn small" data-copy="${esc(codex)}" data-what="Codex settings">Copy</button></div><pre class="block">${esc(codex)}</pre></section>`;
+}
+
+/* ---------- Plan tab: llmfit planner ---------- */
+async function loadTargetPlan(r) {
+  const key = "target|" + detailKey(r.m.id) + "|" + state.plan.target;
+  if (state.detail.has(key)) return;
+  const entry = { loading: true }; state.detail.set(key, entry);
+  try { entry.plan = await call("plan", JSON.stringify(hwInput(state.upg.gpu || state.upg.ram)), r.m.id, r.ctx || CTX_STEPS[state.ctxIdx], /^Q\d|^F16|^BF16/i.test(r.best.q) ? r.best.q : null, state.kvq, state.plan.target); }
+  catch (e) { entry.error = e.message; }
+  entry.loading = false;
+  if (state.selected === r.m.id && state.tab === "plan") renderDetail();
+}
+function hwText(h) { return h ? `${h.vram_gb != null ? gb(h.vram_gb) + " VRAM · " : ""}${gb(h.ram_gb)} RAM · ${h.cpu_cores} cores` : "—"; }
+function tabPlan(r, d) {
+  const b = r.best, plan = d && d.plan;
+  const tKey = "target|" + detailKey(r.m.id) + "|" + state.plan.target, tp = state.detail.get(tKey);
+  if (!tp) loadTargetPlan(r);
+  const alt = plan ? (plan.kv_alternatives || []).find((a) => a.kv_quant === state.kvq) || (plan.kv_alternatives || [])[0] : null;
+  const kvSession = alt ? alt.kv_cache_gb : 0;
+  const free = b.vram - (b.need - kvSession);
+  const sessions = b.mode === "GPU" && kvSession > 0 ? Math.max(0, Math.floor(free / kvSession)) : 0;
+  const keep = state.plan.keep;
+  const top = state.results.filter((x) => passFilters(x) && x.best.plain !== "nofit").sort((a, c) => c.best.score - a.best.score).slice(0, keep);
+  const disk = top.reduce((s, x) => s + x.m.params * (QUANT_BPW[String(x.best.q).toUpperCase()] || 5) / 8, 0) * 1.1 + 20;
+  return `<section class="card"><div class="card-head"><h2>What does this model need?</h2><small>llmfit planner · ${esc(plan ? plan.quantization : b.q)}</small></div>
+    ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : !plan ? `<div class="warn-box">${esc(d.planErr || "No plan for this model.")}</div>` : `
+      <div class="grid-2"><div><small>Minimum</small><div><b>${hwText(plan.minimum)}</b></div></div><div><small>Recommended</small><div><b>${hwText(plan.recommended)}</b></div></div></div>
+      <table class="ptable" style="margin-top:10px"><thead><tr><th>Route</th><th>Possible here</th><th class="r">tok/s</th></tr></thead><tbody>${(plan.run_paths || []).map((p) => `<tr><td>${esc(String(p.path).replace("_", " "))}</td><td>${p.feasible ? (p.fit_level ? verdict(plainOf(LEVEL[p.fit_level] || "tight", p.path === "gpu" ? "GPU" : p.path === "cpu_only" ? "CPU" : "CPU+GPU")) : "yes") : '<span class="tag">no</span>'}</td><td class="r">${p.estimated_tps ? fmtT(p.estimated_tps) : "—"}</td></tr>`).join("")}</tbody></table>
+      ${(plan.upgrade_deltas || []).length ? `<ul class="notes" style="margin-top:10px">${plan.upgrade_deltas.map((u) => `<li>${esc(u.description)}</li>`).join("")}</ul>` : `<div class="ok-box">No upgrade needed for this model.</div>`}`}
+  </section>
+  <section class="card"><div class="card-head"><h2>Can it reach my speed?</h2><span class="ctx-value">${state.plan.target} tok/s</span></div>
+    <input type="range" id="planTarget" min="5" max="150" step="5" value="${state.plan.target}" aria-label="Target speed">
+    ${!tp || tp.loading ? '<div class="loading">Asking the engine…</div>' : tp.error ? `<div class="warn-box">Not on any route: ${esc(tp.error)}</div>` : `<ul class="notes">${(tp.plan.upgrade_deltas || []).length ? tp.plan.upgrade_deltas.map((u) => `<li>${esc(u.description)}</li>`).join("") : "<li>Reached with your current hardware.</li>"}</ul>`}
+  </section>
+  <section class="card"><div class="card-head"><h2>How many chats at the same time?</h2><span class="ctx-value">${state.plan.users} wanted</span></div>
+    <input type="range" id="planUsers" min="1" max="16" step="1" value="${state.plan.users}" aria-label="Chats at the same time">
+    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${plan ? sessions : "—"}</div><small>chats of ${fmtCtx(r.ctx)} fit in VRAM</small></div><div><div class="big-num">${plan ? gb(kvSession) : "—"}</div><small>KV cache per chat (${state.kvq.toUpperCase()})</small></div></div>
+    ${plan ? `<div class="${sessions >= state.plan.users ? "ok-box" : "warn-box"}">${b.mode !== "GPU" ? "Parallel chats need the model fully in VRAM." : sessions >= state.plan.users ? `${state.plan.users} agents can share this model at ${fmtCtx(r.ctx)} context.` : `For ${state.plan.users} chats: lower the context, or use KV cache Q8_0.`}</div>` : ""}
+  </section>
+  <section class="card"><div class="card-head"><h2>Disk space for my best models</h2><span class="ctx-value">keep ${keep}</span></div>
+    <input type="range" id="planKeep" min="1" max="10" step="1" value="${keep}" aria-label="Number of models to keep">
+    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${gb(disk)}</div><small>needed (files + 10% + 20 GB for downloads, rough)</small></div><div><div class="big-num">${state.hw.freeDisk != null ? gb(state.hw.freeDisk) : "?"}</div><small>free on D: ${state.hw.freeDisk == null ? "(import to see)" : ""}</small></div></div>
+    <p class="hint">The ${keep} best with the current filters: ${top.map((x) => esc(x.m.name) + " " + esc(x.best.q)).join(", ")}.</p>
+  </section>`;
+}
+function renderDetail() {
+  stopTyping();
+  const r = selectedResult();
+  if (!r) { $("detail").innerHTML = `<div class="card empty">${state.ready ? "Pick a model to see the details." : "Starting the engine…"}</div>`; return; }
+  const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
+  if (!d) loadDetail(r);
+  const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
+  const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
+  $("detail").innerHTML = `<section class="card">
+    <h1 class="d-title">${esc(m.name)}</h1>
+    <a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener">huggingface.co/${esc(m.id)} ↗</a>
+    <div class="d-tags"><span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
+    <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
+}
+
+/* ===================== My models (LM Studio) ===================== */
+function normLms(x) {
+  const inst = (x.loaded_instances || [])[0];
+  const p = /([\d.]+)\s*([BM])/i.exec(x.params_string || "");
+  return { id: x.key, name: x.display_name || x.key, publisher: x.publisher || "", arch: x.architecture || "", quantization: x.quantization && x.quantization.name ? x.quantization.name : "",
+    sizeGB: (x.size_bytes || 0) / 1e9, params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? inst.config.context_length || 0 : 0,
+    max_context_length: x.max_context_length || 0, type: x.type || "llm", vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use) };
+}
+async function checkLms() {
+  state.lms.checked = false;
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
+    const res = await fetch(LMS_URL + "/api/v1/models", { signal: ctl.signal }); clearTimeout(t);
+    const data = await res.json();
+    state.lms.models = (data.models || []).map(normLms); state.lms.online = state.lms.models.length > 0;
+  } catch (e) { state.lms.online = false; state.lms.models = []; }
+  state.lms.checked = true;
+  if (state.ready) renderList();
+}
+function roughFromFile(x, ctx, kvq) {
+  const hw = hwInput(false), vram = hw.vram_gb * hw.gpu_count, ram = hw.ram_gb * 0.9;
+  const bw = (lookupGpu(state.hw.gpuName) || [0, 0, 300])[2], params = x.params || x.sizeGB * 8 / 4.8;
+  const kv = params * 9000 * ctx * ({ fp16: 1, q8_0: 0.53, q4_0: 0.28 }[kvq] || 1) / 1e9;
+  const need = x.sizeGB + kv + 0.6;
+  let mode, pool;
+  if (vram > 0 && need <= vram * 0.98) { mode = "GPU"; pool = vram; } else if (vram > 0) { mode = "CPU+GPU"; pool = vram + ram; } else { mode = "CPU"; pool = ram; }
+  const util = need / pool;
+  let level = util <= 0.6 ? "perfect" : util <= 0.85 ? "good" : util <= 0.98 ? "marginal" : "tight";
+  if (mode !== "GPU" && level === "perfect") level = "good";
+  let tps = mode === "GPU" ? bw / x.sizeGB * 0.55 : mode === "CPU" ? hw.ram_bandwidth_gbps / x.sizeGB * 0.55 : 0.55 / ((x.sizeGB * Math.min(1, vram / need)) / bw + (x.sizeGB * (1 - Math.min(1, vram / need))) / hw.ram_bandwidth_gbps);
+  if (level === "tight") tps = 0;
+  return { plain: plainOf(level, mode), mode, need, tps, lo: tps * 0.6, hi: tps };
+}
+function bestSettingsRough(x) {
+  for (const want of ["well", "tight"]) for (const kv of ["fp16", "q8_0"]) for (let i = CTX_STEPS.length - 1; i >= 0; i--) {
+    const c = Math.min(CTX_STEPS[i], x.max_context_length || 32768);
+    if (roughFromFile(x, c, kv).plain === want) return { ctx: c, kv, plain: want };
+  }
+  return null;
+}
+function viewMine() {
+  const s = state.lms;
+  if (!s.online) return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot warn"></span>${s.checked ? "LM Studio's server is not reachable at 127.0.0.1:1234." : "Looking for LM Studio…"}</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
+    <section class="card"><p class="hint" style="margin-top:0">Start LM Studio, open the <b>Developer</b> tab, switch the server <b>on</b>, and press <b>Refresh</b>. TensorTailor then lists your models, their size and how well they run here.</p></section>`;
+  const totalGB = s.models.reduce((t, x) => t + (x.sizeGB || 0), 0);
+  const rows = s.models.map((x) => {
+    const isEmb = /embed/i.test(x.type);
+    const cat = catalogFor(x);
+    const ctxNow = Math.min(CTX_STEPS[state.ctxIdx], x.max_context_length || 32768);
+    const rough = !cat && !isEmb && x.sizeGB > 0 ? roughFromFile(x, ctxNow, "fp16") : null;
+    const plain = cat ? cat.best.plain : rough ? rough.plain : null;
+    const range = cat ? speedRange(cat.best) : rough ? speedRange(rough) : "—";
+    const tip = !isEmb && x.sizeGB > 0 ? bestSettingsRough(x) : null;
+    const tipText = isEmb ? "" : !tip ? "Does not fit in VRAM at any context." : tip.plain === "tight" ? `Fits in VRAM, but tight, up to ${fmtCtx(tip.ctx)}${tip.kv !== "fp16" ? " with KV " + tip.kv.toUpperCase() : ""}.` : `Runs well up to ${fmtCtx(tip.ctx)}${tip.kv !== "fp16" ? " with KV " + tip.kv.toUpperCase() : ""} (rough).`;
+    const warn = x.loaded && x.loadedCtx && tip && x.loadedCtx > tip.ctx ? `<div class="hash" style="color:var(--marginal)">Loaded at ${fmtCtx(x.loadedCtx)}: more than fits comfortably.</div>` : "";
+    const link = cat ? "https://huggingface.co/" + cat.m.id : "https://huggingface.co/models?search=" + encodeURIComponent(shortName(x.id));
+    return `<tr><td><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a><div class="hash">${[x.publisher, x.arch, x.params ? fmtParams(x.params) : "", x.vision ? "sees images" : "", x.tools ? "tools" : ""].filter(Boolean).map(esc).join(" · ")}</div></td>
+      <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
+      <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${warn}</td>
+      <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
+      <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "")}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px">${esc(tipText)}</td>
+      <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
+  }).join("");
+  return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
+    <section class="card"><table class="mtable"><thead><tr><th>Model in LM Studio</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports.</p></section>`;
+}
+
+/* ===================== Battle ===================== */
+function battlePoints(r) {
+  const b = r.best; if (b.plain === "nofit") return null;
+  const t = b.lo, sp = t >= 20 ? 1 : t >= READING_PACE ? 0.6 + 0.4 * (t - READING_PACE) / (20 - READING_PACE) : 0.6 * t / READING_PACE;
+  const memUse = b.need / Math.max(b.vram || b.pool, 0.01), mem = memUse <= 0.5 ? 1 : clamp((1.15 - memUse) / 0.65, 0, 1);
+  const p = { quality: 45 * b.parts.quality / 100, speed: 30 * sp, memory: 15 * mem, context: 10 * clamp(r.ctxFit / 32768, 0, 1) };
+  p.total = p.quality + p.speed + p.memory + p.context; return p;
+}
+function viewBattle() {
+  const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
+  if (rs.length < 2) return `<div class="view-head"><h1>Battle</h1></div><section class="card empty">Pick 2 to 4 models with the checkbox in the list (or "Add to battle" in Suggest). They fight on this PC and one winner is named.</section>`;
+  const fighters = rs.map((r) => ({ r, p: battlePoints(r) })), alive = fighters.filter((f) => f.p);
+  const win = alive.slice().sort((a, b) => b.p.total - a.p.total)[0];
+  const rounds = [["quality", 45], ["speed", 30], ["memory", 15], ["context", 10]];
+  const led = win ? rounds.map(([k]) => k).filter((k) => alive.every((f) => win.p[k] >= f.p[k] - 0.5)) : [];
+  const card = (f) => `<section class="card fighter ${win && f === win ? "win" : ""} ${f.p ? "" : "out"}">${win && f === win ? '<span class="crown">WINNER</span>' : ""}<h3 title="${esc(f.r.m.id)}">${esc(f.r.m.name)}</h3><div class="hash">${esc(f.r.best.q)} · ${speedRange(f.r.best)} tok/s</div>
+    ${f.p ? `<div class="pts">${f.p.total.toFixed(0)}<small style="font-size:13px"> / 100</small></div>${rounds.map(([k, max]) => `<div class="round"><span>${k}</span><div class="bar"><span style="width:${(f.p[k] / max * 100).toFixed(0)}%"></span></div><span class="r">${f.p[k].toFixed(0)}</span></div>`).join("")}` : `<div class="warn-box">Knocked out: it does not fit on this PC.</div>`}</section>`;
+  const why = !win ? "No model fits on this PC." : `${esc(win.r.m.name)} wins with ${win.p.total.toFixed(0)} points` + (led.length ? `: best (or equal best) in ${led.join(", ")}.` : ".");
+  return `<div class="view-head"><h1>Battle</h1><span class="status-line">Points: quality 45 · speed 30 · memory 15 · context 10 (llmfit numbers)</span><span class="spacer"></span>${win ? `<button class="btn small" id="btnBattlePng">Save as picture</button><button class="btn small primary" data-show="${esc(win.r.m.id)}" data-gotab="files">Get the winner</button>` : ""}</div>
+    <div class="fighters">${fighters.map(card).join("")}</div><section class="card"><b>${why}</b><p class="hint">Speed gets full points at 20 tok/s and 60% at reading pace (7 tok/s). Memory gets full points at half of the usable memory. Context gets full points at 32K usable context.</p></section>`;
+}
+function battlePng() {
+  const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean).map((r) => ({ r, p: battlePoints(r) }));
+  const c = document.createElement("canvas"); c.width = 1000; c.height = 140 + rs.length * 70;
+  const g = c.getContext("2d"), cs = getComputedStyle(document.documentElement), col = (v) => cs.getPropertyValue(v).trim() || "#888";
+  g.fillStyle = col("--panel"); g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = col("--text"); g.font = "bold 30px Segoe UI, sans-serif"; g.fillText("TensorTailor battle", 40, 60);
+  g.font = "16px Segoe UI, sans-serif"; g.fillStyle = col("--muted"); g.fillText(`${state.hw.gpuName} · ${state.hw.vram * state.hw.gpus} GB VRAM · ${state.hw.ram} GB RAM · ${fmtCtx(CTX_STEPS[state.ctxIdx])} context · llmfit ${state.info.llmfit_ref || ""}`, 40, 90);
+  rs.sort((a, b) => (b.p ? b.p.total : -1) - (a.p ? a.p.total : -1)).forEach((f, i) => {
+    const y = 130 + i * 70;
+    g.fillStyle = i === 0 && f.p ? col("--perfect") : col("--text"); g.font = "bold 22px Segoe UI, sans-serif"; g.fillText(`${i + 1}. ${f.r.m.name}`.slice(0, 42), 40, y + 24);
+    g.font = "16px Segoe UI, sans-serif"; g.fillStyle = col("--muted"); g.fillText(f.p ? `${f.r.best.q} · ${speedRange(f.r.best)} tok/s` : "does not fit", 40, y + 48);
+    g.fillStyle = col("--line"); g.fillRect(560, y + 10, 300, 18);
+    if (f.p) { g.fillStyle = col("--accent"); g.fillRect(560, y + 10, 300 * f.p.total / 100, 18); g.fillStyle = col("--text"); g.font = "bold 20px Segoe UI, sans-serif"; g.fillText(f.p.total.toFixed(0), 880, y + 27); }
+  });
+  c.toBlob((blob) => { if (blob) { saveFile("tensortailor-battle.png", blob); toast("Picture saved to your Downloads folder."); } });
+}
+function viewDownloads() {
+  return `<div class="view-head"><h1>Downloads</h1></div><section class="card"><p class="hint" style="margin-top:0">Direct downloads with a SHA-256 check come in the next step. For now: open a model, go to <b>Files</b>, press <b>Check files</b>, and use <b>Copy command</b>. The command saves into <code>${esc(LMS_FOLDER)}</code>.</p></section>`;
+}
+function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
+function setView(v) {
+  state.view = v; $("layout").classList.toggle("wide", v !== "models");
+  document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+  if (v !== "models") renderView(); else renderRowsWindow();
+}
+function renderNav() { const set = (id, n) => { const el = $(id); el.hidden = !n; el.textContent = n; }; set("navMine", state.lms.online ? state.lms.models.length : 0); set("navBattle", state.compare.length); set("navDl", 0); }
+
+/* ===================== Compare, watch ===================== */
+function renderTray() {
+  $("tray").hidden = state.compare.length === 0;
+  $("trayChips").innerHTML = state.compare.map((id) => `<span class="tray-chip">${esc(shortName(id))}<button data-uncmp="${esc(id)}" aria-label="Remove ${esc(shortName(id))}">×</button></span>`).join("");
+}
+function toggleCompare(id, forceOn) {
+  const i = state.compare.indexOf(id);
+  if (i >= 0 && !forceOn) state.compare.splice(i, 1);
+  else if (i < 0) { if (state.compare.length >= 4) { toast("You can pick at most 4 models."); return; } state.compare.push(id); }
+  renderTray(); renderNav(); renderRowsWindow(); if (state.view === "battle") renderView();
+}
+function toggleWatch(id) {
+  if (state.watch.has(id)) state.watch.delete(id); else state.watch.add(id);
+  safeSet("localStorage", "tt-watch", JSON.stringify([...state.watch]));
+  renderRowsWindow(); renderDetail();
+}
+function openCompare() {
+  const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
+  if (rs.length < 2) { toast("Pick at least 2 models."); return; }
+  const rows = [["Verdict", (r) => verdict(r.best.plain), null], ["Runs on", (r) => r.best.mode, null], ["Best file", (r) => `<span class="quant">${esc(r.best.q)}</span>`, null],
+    ["Memory", (r) => gb(r.best.need), (r) => -r.best.need], ["Speed", (r) => speedRange(r.best) + " tok/s", (r) => r.best.tps], ["Usable context", (r) => fmtCtx(r.ctxFit), (r) => r.ctxFit],
+    ["Score", (r) => r.best.score.toFixed(0), (r) => r.best.score], ["Quality", (r) => r.best.parts.quality.toFixed(0), (r) => r.best.parts.quality], ["Parameters", (r) => fmtParams(r.m.params), null], ["License", (r) => esc(r.m.license), null]];
+  $("cmpBody").innerHTML = `<table class="cmp-table"><tr><th></th>${rs.map((r) => `<td><b>${esc(r.m.name)}</b></td>`).join("")}</tr>${rows.map(([label, cell, rank]) => { const bv = rank ? Math.max(...rs.map(rank)) : null; return `<tr><th>${label}</th>${rs.map((r) => `<td class="${rank && rank(r) === bv ? "best" : ""}">${cell(r)}</td>`).join("")}</tr>`; }).join("")}</table>`;
+  $("dlgCompare").showModal();
+}
+
+/* ===================== Hardware inputs ===================== */
+function saveHw() { safeSet("localStorage", "tt-hw", JSON.stringify(state.hw)); }
+function fillHwInputs() {
+  const h = state.hw;
+  $("gpuName").textContent = h.gpuName; $("vram").value = h.vram; $("gpus").value = String(h.gpus); $("ram").value = h.ram;
+  $("reserve").value = h.reserve; $("ramBw").value = h.ramBw; $("cores").value = h.cores; $("cpuName").textContent = h.cpuName;
+}
+function applyHardware(src) {
+  const h = state.hw;
+  h.vram = Math.max(0, Number($("vram").value) || 0); h.gpus = Number($("gpus").value); h.ram = Math.max(4, Number($("ram").value) || 4);
+  h.reserve = clamp(Number($("reserve").value) || 0, 0, 8); h.ramBw = clamp(Number($("ramBw").value) || 50, 5, 1000); h.cores = Math.max(1, Number($("cores").value) || 1);
+  if (src) { const t = $("hwSource"); t.textContent = src; t.className = "tag" + (src === "from browser" ? " browser" : src === "imported" ? " imported" : ""); }
+  saveHw(); renderUsable(); recomputeSoon();
+}
+function setGpuName(name) { state.hw.gpuName = name; $("gpuName").textContent = name; const hit = lookupGpu(name); if (hit) $("vram").value = hit[1]; }
+function detectInBrowser() {
+  let renderer = "";
+  try { const gl = document.createElement("canvas").getContext("webgl"); const ext = gl && gl.getExtension("WEBGL_debug_renderer_info"); renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ""; } catch (e) { renderer = ""; }
+  const m = /((?:NVIDIA |AMD |Intel\(R\) )?(?:GeForce|Radeon|Arc|Quadro|RTX|Tesla)[^,(]*)/.exec(renderer || "");
+  const threads = navigator.hardwareConcurrency || 0;
+  if (m) { setGpuName(m[1].replace(/\s+Direct3D.*$/, "").trim()); toast(`Found ${m[1].trim()} and ${threads} CPU threads. Check RAM, VRAM and cores yourself.`); }
+  else toast(threads ? `Found ${threads} CPU threads. The browser did not show the GPU name.` : "The browser did not share hardware details.");
+  applyHardware("from browser");
+}
+const PS_LINE = `$g = @(nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits); $f = $g[0] -split ','; $c = Get-CimInstance Win32_Processor | Select-Object -First 1; @{ ram_gb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB); gpu_name = $f[0].Trim(); vram_gb = [math]::Round([double]$f[1] / 1024); vram_used_gb = [math]::Round([double]$f[2] / 1024, 1); gpu_count = $g.Count; cpu_name = $c.Name.Trim(); cpu_cores = $c.NumberOfCores; free_d_gb = [math]::Round((Get-PSDrive D).Free / 1GB) } | ConvertTo-Json -Compress | Set-Clipboard`;
+function importHardware() {
+  let d; try { d = JSON.parse($("importText").value); } catch (e) { toast("That text is not valid. Paste the text that PowerShell copied."); return; }
+  if (d.gpu_name) setGpuName(String(d.gpu_name));
+  if (d.vram_gb != null) $("vram").value = Number(d.vram_gb);
+  if (d.gpu_count != null) $("gpus").value = String(clamp(Number(d.gpu_count), 0, 4));
+  if (d.ram_gb != null) $("ram").value = Number(d.ram_gb);
+  if (d.vram_used_gb != null) $("reserve").value = Math.max(0.5, Math.round(Number(d.vram_used_gb) * 4) / 4);
+  if (d.cpu_cores != null) $("cores").value = Number(d.cpu_cores);
+  if (d.cpu_name) { state.hw.cpuName = String(d.cpu_name); $("cpuName").textContent = state.hw.cpuName; }
+  if (d.free_d_gb != null) state.hw.freeDisk = Number(d.free_d_gb);
+  $("dlgImport").close(); applyHardware("imported"); toast("Hardware imported. 'Kept for Windows' now uses the VRAM that is in use right now.");
+}
+
+/* ===================== Token, theme, CSV, about ===================== */
+function renderToken() { const on = !!state.token; $("tokDot").className = "dot" + (on ? " ok" : ""); $("tokText").textContent = on ? "Token set" : "HF token"; }
+function currentTheme() { const t = document.documentElement.dataset.theme; if (t) return t; return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+function toggleTheme() { const next = currentTheme() === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = next; safeSet("localStorage", "tt-theme", next); }
+function exportCsv() {
+  const head = ["model", "provider", "params_b", "best_quant", "verdict", "runs_on", "memory_gb", "tok_s_low", "tok_s_high", "usable_context", "score", "license", "runtime"];
+  const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = state.visible.map((r) => [r.m.id, r.m.provider, r.m.params.toFixed(2), r.best.q, PLAIN[r.best.plain].label, r.best.mode, r.best.need.toFixed(1), fmtT(r.best.lo), fmtT(r.best.hi), r.ctxFit, r.best.score.toFixed(0), r.m.license, r.m.runtime].map(q).join(","));
+  saveFile("tensortailor-models.csv", new Blob([head.join(",") + "\r\n" + lines.join("\r\n")], { type: "text/csv" }));
+  toast(`Saved ${lines.length.toLocaleString("en")} models to tensortailor-models.csv in your Downloads folder.`);
+}
+function renderAbout() {
+  const b = state.build, i = state.info;
+  $("aboutBody").innerHTML = `<p><b>TensorTailor</b> finds the AI models that fit your PC. It runs fully in this page; nothing is installed.</p>
+    <dl class="lic"><dt>Engine</dt><dd>llmfit ${esc(i.llmfit_ref || b.llmfit || "")} by Alex Jones, compiled to WebAssembly. MIT License, Copyright (c) 2026 Alex Jones. One change for the browser: the clock (web_time) in the recency bonus.</dd>
+    <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from llmfit's catalog (data from the Hugging Face API).</dd>
+    <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
+    <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
+    <dt>Rust libraries</dt><dd>Their licenses are listed in THIRD-PARTY-NOTICES in the repository.</dd>
+    <dt>Models</dt><dd>Never included. Each model keeps its own license; some are gated.</dd>
+    <dt>Privacy</dt><dd>No tracking. The page only talks to huggingface.co (when you check files) and to LM Studio on 127.0.0.1.</dd></dl>`;
+}
+
+/* ===================== Events ===================== */
+function selectModel(id, scroll) {
+  state.selected = id;
+  if (scroll) { const i = state.visible.findIndex((r) => r.m.id === id); const el = $("rows"); if (i >= 0) { const y = i * ROW_H; if (y < el.scrollTop) el.scrollTop = y; else if (y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = y + ROW_H - el.clientHeight; } }
+  renderRowsWindow(); renderDetail();
+}
+function showModel(id, tab) {
+  setView("models");
+  if (!state.visible.some((r) => r.m.id === id)) { state.search = ""; $("q").value = ""; state.show.nofit = true; renderList(); }
+  if (tab) state.tab = tab;
+  selectModel(id, true);
+}
+function moveSelection(step) { const ids = state.visible.map((r) => r.m.id); if (!ids.length) return; const i = ids.indexOf(state.selected); selectModel(ids[clamp(i < 0 ? 0 : i + step, 0, ids.length - 1)], true); }
+function startTyping(tps) {
+  const el = $("typing");
+  const words = "Sure. A KV cache keeps the keys and values of earlier tokens, so the model does not compute them again for every new word. It makes long answers faster, but it needs memory: the longer the context, the bigger the cache. That is why TensorTailor shows it as a separate part of the memory bar.".split(/(\s+)/);
+  let i = 0, acc = 0; el.hidden = false; el.innerHTML = '<span class="cur"></span>';
+  const perTick = tps * 0.05 * 0.75; stopTyping();
+  typingTimer = setInterval(() => { acc += perTick; while (acc >= 1 && i < words.length) { i += 2; acc -= 1; } el.innerHTML = esc(words.slice(0, i).join("")) + '<span class="cur"></span>'; if (i >= words.length) stopTyping(); }, 50);
+}
+function resetFilters() {
+  state.f = { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true };
+  $("fLang").value = ""; $("fSize").value = "";
+  ["fGguf", "fNew", "fWatch", "fLms", "fOpen", "fGpu"].forEach((id) => { $(id).checked = false; }); $("fLlama").checked = true; $("fPop").checked = true;
+  document.querySelectorAll("[data-cap]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+}
+function wire() {
+  $("nav").addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (b) setView(b.dataset.view); });
+  $("useCases").addEventListener("click", (e) => { const b = e.target.closest("[data-uc]"); if (!b) return; state.useCase = b.dataset.uc; renderUseCases(); renderList(); });
+  $("upgrades").addEventListener("click", (e) => { const b = e.target.closest("[data-upg]"); if (!b) return; state.upg[b.dataset.upg] = !state.upg[b.dataset.upg]; renderUsable(); recompute(); });
+  $("tiles").addEventListener("click", (e) => { const t = e.target.closest("[data-plain]"); if (!t) return; state.show[t.dataset.plain] = !state.show[t.dataset.plain]; renderList(); });
+  $("ctx").addEventListener("input", (e) => { state.ctxIdx = Number(e.target.value); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; recomputeSoon(); });
+  $("kvq").addEventListener("change", (e) => { state.kvq = e.target.value; renderDetail(); if (state.view === "mine") renderView(); });
+  $("sort").addEventListener("change", (e) => { state.sort = e.target.value; renderList(); });
+  let searchTimer = 0;
+  $("q").addEventListener("input", (e) => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.search = e.target.value; renderList(); }, 150); });
+  $("q").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const s = e.target.value.trim().replace(/^https?:\/\/huggingface\.co\//, "").replace(/\/$/, "").toLowerCase();
+    const hit = state.results.find((r) => r.m.id.toLowerCase() === s || r.m.gguf.some((g) => g.repo.toLowerCase() === s));
+    if (hit) { state.search = ""; e.target.value = ""; showModel(hit.m.id, "files"); }
+  });
+  [["fLang", "lang"], ["fSize", "size"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.value; renderList(); }));
+  [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.checked; renderList(); }));
+  document.querySelectorAll("[data-cap]").forEach((b) => b.addEventListener("click", () => { const c = b.dataset.cap; if (state.f.caps.has(c)) state.f.caps.delete(c); else state.f.caps.add(c); b.setAttribute("aria-pressed", String(state.f.caps.has(c))); renderList(); }));
+  $("btnResetFilters").addEventListener("click", () => { resetFilters(); renderList(); });
+  ["vram", "ram", "reserve", "ramBw", "cores"].forEach((id) => $(id).addEventListener("input", () => applyHardware("changed by you")));
+  $("gpus").addEventListener("change", () => applyHardware("changed by you"));
+  let rafPending = false;
+  $("rows").addEventListener("scroll", () => { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; renderRowsWindow(); }); });
+  $("rows").addEventListener("click", (e) => {
+    const w = e.target.closest("[data-watch]"); if (w) { toggleWatch(w.dataset.watch); return; }
+    const c = e.target.closest("[data-cmp]"); if (c) { toggleCompare(c.dataset.cmp); return; }
+    if (e.target.closest("a")) return;
+    const row = e.target.closest(".row"); if (row) selectModel(row.dataset.id, false);
+  });
+  $("trayChips").addEventListener("click", (e) => { const b = e.target.closest("[data-uncmp]"); if (b) toggleCompare(b.dataset.uncmp); });
+  $("btnClearCmp").addEventListener("click", () => { state.compare = []; renderTray(); renderNav(); renderRowsWindow(); });
+  $("btnCompare").addEventListener("click", openCompare);
+  $("btnToBattle").addEventListener("click", () => setView("battle"));
+  $("btnSuggest").addEventListener("click", renderSuggest);
+  $("btnExport").addEventListener("click", exportCsv);
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.id === "btnCloseSuggest") { $("suggest").hidden = true; return; }
+    const show = t.closest("[data-show]"); if (show) { showModel(show.dataset.show, show.dataset.gotab); return; }
+    const ab = t.closest("[data-addbattle]"); if (ab) { toggleCompare(ab.dataset.addbattle, true); toast("Added to the battle."); return; }
+    const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
+    const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
+    const cp = t.closest("[data-copy]"); if (cp) { copyText(cp.dataset.copy, cp.dataset.what || "Text"); return; }
+    const lf = t.closest("[data-loadfiles]"); if (lf) { loadFiles(lf.dataset.loadfiles); renderDetail(); return; }
+    const ur = t.closest("[data-userepo]"); if (ur) { state.srcIdx["repo:" + state.selected] = ur.dataset.userepo; renderDetail(); return; }
+    if (t.id === "btnFindGguf") { const r = selectedResult(); if (r) searchGgufCopies(r.m); return; }
+    const wd = t.closest("#detail [data-watch]"); if (wd) { toggleWatch(wd.dataset.watch); return; }
+    if (t.id === "btnPreview") { const r = selectedResult(); if (r) startTyping((r.best.lo + r.best.hi) / 2); return; }
+    if (t.id === "btnLmsRefresh") { checkLms().then(renderView); toast("Asking LM Studio for its models…"); return; }
+    if (t.id === "btnBattlePng") { battlePng(); return; }
+  });
+  let planTimer = 0;
+  document.addEventListener("input", (e) => {
+    const id = e.target.id;
+    if (id === "planTarget") { state.plan.target = Number(e.target.value); clearTimeout(planTimer); planTimer = setTimeout(() => { renderDetail(); const el = $("planTarget"); if (el) el.focus(); }, 200); }
+    if (id === "planUsers") { state.plan.users = Number(e.target.value); renderDetail(); $("planUsers").focus(); }
+    if (id === "planKeep") { state.plan.keep = Number(e.target.value); renderDetail(); $("planKeep").focus(); }
+  });
+  $("detail").addEventListener("change", (e) => { if (e.target.id === "srcSel") { delete state.srcIdx["repo:" + state.selected]; state.srcIdx[state.selected] = Number(e.target.value); renderDetail(); } });
+  $("btnDetect").addEventListener("click", detectInBrowser);
+  $("btnImport").addEventListener("click", () => { $("psSnippet").textContent = PS_LINE; $("dlgImport").showModal(); });
+  $("btnCopySnippet").addEventListener("click", () => copyText(PS_LINE, "PowerShell line"));
+  $("btnImportApply").addEventListener("click", importHardware);
+  $("btnToken").addEventListener("click", () => { $("tokInput").value = state.token; $("dlgToken").showModal(); });
+  $("btnTokSave").addEventListener("click", () => {
+    const v = $("tokInput").value.trim();
+    if (v && !/^hf_[A-Za-z0-9]{20,}$/.test(v)) { toast("That does not look like a Hugging Face token (it starts with hf_)."); return; }
+    state.token = v; safeSet("sessionStorage", "tt-token", v || null); renderToken(); $("dlgToken").close(); state.files.clear();
+    toast(v ? "Token set for this tab only." : "No token set."); renderDetail();
+  });
+  $("btnTokClear").addEventListener("click", () => { state.token = ""; $("tokInput").value = ""; safeSet("sessionStorage", "tt-token", null); renderToken(); $("dlgToken").close(); toast("Token removed."); });
+  $("btnUpdate").addEventListener("click", () => { renderAbout(); $("dlgAbout").showModal(); });
+  $("btnAbout").addEventListener("click", () => { renderAbout(); $("dlgAbout").showModal(); });
+  $("btnTheme").addEventListener("click", toggleTheme);
+  document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
+  document.addEventListener("keydown", (e) => {
+    const ae = document.activeElement;
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && ae.type !== "range" && ae.type !== "checkbox";
+    if (document.querySelector("dialog[open]")) return;
+    if (e.key === "/" && !typing) { e.preventDefault(); $("q").focus(); return; }
+    if (e.key === "Escape" && typing) { ae.blur(); return; }
+    if (typing || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key >= "1" && e.key <= "4") { setView(["models", "mine", "battle", "downloads"][Number(e.key) - 1]); return; }
+    if (state.view !== "models") return;
+    if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); moveSelection(1); }
+    else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); moveSelection(-1); }
+    else if (e.key === "c" || e.key === "C") toggleCompare(state.selected);
+    else if (e.key === "w" || e.key === "W") toggleWatch(state.selected);
+    else if (e.key === "t" || e.key === "T") toggleTheme();
+  });
+}
+
+/* ===================== Start ===================== */
+(async function start() {
+  const theme = safeGet("localStorage", "tt-theme");
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  try { const w = JSON.parse(safeGet("localStorage", "tt-watch") || "[]"); if (Array.isArray(w)) state.watch = new Set(w); } catch (e) { /* ignore */ }
+  try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
+  try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
+  state.token = safeGet("sessionStorage", "tt-token") || "";
+  fillHwInputs(); renderUseCases(); renderToken(); renderUsable(); wire(); renderDetail();
+  checkLms();
+  try {
+    const t0 = performance.now();
+    banner("Unpacking the engine…", "busy");
+    const bytes = await engineBytes();
+    await loadMeta();
+    startWorker();
+    banner("Starting the engine…", "busy");
+    state.info = await call("__init", bytes);
+    banner(`Reading ${Number(state.info.catalog_models || 0).toLocaleString("en")} models…`, "busy");
+    state.catalog = await call("catalog");
+    for (const c of state.catalog) { state.byName.set(c.name, c); }
+    $("brandSub").textContent = `Engine: llmfit ${state.info.llmfit_ref} · WebAssembly`;
+    $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models`;
+    $("catDot").className = "dot ok";
+    $("q").placeholder = `Search ${state.catalog.length.toLocaleString("en")} models, or paste a Hugging Face link and press Enter`;
+    state.ready = true;
+    state.bootMs = Math.round(performance.now() - t0);
+    await recompute();
+  } catch (e) {
+    banner("The engine could not start: " + e.message, "err");
+  }
+})();
+</script>
+</body>
+</html>

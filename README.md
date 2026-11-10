@@ -6,8 +6,17 @@ TensorTailor will be **one HTML file**. You open it in Edge or Chrome. It needs 
 offline. It checks about 19,000 models from Hugging Face against your GPU, VRAM, RAM and CPU, and it
 tells you which file to download and how fast it will run.
 
-> **Status:** design stage plus a working engine trial. The llmfit engine runs as WebAssembly and gives
-> exactly the same answers as native llmfit (checked on every build). The page itself is not built yet.
+> **Status:** first working version. `dist/tensortailor.html` is one offline file (about 3 MB) with the llmfit
+> engine inside as WebAssembly. Every build checks that the engine gives exactly the same answers as native
+> llmfit. Direct downloads and the weekly release are not done yet.
+
+## Build the page
+
+```powershell
+node web/build.mjs engine/pkg-nomod dist/tensortailor.html <path to llmfit hf_models.json>
+```
+
+GitHub Actions builds it on every push (artifact `tensortailor-html`).
 
 ## What is here now
 
@@ -18,7 +27,9 @@ tells you which file to download and how fast it will run.
 | `design/mockup-battle-light.png` | Screenshot of the design: Battle view (light) |
 | `research/similar-tools.md` | Study of similar tools and the features we take over |
 | `PROGRESS.md` | Decisions, what is done, and the next steps |
-| `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly (trial) |
+| `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly |
+| `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
+| `web/build.mjs` | Makes the single file `dist/tensortailor.html` |
 | `.github/workflows/engine.yml` | GitHub build: native and WebAssembly runs must give the same answers |
 
 ## How it will work
