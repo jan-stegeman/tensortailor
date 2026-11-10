@@ -23,6 +23,10 @@ console_error_panic_hook = "0.1"
 # needs the JavaScript random source; .cargo/config.toml sets the 0.3 backend.
 getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
 getrandom_03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+# rustls (TLS for llmfit's downloads, never used in the page) needs a browser
+# clock, and ring needs the browser's random source, to compile for wasm32.
+rustls-pki-types = { version = "1", features = ["web"] }
+ring = { version = "0.17", features = ["wasm32_unknown_unknown_js"] }
 
 [profile.release]
 opt-level = "s"
