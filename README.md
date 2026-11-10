@@ -73,12 +73,17 @@ GitHub Actions builds it on every push (artifact `tensortailor-html`).
 | `.github/actions/build/` | The build steps, shared by both workflows |
 | `.github/workflows/engine.yml` | GitHub build on every push: native and WebAssembly runs must give the same answers |
 | `.github/workflows/weekly.yml` | Tuesday build: follows new llmfit releases and publishes a GitHub Release |
+| `.github/workflows/catalog.yml` | Monday: fresh model catalog with llmfit's scraper (needs the `HF_TOKEN` secret, read only) |
 
 ## How it will work
 
 - **Engine:** the fit and speed calculation of [llmfit](https://github.com/AlexsJones/llmfit) by Alex Jones,
   compiled to WebAssembly so it runs inside the browser. The results match llmfit.
-- **Model list:** llmfit's catalog of the same llmfit release as the engine.
+- **Model list:** every Monday `.github/workflows/catalog.yml` runs llmfit's own scraper (same llmfit version as
+  the engine) and stores a fresh catalog as the pre-release `catalog`, after llmfit's own checks. The Tuesday
+  release uses it; if it is missing, old or failed, the release uses llmfit's own catalog. The release notes say
+  which one. Rows that llmfit itself cannot read (for example a context of 100 billion tokens) are taken out and
+  listed in the run summary.
 - **New models:** click the catalog button (top right), then **Fetch new models**. Like `llmfit update`, it adds
   the newest trending and most downloaded models from Hugging Face, with llmfit's own code inside the engine.
   Or paste any Hugging Face link in the search box and press Enter to check one model live. Fetched models
