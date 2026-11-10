@@ -4,6 +4,15 @@ description: >
   same answers, and the single-file page in dist/tensortailor.html.
   Used by engine.yml (every push) and weekly.yml (Tuesday release).
 
+inputs:
+  catalog_file:
+    description: >
+      Optional hf_models.json to build with (our weekly catalog). Empty = the
+      catalog of the llmfit tag. With a file, the native golden run is built
+      from the same patched copy, so both sides embed the same catalog.
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
@@ -26,20 +35,44 @@ runs:
         echo "Cargo.toml tag: $TAG, lib.rs LLMFIT_REF: $REF"
         test "$TAG" = "$REF"
 
-    - name: Native run (golden answers)
-      shell: bash
-      working-directory: engine
-      run: cargo run --release --example golden -- golden-native.json
-
-    - name: Make a browser-ready copy of llmfit-core (clock fix)
+    - name: Make a browser-ready copy of llmfit-core (clock fix, live models)
       shell: bash
       working-directory: engine
       run: bash tools/patch-llmfit.sh "$GITHUB_WORKSPACE/vendor/llmfit"
 
+    # With the tag's own catalog: these tests check the patch, not the data.
     - name: llmfit's own tests on the patched copy
       shell: bash
       working-directory: vendor/llmfit
       run: "cargo test --release -p llmfit-core --lib -- update:: models::"
+
+    - name: Use our weekly catalog
+      if: inputs.catalog_file != ''
+      shell: bash
+      env:
+        CATALOG_FILE: ${{ inputs.catalog_file }}
+      run: |
+        set -euo pipefail
+        python3 -m json.tool "$CATALOG_FILE" > /dev/null
+        cp "$CATALOG_FILE" "$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core/data/hf_models.json"
+        echo "Built with our weekly catalog: $(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$CATALOG_FILE") entries" | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Native run (golden answers)
+      shell: bash
+      working-directory: engine
+      env:
+        OWN_CATALOG: ${{ inputs.catalog_file }}
+      run: |
+        set -euo pipefail
+        if [ -n "$OWN_CATALOG" ]; then
+          # Same patched copy as the WebAssembly build, so both embed our catalog.
+          cargo run --release --example golden \
+            --config "patch.\"https://github.com/AlexsJones/llmfit\".llmfit-core.path=\"$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core\"" \
+            -- golden-native.json
+        else
+          # The original, unpatched llmfit-core: proves the patch changes no answer.
+          cargo run --release --example golden -- golden-native.json
+        fi
 
     - name: Native run of the live-model functions (patched copy)
       shell: bash

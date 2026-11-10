@@ -95,8 +95,37 @@ jobs:
           git commit -m "chore(engine): follow llmfit $NEW" -m "Weekly run: same answers as native llmfit checked before the push."
           git --no-pager show --stat HEAD
 
+      # Our weekly catalog (catalog.yml, Monday) when it is fresh and intact,
+      # else llmfit's own catalog of the tag.
+      - name: Choose the model catalog
+        id: cat
+        run: |
+          set -euo pipefail
+          mkdir -p catalog
+          FILE=""; SHA=""; WHY="llmfit's own catalog of the tag (no weekly catalog found)"
+          if gh release download catalog -D catalog -p hf_models.json -p catalog-info.json 2>/dev/null; then
+            eval "$(python3 - <<'PY'
+          import datetime, hashlib, json
+          info = json.load(open("catalog/catalog-info.json"))
+          sha = hashlib.sha256(open("catalog/hf_models.json", "rb").read()).hexdigest()
+          built = datetime.datetime.strptime(info["built"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+          age = (datetime.datetime.now(datetime.timezone.utc) - built).days
+          print(f'OK={"yes" if sha == info["sha256"] else "no"} AGE={age} N={int(info["models"])} BUILT={info["built"][:10]} CSHA={sha}')
+          PY
+          )"
+            if [ "$OK" = yes ] && [ "$AGE" -le 8 ]; then
+              FILE="$GITHUB_WORKSPACE/catalog/hf_models.json"; SHA="$CSHA"
+              WHY="our weekly catalog of $BUILT ($N entries, made with llmfit's own scraper)"
+            elif [ "$OK" != yes ]; then WHY="llmfit's own catalog of the tag (our weekly catalog failed its SHA-256 check)"
+            else WHY="llmfit's own catalog of the tag (our weekly catalog is $AGE days old)"; fi
+          fi
+          { echo "file=$FILE"; echo "sha=$SHA"; echo "why=$WHY"; } >> "$GITHUB_OUTPUT"
+          echo "Model list: $WHY" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Build, compare with native llmfit, make the page
         uses: ./.github/actions/build
+        with:
+          catalog_file: ${{ steps.cat.outputs.file }}
 
       - name: Check that the build did not change the lock file
         run: |
@@ -116,15 +145,18 @@ jobs:
         env:
           UPDATE: ${{ steps.llmfit.outputs.update }}
           DRY: ${{ steps.llmfit.outputs.dry }}
+          CATALOG_SHA: ${{ steps.cat.outputs.sha }}
         run: |
           set -euo pipefail
           LAST=$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // ""')
+          LAST_CATALOG=""
+          if [ -n "$LAST" ]; then LAST_CATALOG=$(gh release view "$LAST" --json body --jq .body | grep -oP 'Catalog SHA-256: `\K[0-9a-f]{64}' || true); fi
           RELEASE=true
           WHY="new build"
           if [ "$DRY" = "true" ]; then
             RELEASE=false; WHY="dry run"
-          elif [ "$UPDATE" != "true" ] && [ -n "$LAST" ] && git diff --quiet "$LAST" HEAD -- engine web .github/actions; then
-            RELEASE=false; WHY="nothing in engine/, web/ or the build changed since $LAST"
+          elif [ "$UPDATE" != "true" ] && [ -n "$LAST" ] && [ "$CATALOG_SHA" = "$LAST_CATALOG" ] && git diff --quiet "$LAST" HEAD -- engine web .github/actions; then
+            RELEASE=false; WHY="nothing in engine/, web/, the build or the catalog changed since $LAST"
           fi
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
           echo "Release: $RELEASE ($WHY). Last release: ${LAST:-none}." | tee -a "$GITHUB_STEP_SUMMARY"
@@ -135,6 +167,9 @@ jobs:
 
       - name: Publish the release
         if: steps.decide.outputs.release == 'true'
+        env:
+          CATALOG_WHY: ${{ steps.cat.outputs.why }}
+          CATALOG_SHA: ${{ steps.cat.outputs.sha }}
         run: |
           set -euo pipefail
           DAY=$(date -u +%Y.%m.%d)
@@ -152,7 +187,7 @@ jobs:
 
           - Engine: llmfit [$LLMFIT](https://github.com/AlexsJones/llmfit/releases/tag/$LLMFIT) by Alex Jones (MIT), compiled to WebAssembly.
             This build gave exactly the same answers as native llmfit.
-          - Model list: llmfit's catalog of the same tag.
+          - Model list: $CATALOG_WHY.${CATALOG_SHA:+ Catalog SHA-256: \`$CATALOG_SHA\`}
           - Commit: $(git rev-parse --short HEAD)
           - SHA-256 of tensortailor.html: \`$SHA\` (also in tensortailor.html.sha256)
           EOF
