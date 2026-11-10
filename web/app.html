@@ -367,6 +367,25 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
 .ftable td:first-child { min-width: 0; }
 .link-copy { border: 0; background: transparent; color: var(--muted); padding: 0 4px; margin-left: 4px; border-radius: 4px; font-size: 12px; }
 .link-copy:hover { color: var(--accent); background: var(--accent-soft); }
+/* ---- package C: left panel and filters ---- */
+.hw-edit { margin-top: 10px; }
+.hw-edit > summary, .fold-head { cursor: pointer; list-style: none; }
+.hw-edit > summary::-webkit-details-marker, .fold-head::-webkit-details-marker { display: none; }
+.hw-edit > summary { font-size: 13px; font-weight: 600; color: var(--accent); }
+.hw-edit > summary::before, .fold-head h2::before { content: "▸"; display: inline-block; width: 14px; color: var(--muted); transition: transform .15s; }
+.hw-edit[open] > summary::before, details[open] > .fold-head h2::before { transform: rotate(90deg); }
+.fold-head { margin-bottom: 0; }
+details[open] > .fold-head { margin-bottom: 10px; }
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; min-height: 28px; }
+.af-label { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+.af-chip { height: 26px; padding: 0 6px 0 10px; border-radius: 99px; border: 1px solid var(--line-2); background: var(--panel); font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.af-chip span { color: var(--muted); font-size: 14px; line-height: 1; }
+.af-chip:hover { border-color: var(--accent); }
+.af-chip:hover span { color: var(--accent); }
+/* Lower verdict tiles: more model rows in view. */
+.tile { flex-direction: row; align-items: baseline; gap: 8px; padding: 8px 12px; }
+.tile .n { font-size: 19px; }
+.tiles { margin-bottom: 10px; }
 /* Downloads has nothing to filter: no left panel there, the table gets the width. */
 .layout.full { grid-template-columns: minmax(0, 1fr); }
 .layout.full .side { display: none; }
@@ -416,8 +435,11 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
       <div class="card-head"><h2>Your hardware</h2><span class="tag" id="hwSource">saved profile</span></div>
       <div class="hw-gpu">
         <div class="hw-icon">GPU</div>
-        <div><div class="hw-name" id="gpuName">NVIDIA GeForce RTX 3090</div><div class="hw-meta" id="bwText">GPU memory speed: from llmfit's table</div></div>
+        <div><div class="hw-name" id="gpuName">NVIDIA GeForce RTX 3090</div><div class="hw-meta" id="hwSummary"></div></div>
       </div>
+      <div class="usable" id="usableText"></div>
+      <details class="hw-edit" id="hwEdit"><summary>Edit hardware</summary>
+      <div class="hw-meta" id="bwText" style="margin-top:8px">GPU memory speed: from llmfit's table</div>
       <div class="field-grid">
         <label>VRAM per GPU<span class="unit-input"><input id="vram" type="number" min="0" max="192" step="1" value="24"><span>GB</span></span></label>
         <label>Number of GPUs<select id="gpus"><option value="0">0 (CPU only)</option><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
@@ -426,18 +448,9 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
         <label title="Speed of system RAM. Used when part of a model runs from RAM. Threadripper 3990X quad-channel DDR4-3200: about 90.">RAM speed<span class="unit-input"><input id="ramBw" type="number" min="5" max="1000" step="5" value="90"><span>GB/s</span></span></label>
         <label>CPU cores<span class="unit-input"><input id="cores" type="number" min="1" max="512" step="1" value="64"></span></label>
       </div>
-      <div class="usable" id="usableText"></div>
       <div class="btn-row"><button class="btn" id="btnDetect">Detect in browser</button><button class="btn" id="btnImport">Import…</button></div>
       <p class="hint" id="cpuName">AMD Ryzen Threadripper 3990X 64-Core Processor</p>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2>What if I upgrade?</h2><span class="tag" id="upgTag">off</span></div>
-      <div class="chips" id="upgrades">
-        <button class="chip-btn" data-upg="gpu" aria-pressed="false">+1 same GPU</button>
-        <button class="chip-btn" data-upg="ram" aria-pressed="false">+128 GB RAM</button>
-      </div>
-      <p class="hint">Models that only run well with the upgrade get an <span class="chip upg">upgrade</span> label.</p>
+      </details>
     </section>
 
     <section class="card">
@@ -482,6 +495,16 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
         <label><input type="checkbox" id="fPop" checked> Popular (10,000+ downloads)</label>
       </div>
     </section>
+
+    <section class="card">
+      <details id="upgFold"><summary class="card-head fold-head"><h2>What if I upgrade?</h2><span class="tag" id="upgTag">off</span></summary>
+      <div class="chips" id="upgrades">
+        <button class="chip-btn" data-upg="gpu" aria-pressed="false">+1 same GPU</button>
+        <button class="chip-btn" data-upg="ram" aria-pressed="false">+128 GB RAM</button>
+      </div>
+      <p class="hint">Models that only run well with the upgrade get an <span class="chip upg">upgrade</span> label.</p>
+      </details>
+    </section>
   </aside>
 
   <section class="center">
@@ -502,6 +525,7 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
         </label>
       </div>
     </div>
+    <div class="active-filters" id="activeFilters"></div>
     <div class="search-bar" id="searchBar" hidden></div>
     <div class="table">
       <div class="cols" aria-hidden="true"><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
@@ -623,7 +647,7 @@ details.help-fold[open] > summary { margin-bottom: 6px; }
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
-      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them. Models that are already in your LM Studio always pass "Popular". Your choices on the left (filters, what it is for, context length, KV cache, sort and the four verdict tiles) are kept in this browser, also after a reload. <b>Reset</b> puts the filters back to the start values.</dd>
+      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them. Models that are already in your LM Studio always pass "Popular". Your choices on the left (filters, what it is for, context length, KV cache, sort and the four verdict tiles) are kept in this browser, also after a reload. <b>Reset</b> puts the filters back to the start values. Above the list, every active filter is a chip: click its × to remove it, <b>Clear all</b> to see every analysed model, <b>Defaults</b> for the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
       <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
     </dl>
 
@@ -994,6 +1018,7 @@ function renderUsable() {
   $("usableText").innerHTML = h.gpus === 0 ? "No GPU: models run on the CPU and RAM." :
     `Usable for models: <b>${h.vram * h.gpus} GB − ${h.reserve} GB = ${gb(usableVram(false))}</b> VRAM` +
     (state.upg.gpu || state.upg.ram ? `<br>With upgrade: <b>${gb(usableVram(true))}</b> VRAM · <b>${hwInput(true).ram_gb} GB</b> RAM` : "");
+  $("hwSummary").textContent = `${h.ram} GB RAM · ${h.cores} CPU cores` + (h.gpus > 1 ? ` · ${h.gpus} GPUs` : h.gpus === 0 ? " · no GPU" : "");
   const on = state.upg.gpu || state.upg.ram;
   $("upgTag").textContent = on ? "on" : "off"; $("upgTag").className = "tag" + (on ? " okay" : "");
   document.querySelectorAll("[data-upg]").forEach((b) => b.setAttribute("aria-pressed", String(state.upg[b.dataset.upg])));
@@ -1150,6 +1175,7 @@ function renderSearchBar() {
 }
 function renderList() {
   savePrefs();
+  renderActiveFilters();
   if (!searchText()) state.searchAll = false;
   renderSearchBar();
   const base = state.results.filter(passFilters);
@@ -2741,12 +2767,39 @@ function loadPrefs() {
   if (Number.isInteger(p.ctxIdx) && p.ctxIdx >= 0 && p.ctxIdx < CTX_STEPS.length) state.ctxIdx = p.ctxIdx;
   if (typeof p.kvq === "string" && [...$("kvq").options].some((o) => o.value === p.kvq)) state.kvq = p.kvq;
   if (typeof p.sort === "string" && [...$("sort").options].some((o) => o.value === p.sort)) state.sort = p.sort;
-  // Show them in the controls.
-  $("fLang").value = state.f.lang; $("fSize").value = state.f.size;
-  [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => { $(id).checked = !!state.f[k]; });
-  document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.setAttribute("aria-pressed", String(state.f.caps.has(b.dataset.cap))));
+  syncFilterUi();
   $("ctx").value = String(state.ctxIdx); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens";
   $("kvq").value = state.kvq; $("sort").value = state.sort;
+}
+const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open license"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
+// Show the filter state in the controls on the left.
+function syncFilterUi() {
+  $("fLang").value = state.f.lang; $("fSize").value = state.f.size;
+  FILTER_BOXES.forEach(([id, k]) => { $(id).checked = !!state.f[k]; });
+  document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.setAttribute("aria-pressed", String(state.f.caps.has(b.dataset.cap))));
+}
+// The strip above the list: every active filter as a chip with ×, plus Clear all and Defaults.
+function renderActiveFilters() {
+  const f = state.f, chips = [];
+  const chip = (key, label) => chips.push(`<button class="af-chip" data-unfilter="${esc(key)}" title="Remove this filter">${esc(label)} <span aria-hidden="true">×</span></button>`);
+  if (state.useCase !== "all") chip("use", "For: " + ((USE_CASES.find(([k]) => k === state.useCase) || [])[1] || state.useCase));
+  FILTER_BOXES.forEach(([, k, l]) => { if (f[k]) chip("f:" + k, l); });
+  if (f.lang) chip("lang", "Language: " + $("fLang").selectedOptions[0].textContent);
+  if (f.size) chip("size", "Size: " + $("fSize").selectedOptions[0].textContent);
+  for (const c of f.caps) chip("cap:" + c, { vision: "Vision", tools: "Tool use", reason: "Reasoning" }[c] || c);
+  for (const k of Object.keys(state.show)) if (!state.show[k]) chip("show:" + k, "Hidden: " + PLAIN[k].label);
+  const el = $("activeFilters");
+  el.innerHTML = chips.length ? `<span class="af-label">Filters:</span>${chips.join("")}<span class="spacer"></span><button class="btn ghost small" data-unfilter="all" title="Turn every filter off and show all tiles">Clear all</button><button class="btn ghost small" data-unfilter="defaults" title="Back to the start values">Defaults</button>` : `<span class="af-label">No filters: every analysed model is shown.</span><span class="spacer"></span><button class="btn ghost small" data-unfilter="defaults">Defaults</button>`;
+}
+function removeFilter(key) {
+  if (key === "all") { for (const [, k] of FILTER_BOXES) state.f[k] = false; state.f.lang = ""; state.f.size = ""; state.f.caps = new Set(); state.useCase = "all"; for (const k of Object.keys(state.show)) state.show[k] = true; }
+  else if (key === "defaults") { resetFilters(); state.useCase = "all"; state.show = { well: true, tight: true, slower: true, nofit: false }; }
+  else if (key === "use") state.useCase = "all";
+  else if (key === "lang" || key === "size") state.f[key] = "";
+  else if (key.startsWith("f:")) state.f[key.slice(2)] = false;
+  else if (key.startsWith("cap:")) state.f.caps.delete(key.slice(4));
+  else if (key.startsWith("show:")) state.show[key.slice(5)] = true;
+  syncFilterUi(); renderUseCases(); renderList();
 }
 function resetFilters() {
   state.f = { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true };
@@ -2820,6 +2873,7 @@ function wire() {
     if (t.id === "btnLmsRefresh") { checkLms().then(renderView); toast("Asking LM Studio for its models…"); return; }
     const ll = t.closest("[data-lmsload]"); if (ll) { openLmsLoad(ll.dataset.lmsload); return; }
     const hl = t.closest("[data-headload]"); if (hl) { headLoad(hl.dataset.headload); return; }
+    const uf = t.closest("[data-unfilter]"); if (uf) { removeFilter(uf.dataset.unfilter); return; }
     if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
     if (t.id === "btnNotices") { showAboutText("notices"); return; }
     if (t.id === "btnLocalGguf") { scanLocalGguf(true); return; }
@@ -2884,6 +2938,8 @@ function wire() {
   try { const l = JSON.parse(safeGet("localStorage", "tt-lms-links") || "{}"); if (l && typeof l === "object" && !Array.isArray(l)) state.lmsLinks = l; } catch (e) { /* ignore */ }
   loadPrefs();
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
+  // First visit (no saved hardware yet): show the hardware fields open.
+  if (!safeGet("localStorage", "tt-hw")) $("hwEdit").open = true;
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
   state.token = safeGet("sessionStorage", "tt-token") || "";
   document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.insertAdjacentHTML("afterbegin", capIcon(b.dataset.cap)));
