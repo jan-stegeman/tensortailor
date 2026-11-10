@@ -1742,6 +1742,10 @@ function ggufLine(repo, path) {
 }
 
 /* ===================== My models (LM Studio) ===================== */
+// LM Studio ships this embedding model itself (folder .lmstudio\.internal\bundled-models); it is used to
+// search documents you add to a chat. It shows under "Text Embedding" in LM Studio, not under "LLMs".
+const LMS_BUNDLED = /^text-embedding-nomic-embed-text-v1\.5$/i;
+const LMS_BUNDLED_TIP = "Comes with LM Studio itself (not in your models folder). LM Studio uses it to search documents you add to a chat. In LM Studio it is listed under Text Embedding, not under LLMs. Keep it: an update of LM Studio would bring it back anyway.";
 function normLms(x) {
   const inst = (x.loaded_instances || [])[0];
   const p = /([\d.]+)\s*([BM])/i.exec(x.params_string || "");
@@ -1751,7 +1755,8 @@ function normLms(x) {
     reasoning: !!(x.capabilities && x.capabilities.reasoning),
     // LM Studio's own setting for a loaded model (speculative decoding with the model's MTP layers).
     mtp: inst && inst.config && typeof inst.config.speculative_draft_mtp === "boolean" ? inst.config.speculative_draft_mtp : null,
-    mtpName: MTP_NAME.test(x.key || "") || MTP_NAME.test(x.display_name || "") };
+    mtpName: MTP_NAME.test(x.key || "") || MTP_NAME.test(x.display_name || ""),
+    paramsStr: x.params_string || "" };
 }
 async function checkLms() {
   state.lms.checked = false;
@@ -1802,7 +1807,11 @@ function viewMine() {
     const warn = x.loaded && x.loadedCtx && tip && x.loadedCtx > tip.ctx ? `<div class="hash" style="color:var(--marginal)">Loaded at ${fmtCtx(x.loadedCtx)}: more than fits comfortably.</div>` : "";
     const link = cat ? "https://huggingface.co/" + cat.m.id : "https://huggingface.co/models?search=" + encodeURIComponent(shortName(x.id));
     const lmsCaps = [x.vision ? "vision" : "", x.tools ? "tools" : "", x.reasoning ? "reason" : ""].filter(Boolean);
-    return `<tr><td><div style="display:flex;gap:6px;align-items:center"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${[x.publisher, x.arch, x.params ? fmtParams(x.params) : ""].filter(Boolean).map(esc).join(" · ")}</div></td>
+    const bundled = LMS_BUNDLED.test(x.id);
+    const mtpArch = x.mtp === true || x.mtpName;
+    return `<tr><td><div style="display:flex;gap:6px;align-items:center"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}</div></td>
+      <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + (x.mtp === true ? "\nLM Studio uses MTP for this loaded model." : "\nThe name says MTP."))}">MTP</span>` : ""}</td>
+      <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model to see if LM Studio uses it.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
@@ -1810,7 +1819,7 @@ function viewMine() {
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card"><table class="mtable"><thead><tr><th>Model in LM Studio</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <section class="card"><table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports.</p></section>`;
 }
 
