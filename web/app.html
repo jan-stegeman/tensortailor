@@ -734,12 +734,20 @@ function rowHTML(r) {
     <div>${ring(b.score)}</div></div>`;
 }
 const sizeBucket = (p) => (p <= 8 ? "s" : p <= 35 ? "m" : p <= 100 ? "l" : "xl");
+// GGUF sources from llmfit; a model whose own repo is a GGUF repo is its own source.
+function ggufSources(m) { return m.gguf.length ? m.gguf : /gguf/i.test(m.id) ? [{ repo: m.id, provider: m.provider }] : []; }
+function chosenRepo(m) {
+  const custom = state.srcIdx["repo:" + m.id];
+  if (custom) return custom;
+  const s = ggufSources(m);
+  return s.length ? s[clamp(state.srcIdx[m.id] || 0, 0, s.length - 1)].repo : null;
+}
 function passFilters(r) {
   const m = r.m, s = state.search.trim().toLowerCase(), f = state.f;
   if (state.useCase !== "all" && !m.uses.includes(state.useCase)) return false;
   if (s && !/^https?:/.test(s) && !m.id.toLowerCase().includes(s) && !(m.provider || "").toLowerCase().includes(s)) return false;
   if (f.llama && m.runtime !== "LlamaCpp") return false;
-  if (f.gguf && !m.gguf.length) return false;
+  if (f.gguf && !ggufSources(m).length) return false;
   if (f.lang && !m.langs.includes(f.lang)) return false;
   if (f.size && sizeBucket(m.params) !== f.size) return false;
   for (const c of f.caps) if (!m.caps.includes(c)) return false;
@@ -931,11 +939,13 @@ function fileKind(path) {
 }
 function tabFiles(r) {
   const m = r.m, b = r.best;
-  const sources = m.gguf.length ? m.gguf : [];
+  const sources = ggufSources(m);
   const idx = clamp(state.srcIdx[m.id] || 0, 0, Math.max(0, sources.length - 1));
   const custom = state.srcIdx["repo:" + m.id];
-  const repo = custom || (sources[idx] && sources[idx].repo) || null;
+  const repo = chosenRepo(m);
   const search = state.files.get("search:" + m.id);
+  // Read the file list as soon as the tab opens (one request, kept 12 hours).
+  if (repo && !state.files.get(repo)) setTimeout(() => loadFiles(repo), 0);
   let html = `<section class="card"><div class="card-head"><h2>Files on Hugging Face</h2><span class="tag">kept 12 h</span></div>`;
   if (sources.length) html += `<label class="field" style="margin-bottom:10px">GGUF source<select id="srcSel">${sources.map((s, i) => `<option value="${i}" ${!custom && i === idx ? "selected" : ""}>${esc(s.repo)}</option>`).join("")}${custom ? `<option selected>${esc(custom)}</option>` : ""}</select></label>`;
   else html += `<p class="hint" style="margin-top:0">llmfit knows no GGUF copy of this model. Search Hugging Face for one:</p><button class="btn small" id="btnFindGguf">Find GGUF copies</button>`;
@@ -945,8 +955,8 @@ function tabFiles(r) {
   }
   if (repo) {
     const f = state.files.get(repo);
-    html += `<div class="folder-row"><code>${esc(repo)}</code><a class="btn small" href="https://huggingface.co/${esc(repo)}" target="_blank" rel="noopener">Open ↗</a>${!f ? `<button class="btn small primary" data-loadfiles="${esc(repo)}">Check files</button>` : ""}</div>`;
-    if (f && f.loading) html += '<div class="loading">Reading the file list from Hugging Face…</div>';
+    html += `<div class="folder-row"><code>${esc(repo)}</code><a class="btn small" href="https://huggingface.co/${esc(repo)}" target="_blank" rel="noopener">Open ↗</a>${f && f.error ? `<button class="btn small" data-loadfiles="${esc(repo)}">Try again</button>` : ""}</div>`;
+    if (!f || f.loading) html += '<div class="loading">Reading the file list from Hugging Face…</div>';
     if (f && f.error) html += `<div class="warn-box">${esc(f.error)}</div>`;
     if (f && f.files) {
       const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja)$/i.test(x.path) && !/^\./.test(x.path)).sort((a, c) => c.size - a.size);
@@ -965,7 +975,7 @@ function tabFiles(r) {
 function cmdLine(who, text) { return `<div class="cmd"><span class="who">${who}</span><code title="${esc(text)}">${esc(text)}</code><button class="btn small" data-copy="${esc(text)}" data-what="Command">Copy</button></div>`; }
 function tabRun(r) {
   const m = r.m, b = r.best, lms = inLms(m);
-  const repo = state.srcIdx["repo:" + m.id] || (m.gguf[clamp(state.srcIdx[m.id] || 0, 0, Math.max(0, m.gguf.length - 1))] || {}).repo || null;
+  const repo = chosenRepo(m);
   const f = repo ? state.files.get(repo) : null;
   const file = f && f.files ? (f.files.find((x) => x.path.endsWith(".gguf") && quantOfFile(x.path) === String(b.q).toUpperCase()) || {}).path : null;
   const ctx = r.ctx || CTX_STEPS[state.ctxIdx], kv = state.kvq;
@@ -1325,7 +1335,7 @@ function wire() {
     const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
     const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
     const cp = t.closest("[data-copy]"); if (cp) { copyText(cp.dataset.copy, cp.dataset.what || "Text"); return; }
-    const lf = t.closest("[data-loadfiles]"); if (lf) { loadFiles(lf.dataset.loadfiles); renderDetail(); return; }
+    const lf = t.closest("[data-loadfiles]"); if (lf) { state.files.delete(lf.dataset.loadfiles); loadFiles(lf.dataset.loadfiles); renderDetail(); return; }
     const ur = t.closest("[data-userepo]"); if (ur) { state.srcIdx["repo:" + state.selected] = ur.dataset.userepo; renderDetail(); return; }
     if (t.id === "btnFindGguf") { const r = selectedResult(); if (r) searchGgufCopies(r.m); return; }
     const wd = t.closest("#detail [data-watch]"); if (wd) { toggleWatch(wd.dataset.watch); return; }
