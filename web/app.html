@@ -1789,7 +1789,7 @@ async function idbDo(store, mode, fn) {
     tx.oncomplete = () => resolve(req ? req.result : undefined); tx.onerror = () => reject(tx.error);
   });
 }
-const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note", "rename"];
+const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note", "rename", "why"];
 function dlSave(job) { const o = {}; for (const k of DL_KEEP) o[k] = job[k]; return idbDo("jobs", "readwrite", (s) => s.put(o)).catch(() => {}); }
 async function dlLoad() {
   try {
@@ -1818,13 +1818,33 @@ async function dlAdd(repo, file) {
   try {
     if (!(await dlFolder(true))) { toast("TensorTailor needs a folder with write permission."); return; }
   } catch (e) { if (e.name !== "AbortError") toast(e.message); return; }
+  const added = await dlQueue(repo, file);
+  if (!added) { setView("downloads"); return; }
+  // A model file of a vision model needs its vision projector (mmproj) next to it, or LM Studio
+  // shows no vision. Take it along when the repo has one and it is not queued or done yet.
+  const proj = fileKind(file.path)[0] === "model file" ? dlProjector(repo) : null;
+  const projAdded = proj && !dlJob(repo, proj.path) ? await dlQueue(repo, proj, "Taken along: the vision projector. LM Studio needs it next to the model to read images.") : false;
+  renderNav(); renderDetail();
+  toast(projAdded ? `Added to Downloads, with the vision projector ${proj.path.split("/").pop()} (needed for images).` : "Added to Downloads.");
+  dlNext();
+}
+// Put one file in the queue. Returns false when it is already queued, running or done.
+async function dlQueue(repo, file, note) {
   let job = dlJob(repo, file.path);
-  if (job && ["done", "queued", "downloading", "assembling", "verifying"].includes(job.status)) { setView("downloads"); return; }
+  if (job && ["done", "queued", "downloading", "assembling", "verifying"].includes(job.status)) return false;
   if (!job) { job = { id: repo + "/" + file.path, repo, path: file.path, bytes: file.bytes, sha256: file.sha256 || null, partBytes: state.dl.partBytes, added: new Date().toISOString() }; state.dl.jobs.push(job); }
-  job.status = "queued"; job.error = ""; job.note = "";
+  job.status = "queued"; job.error = ""; job.note = ""; if (note) job.why = note;
   const free = state.hw.freeDisk;
   if (free && job.bytes * 2 / 1e9 > free) job.note = `Your last import showed ${free.toFixed(0)} GB free on D:. Joining the parts needs about twice the file size for a short time.`;
-  await dlSave(job); renderNav(); renderDetail(); toast("Added to Downloads."); dlNext();
+  await dlSave(job);
+  return true;
+}
+// The repo's vision projector, if any: F16 first, then BF16, else the smallest mmproj file.
+function dlProjector(repo) {
+  const files = ((state.files.get(repo) || {}).files || []).filter((x) => /\.gguf$/i.test(x.path) && /mmproj/i.test(x.path));
+  if (!files.length) return null;
+  const pick = (re) => files.find((x) => re.test(x.path.split("/").pop()));
+  return pick(/(^|[-_.])f16\.gguf$/i) || pick(/bf16\.gguf$/i) || files.slice().sort((a, b) => a.bytes - b.bytes)[0];
 }
 function dlNext() {
   if (state.dl.active) return;
@@ -2037,7 +2057,7 @@ function dlRow(j) {
     <td style="min-width:260px"><div class="bar dlbar"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
     ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: ${esc(j.gotSha)}</div>` : ""}
     ${j.rename ? `<div class="warn-box" style="margin-top:6px">The file is still called <b>${esc(j.path.split("/").pop())}.tt-tmp</b>, so LM Studio does not see it yet. Windows did not allow the rename (${esc(j.rename)}). Press <b>Rename now</b>, or in Explorer remove <b>.tt-tmp</b> from the end of the name.</div>` : ""}
-    ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}</td>
+    ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}${j.why ? `<div class="hash">${esc(j.why)}</div>` : ""}</td>
     <td class="r" style="white-space:nowrap">${acts.join(" ")}</td></tr>`;
 }
 function fmtTime(s) { s = Math.round(s); return s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; }
@@ -2049,6 +2069,7 @@ function viewDownloads() {
     <section class="card"><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (for example <code>${esc(LMS_FOLDER)}</code>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
     <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
     <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
+    <b>Vision:</b> when you download a model file from a repo with a vision projector (mmproj), the projector is taken along. LM Studio needs it in the same folder to read images.<br>
     <b>Remove</b> only removes the entry and its temporary parts. A finished model file is never deleted by TensorTailor.</p></section>`;
 }
 function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
