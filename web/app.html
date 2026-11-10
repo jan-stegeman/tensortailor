@@ -1342,7 +1342,8 @@ function renderDetail() {
   if (!r) { $("detail").innerHTML = `<div class="card empty">${state.ready ? "Pick a model to see the details." : "Starting the engine…"}</div>`; return; }
   const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
   if (!d) loadDetail(r);
-  if (!state.mtp.has(m.id)) setTimeout(() => loadMtpConfig(m.id), 0);
+  // Gated repos answer 401 without a token: only ask when a token is set.
+  if (!state.mtp.has(m.id) && (!m.gated || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   $("detail").innerHTML = `<section class="card">
