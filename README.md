@@ -6,7 +6,8 @@ TensorTailor will be **one HTML file**. You open it in Edge or Chrome. It needs 
 offline. It checks about 19,000 models from Hugging Face against your GPU, VRAM, RAM and CPU, and it
 tells you which file to download and how fast it will run.
 
-> **Status:** design stage. Nothing is built yet. The private repository holds the design and the plan.
+> **Status:** design stage plus a working engine trial. The llmfit engine runs as WebAssembly and gives
+> exactly the same answers as native llmfit (checked on every build). The page itself is not built yet.
 
 ## What is here now
 
