@@ -1851,11 +1851,10 @@ async function dlRun(job) {
     let existing = null;
     try { const fh = await fileDir.getFileHandle(fileName); if ((await fh.getFile()).size === job.bytes) existing = fh; } catch (e) { /* not there yet */ }
     if (existing) { job.note = "The complete file was already in the folder; it is only checked."; await dlVerify(job, existing); return; }
-    // Joined before, but the rename failed: rename it now and check it (no new download).
-    try {
-      const th = await fileDir.getFileHandle(fileName + ".tt-tmp");
-      if ((await th.getFile()).size === job.bytes) { await dlVerify(job, (await dlRenameTmp(job, fileDir, fileName)) || th); return; }
-    } catch (e) { /* no complete .tt-tmp */ }
+    // A complete "<name>.tt-tmp" from an older version: give it the real name and check it (no new download).
+    let tmpDone = false;
+    try { tmpDone = (await (await fileDir.getFileHandle(fileName + ".tt-tmp")).getFile()).size === job.bytes; } catch (e) { /* none */ }
+    if (tmpDone) { await dlFinishTmp(job, fileDir, fileName); return; }
     const partsDir = await dlDir(repoDir, [DL_PARTS, dlSafe(job.path)]);
     const n = Math.max(1, Math.ceil(job.bytes / job.partBytes)), partName = (i) => `part-${String(i + 1).padStart(5, "0")}`;
     const partLen = (i) => Math.min(job.bytes, (i + 1) * job.partBytes) - i * job.partBytes;
@@ -1892,10 +1891,12 @@ async function dlRun(job) {
       } catch (e) { job.live -= got; try { await w.abort(); } catch (x) { /* already closed */ } throw e; }
       job.have += len; job.live -= got;
     });
-    // Join the parts into "<name>.tt-tmp"; it gets the real name only when complete.
+    // Join the parts under the real name. The browser writes into a hidden swap file and puts the data in
+    // place at close(), so the file is empty until it is complete. (Joining into "<name>.tt-tmp" and renaming
+    // it afterwards failed: Chrome refused the rename of a 7.4 GB file with NotAllowedError.)
     job.status = "assembling"; job.joined = 0; dlSave(job); dlRefresh(true);
-    const tmp = await fileDir.getFileHandle(fileName + ".tt-tmp", { create: true });
-    const out = await tmp.createWritable();
+    const final = await fileDir.getFileHandle(fileName, { create: true });
+    const out = await final.createWritable();
     try {
       for (let i = 0; i < n; i++) {
         if (job.ctl.signal.aborted) throw new DOMException("Paused", "AbortError");
@@ -1905,9 +1906,7 @@ async function dlRun(job) {
         job.joined += pf.size; dlRefresh();
       }
       await out.close();
-    } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } throw e; }
-    const renamed = await dlRenameTmp(job, fileDir, fileName);
-    const final = renamed || tmp;
+    } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } await dlDropEmpty(fileDir, fileName); throw e; }
     try { await (await repoDir.getDirectoryHandle(DL_PARTS)).removeEntry(dlSafe(job.path), { recursive: true }); } catch (e) { /* parts stay; harmless */ }
     try { const pd = await repoDir.getDirectoryHandle(DL_PARTS); let empty = true; for await (const _ of pd.keys()) { empty = false; break; } if (empty) await repoDir.removeEntry(DL_PARTS); } catch (e) { /* keep it */ }
     await dlVerify(job, final);
@@ -1920,27 +1919,34 @@ async function dlRun(job) {
     dlRefresh(true); renderDetail(); dlNext();
   }
 }
-// "<name>.tt-tmp" -> "<name>". Windows can hold a big, just-written file for a while (for example while
-// the virus scanner reads it), so the rename is tried several times. On failure job.rename keeps the reason
-// and the Downloads view shows a warning with "Rename now": LM Studio only sees files ending in .gguf.
-async function dlRenameTmp(job, dir, fileName) {
-  let tmp;
-  try { tmp = await dir.getFileHandle(fileName + ".tt-tmp"); } catch (e) { return null; }
-  let last = null;
-  for (let attempt = 0; attempt < 8; attempt++) {
+// A "<name>.tt-tmp" left by an older version (LM Studio only sees names ending in .gguf): rename it; if the
+// browser refuses (Chrome: NotAllowedError), copy it to the real name, check the copy's SHA-256 read from
+// disk, and only after that remove the .tt-tmp (TensorTailor's own temporary file).
+async function dlFinishTmp(job, dir, fileName) {
+  const tmp = await dir.getFileHandle(fileName + ".tt-tmp");
+  let handle = null, copied = false;
+  try {
+    if (typeof tmp.move !== "function") throw new DOMException("no move()", "NotAllowedError");
+    await tmp.move(fileName);
+    handle = await dir.getFileHandle(fileName);
+  } catch (e) {
+    if (e && e.name === "AbortError") throw e;
+    const src = await tmp.getFile();
+    const fh = await dir.getFileHandle(fileName, { create: true });
+    const out = await fh.createWritable();
+    job.status = "assembling"; job.joined = 0; job.note = "Copying the .tt-tmp file to its real name (the browser did not allow a rename)."; dlRefresh(true);
     try {
-      if (typeof tmp.move !== "function") throw new Error("this browser cannot rename files");
-      await tmp.move(fileName);
-      job.rename = "";
-      return await dir.getFileHandle(fileName);
-    } catch (e) {
-      last = e;
-      if (typeof tmp.move !== "function") break;
-      await new Promise((r) => setTimeout(r, 1500));
-    }
+      await src.stream().pipeThrough(new TransformStream({ transform(c, ctl) { job.joined += c.length; dlRefresh(); ctl.enqueue(c); } }))
+        .pipeTo(out, job.ctl ? { signal: job.ctl.signal } : {});
+    } catch (err) { try { await out.abort(); } catch (x) { /* already closed */ } await dlDropEmpty(dir, fileName); throw err; }
+    handle = fh; copied = true;
   }
-  job.rename = `${last.name || "Error"}: ${last.message}`;
-  return null;
+  job.rename = "";
+  await dlVerify(job, handle);
+  if (copied && job.status === "done") {
+    try { await dir.removeEntry(fileName + ".tt-tmp"); job.note = "Copied to its real name and checked; the .tt-tmp file is removed."; }
+    catch (e) { job.note = `Checked. Please delete ${fileName}.tt-tmp yourself: it is an extra copy.`; }
+  }
 }
 async function dlFileDir(job, create) {
   const parts = job.path.split("/"), fileName = parts.pop(), [pub, name] = job.repo.split("/");
@@ -1948,15 +1954,11 @@ async function dlFileDir(job, create) {
   for (const n of [pub, name, ...parts]) dir = await dir.getDirectoryHandle(n, { create: !!create });
   return { dir, fileName };
 }
-async function dlRenameNow(job) {
-  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
-  if (!(await dlFolder(true))) return;
-  try {
-    const { dir, fileName } = await dlFileDir(job);
-    const done = await dlRenameTmp(job, dir, fileName);
-    toast(done ? `Renamed: ${fileName}. LM Studio can see it now.` : "Windows did not allow the rename yet. Try again in a minute, or rename it in Explorer.");
-  } catch (e) { job.rename = `${e.name}: ${e.message}`; }
-  dlSave(job); dlRefresh(true);
+function dlRenameNow(job) { return dlCheckAgain(job); }
+// After a stopped join or copy: remove the EMPTY file TensorTailor created for it, so LM Studio does not
+// list a 0-byte model. A file with any data in it is never touched.
+async function dlDropEmpty(dir, fileName) {
+  try { const f = await (await dir.getFileHandle(fileName)).getFile(); if (f.size === 0) await dir.removeEntry(fileName); } catch (e) { /* nothing to do */ }
 }
 // Read the finished file back from disk and compare its SHA-256 with Hugging Face's.
 async function dlVerify(job, handle) {
@@ -1991,9 +1993,8 @@ async function dlCheckAgain(job) {
     const { dir, fileName } = await dlFileDir(job);
     let handle = null;
     try { handle = await dir.getFileHandle(fileName); } catch (e) { /* maybe still called .tt-tmp */ }
-    // A file left as "<name>.tt-tmp" (rename failed before): rename it now, else check the .tt-tmp file.
-    if (!handle) handle = (await dlRenameTmp(job, dir, fileName)) || await dir.getFileHandle(fileName + ".tt-tmp");
-    await dlVerify(job, handle);
+    if (handle) await dlVerify(job, handle);
+    else await dlFinishTmp(job, dir, fileName); // NotFoundError when there is no .tt-tmp either
   } catch (e) {
     if (e && e.name === "AbortError") job.status = "done"; else { job.status = "failed"; job.error = e.name === "NotFoundError" ? "The file is not in the folder any more." : String(e.message || e); }
   } finally { state.dl.active = null; dlSave(job); dlRefresh(true); dlNext(); }
@@ -2046,7 +2047,7 @@ function viewDownloads() {
   return `<div class="view-head"><h1>Downloads</h1><span class="status-line"><span class="dot ${d.root ? "ok" : "warn"}"></span>${folder}</span><span class="spacer"></span><button class="btn small" id="btnDlFolder">${d.root ? "Change folder" : "Choose folder"}</button></div>
     <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : `<p class="hint" style="margin-top:0">No downloads yet. Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file.</p>`}</section>
     <section class="card"><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (for example <code>${esc(LMS_FOLDER)}</code>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
-    <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. The model file gets its real name only when it is complete. Joining the parts needs about twice the file size free for a short time.<br>
+    <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
     <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
     <b>Remove</b> only removes the entry and its temporary parts. A finished model file is never deleted by TensorTailor.</p></section>`;
 }
