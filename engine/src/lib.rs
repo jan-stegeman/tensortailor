@@ -4,10 +4,14 @@
 //! JSON. Everything else (the model catalog, the fit rules, the speed formula,
 //! the community measurements) is llmfit-core itself, unchanged.
 
-use llmfit_core::analysis::build_model_fits_with_config;
+use llmfit_core::analysis::{analyze_with_optional_config, build_model_fits_with_config};
 use llmfit_core::fit::CalcConfig;
 use llmfit_core::hardware::GpuInfo;
-use llmfit_core::{GpuBackend, InstalledIndex, ModelDatabase, ModelFit, SystemSpecs};
+use llmfit_core::models::{KvQuant, QUANT_HIERARCHY};
+use llmfit_core::{
+    GpuBackend, InstalledIndex, LlmModel, ModelDatabase, ModelFit, PlanRequest, SystemSpecs,
+    estimate_model_plan_with_config,
+};
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
 use std::sync::OnceLock;
@@ -171,6 +175,148 @@ pub fn fit_key(fit: &ModelFit) -> Value {
     ])
 }
 
+fn round(value: f64, digits: i32) -> f64 {
+    let f = 10f64.powi(digits);
+    (value * f).round() / f
+}
+
+fn enum_text<T: serde::Serialize>(value: &T) -> Value {
+    serde_json::to_value(value).unwrap_or(Value::Null)
+}
+
+/// One compact row for the page's model list. Field order is fixed (see
+/// LITE_FIELDS) so 15,000 rows stay small and fast to send to the page.
+pub fn fit_lite(fit: &ModelFit) -> Value {
+    let c = &fit.score_components;
+    json!([
+        fit.model.name,
+        enum_text(&fit.fit_level),
+        enum_text(&fit.run_mode),
+        fit.best_quant,
+        round(fit.memory_required_gb, 2),
+        round(fit.memory_available_gb, 2),
+        round(fit.estimated_tps, 2),
+        round(fit.score, 1),
+        fit.usable_context,
+        fit.effective_context_length,
+        enum_text(&fit.estimate_confidence),
+        enum_text(&fit.runtime),
+        enum_text(&fit.use_case),
+        round(fit.utilization_pct, 1),
+        [round(c.quality, 1), round(c.speed, 1), round(c.fit, 1), round(c.context, 1)],
+        fit.moe_offloaded_gb.map(|g| round(g, 2)),
+        fit.measured_tps.as_ref().map(|m| serde_json::to_value(m).unwrap_or(Value::Null))
+    ])
+}
+
+/// Names of the fit_lite columns, sent once so the page reads rows by name.
+pub const LITE_FIELDS: &[&str] = &[
+    "name",
+    "fit_level",
+    "run_mode",
+    "best_quant",
+    "memory_required_gb",
+    "memory_available_gb",
+    "estimated_tps",
+    "score",
+    "usable_context",
+    "effective_context_length",
+    "estimate_confidence",
+    "runtime",
+    "use_case",
+    "utilization_pct",
+    "score_components",
+    "moe_offloaded_gb",
+    "measured_tps",
+];
+
+fn find_model<'a>(name: &str) -> Result<&'a LlmModel, String> {
+    database()
+        .get_all_models()
+        .iter()
+        .find(|m| m.name == name)
+        .ok_or_else(|| format!("model not in the catalog: {name}"))
+}
+
+pub fn fit_lite_json(hardware_json: &str, context_limit: Option<u32>) -> Result<String, String> {
+    let hw = parse_hardware(hardware_json)?;
+    let rows: Vec<Value> = fit_all(&hw, context_limit).iter().map(fit_lite).collect();
+    serde_json::to_string(&json!({ "fields": LITE_FIELDS, "rows": rows }))
+        .map_err(|e| e.to_string())
+}
+
+/// Full analysis of one model: the fit (notes, estimate basis) plus the whole
+/// catalog record (architecture, GGUF sources) for the detail panel.
+pub fn fit_detail_json(
+    hardware_json: &str,
+    context_limit: Option<u32>,
+    name: &str,
+) -> Result<String, String> {
+    let hw = parse_hardware(hardware_json)?;
+    let model = find_model(name)?;
+    let specs = specs_from(&hw);
+    let config = config_from(&hw);
+    let fit = analyze_with_optional_config(model, &specs, context_limit, Some(&config));
+    let out = json!({ "fit": fit_summary(&fit), "model": serde_json::to_value(model).unwrap_or(Value::Null) });
+    serde_json::to_string(&out).map_err(|e| e.to_string())
+}
+
+fn plan_for(
+    hw: &HardwareInput,
+    model: &LlmModel,
+    context: u32,
+    quant: Option<String>,
+    kv_quant: Option<KvQuant>,
+    target_tps: Option<f64>,
+) -> Result<Value, String> {
+    let request = PlanRequest {
+        context,
+        quant,
+        target_tps,
+        kv_quant,
+    };
+    let plan =
+        estimate_model_plan_with_config(model, &request, &specs_from(hw), &config_from(hw))?;
+    serde_json::to_value(plan).map_err(|e| e.to_string())
+}
+
+/// llmfit's planner for one model: hardware needed, run paths, upgrades.
+pub fn plan_json(
+    hardware_json: &str,
+    name: &str,
+    context: u32,
+    quant: Option<String>,
+    kv_quant: Option<String>,
+    target_tps: Option<f64>,
+) -> Result<String, String> {
+    let hw = parse_hardware(hardware_json)?;
+    let model = find_model(name)?;
+    let kv = kv_quant.as_deref().and_then(KvQuant::parse);
+    let plan = plan_for(&hw, model, context, quant, kv, target_tps)?;
+    serde_json::to_string(&plan).map_err(|e| e.to_string())
+}
+
+/// The plan for every GGUF quant from Q8_0 down to Q2_K, for the
+/// "Which file fits?" table. A quant llmfit cannot plan gets an error text.
+pub fn ladder_json(
+    hardware_json: &str,
+    name: &str,
+    context: u32,
+    kv_quant: Option<String>,
+) -> Result<String, String> {
+    let hw = parse_hardware(hardware_json)?;
+    let model = find_model(name)?;
+    let kv = kv_quant.as_deref().and_then(KvQuant::parse);
+    let rows: Vec<Value> = QUANT_HIERARCHY
+        .iter()
+        .map(|q| match plan_for(&hw, model, context, Some((*q).to_string()), kv, None) {
+            Ok(plan) => json!({ "quant": q, "plan": plan }),
+            Err(e) => json!({ "quant": q, "error": e }),
+        })
+        .collect();
+    serde_json::to_string(&rows).map_err(|e| e.to_string())
+}
+
 fn parse_hardware(hardware_json: &str) -> Result<HardwareInput, String> {
     serde_json::from_str(hardware_json).map_err(|e| format!("hardware JSON is not valid: {e}"))
 }
@@ -193,6 +339,10 @@ pub fn catalog_json() -> String {
         "name",
         "provider",
         "parameter_count",
+        "parameters_raw",
+        "active_parameters",
+        "num_experts",
+        "architecture",
         "context_length",
         "use_case",
         "capabilities",
@@ -259,5 +409,42 @@ mod web {
     #[wasm_bindgen(js_name = fitKeys)]
     pub fn fit_keys(hardware_json: &str, context_limit: Option<u32>) -> Result<String, JsError> {
         super::fit_keys_json(hardware_json, context_limit).map_err(|e| JsError::new(&e))
+    }
+
+    #[wasm_bindgen(js_name = fitLite)]
+    pub fn fit_lite(hardware_json: &str, context_limit: Option<u32>) -> Result<String, JsError> {
+        super::fit_lite_json(hardware_json, context_limit).map_err(|e| JsError::new(&e))
+    }
+
+    #[wasm_bindgen(js_name = fitDetail)]
+    pub fn fit_detail(
+        hardware_json: &str,
+        context_limit: Option<u32>,
+        name: &str,
+    ) -> Result<String, JsError> {
+        super::fit_detail_json(hardware_json, context_limit, name).map_err(|e| JsError::new(&e))
+    }
+
+    #[wasm_bindgen]
+    pub fn plan(
+        hardware_json: &str,
+        name: &str,
+        context: u32,
+        quant: Option<String>,
+        kv_quant: Option<String>,
+        target_tps: Option<f64>,
+    ) -> Result<String, JsError> {
+        super::plan_json(hardware_json, name, context, quant, kv_quant, target_tps)
+            .map_err(|e| JsError::new(&e))
+    }
+
+    #[wasm_bindgen]
+    pub fn ladder(
+        hardware_json: &str,
+        name: &str,
+        context: u32,
+        kv_quant: Option<String>,
+    ) -> Result<String, JsError> {
+        super::ladder_json(hardware_json, name, context, kv_quant).map_err(|e| JsError::new(&e))
     }
 }

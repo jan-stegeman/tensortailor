@@ -58,5 +58,46 @@ for (const f of top) {
     `${f.memory_required_gb.toFixed(1).padStart(5)} GB  ${f.estimated_tps.toFixed(1).padStart(6)} tok/s  ${f.name}`);
 }
 
-if (problems) { console.log(`\n${problems} differences between WebAssembly and native.`); process.exit(1); }
+// The page's functions: they must run without errors, and the samples show
+// the exact data shapes the page reads.
+try {
+  const hwText = JSON.stringify(p0.hardware);
+  const counts = (arr) => arr.reduce((m, k) => ((m[String(k)] = (m[String(k)] || 0) + 1), m), {});
+  t0 = performance.now();
+  const liteText = engine.fitLite(hwText);
+  const lite = JSON.parse(liteText);
+  console.log(`\nfitLite: ${lite.rows.length} rows, ${(liteText.length / 1e6).toFixed(2)} MB, ${(performance.now() - t0).toFixed(0)} ms`);
+  const sample = lite.rows.find((r) => /qwen3-14b$/i.test(r[0])) || lite.rows[0];
+  console.log("lite sample:", JSON.stringify(Object.fromEntries(lite.fields.map((f, i) => [f, sample[i]]))));
+  console.log("runtime:", JSON.stringify(counts(lite.rows.map((r) => r[11]))));
+  console.log("use_case:", JSON.stringify(counts(lite.rows.map((r) => r[12]))));
+  console.log("confidence:", JSON.stringify(counts(lite.rows.map((r) => r[10]))));
+  console.log("run_mode:", JSON.stringify(counts(lite.rows.map((r) => r[2]))));
+  console.log("catalog sample:", JSON.stringify(catalog.find((c) => c.name === sample[0])));
+  console.log("catalog format:", JSON.stringify(counts(catalog.map((c) => c.format))),
+    "| with gguf_sources:", catalog.filter((c) => c.gguf_sources && c.gguf_sources.length).length,
+    "| catalog JSON MB:", (engine.catalog().length / 1e6).toFixed(2));
+  t0 = performance.now();
+  const detail = JSON.parse(engine.fitDetail(hwText, undefined, sample[0]));
+  console.log(`fitDetail ${(performance.now() - t0).toFixed(0)} ms | fit keys: ${Object.keys(detail.fit).join(",")}`);
+  console.log("model keys:", Object.keys(detail.model).join(","));
+  console.log("notes:", JSON.stringify(detail.fit.notes).slice(0, 600));
+  console.log("estimate_basis:", JSON.stringify(detail.fit.estimate_basis));
+  t0 = performance.now();
+  const lad = JSON.parse(engine.ladder(hwText, sample[0], 32768, "fp16"));
+  console.log(`ladder ${(performance.now() - t0).toFixed(0)} ms`);
+  for (const r of lad) {
+    console.log("  ", r.quant, r.error ?? `${r.plan.disk_size_gb.toFixed(1)} GB file, ${r.plan.current.fit_level} ${r.plan.current.run_mode} ${r.plan.current.estimated_tps.toFixed(1)} tok/s`);
+  }
+  const plan = JSON.parse(engine.plan(hwText, sample[0], 32768, "Q4_K_M", "q8_0", 30));
+  console.log("plan minimum:", JSON.stringify(plan.minimum), "recommended:", JSON.stringify(plan.recommended));
+  console.log("plan run_paths:", JSON.stringify(plan.run_paths).slice(0, 500));
+  console.log("plan upgrades:", JSON.stringify(plan.upgrade_deltas).slice(0, 400));
+  console.log("plan kv_alternatives:", JSON.stringify(plan.kv_alternatives).slice(0, 500));
+} catch (e) {
+  console.log("FAIL page functions:", e && e.stack ? e.stack : e);
+  problems++;
+}
+
+if (problems) { console.log(`\n${problems} problems.`); process.exit(1); }
 console.log("\nWebAssembly matches native for every profile.");

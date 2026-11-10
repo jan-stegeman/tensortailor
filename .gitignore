@@ -4,6 +4,7 @@ target/
 node_modules/
 engine/pkg-node/
 engine/pkg-web/
+engine/pkg-nomod/
 engine/golden-native.json
 vendor/
 
