@@ -422,7 +422,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
         <label><input type="checkbox" id="fLlama" checked> Runs in LM Studio (llama.cpp)</label>
         <label><input type="checkbox" id="fGguf"> Known GGUF download</label>
         <label><input type="checkbox" id="fNew"> Released in the last 60 days</label>
-        <label><input type="checkbox" id="fWatch"> On my watch list ☆</label>
+        <label><input type="checkbox" id="fWatch"> Only my favorites ★</label>
         <label><input type="checkbox" id="fLms"> Already in LM Studio</label>
         <label><input type="checkbox" id="fOpen"> Open license (Apache, MIT)</label>
         <label><input type="checkbox" id="fGpu"> Fits fully in VRAM</label>
@@ -547,7 +547,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
     <dl>
       <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
-      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model.</dd>
+      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model; "MTP in file" comes from the header of your own model file. To read your files, My models asks once for LM Studio's models folder (the same folder as for Downloads); TensorTailor matches each model to its file by size and reads only the start of the file (layers, maximum context, MTP).</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (catalog button or a pasted link).</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
@@ -584,9 +584,10 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
     <h3>Views (top) and keys</h3>
     <dl>
       <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
+      <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Catalog button</dt><dd>Where the list comes from, and "Fetch new models" from Hugging Face.</dd>
       <dt>HF token</dt><dd>Read-only Hugging Face token for gated models. It stays only in this browser tab.</dd>
-      <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> watch list · <kbd>T</kbd> light or dark · <kbd>?</kbd> help.</dd>
+      <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help.</dd>
     </dl>
   </div>
 </dialog>
@@ -728,6 +729,7 @@ const state = {
   view: "models", tab: "overview", engine: "lms",
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
   token: "", lms: { online: false, checked: false, models: [] }, lmsPlans: new Map(), lmsLoad: null,
+  localGguf: { busy: false, done: false, needClick: false, error: "", folder: "", files: 0, byId: new Map() },
   live: { models: [], meta: {}, at: "" }, liveBusy: false, liveLog: "", liveResult: null, lookup: null,
   searchAll: false, hubSearch: null, mtp: new Map(), gguf: new Map(),
   dl: { root: null, jobs: [], active: null, partBytes: 256 * 1024 * 1024, parallel: 2, loaded: false },
@@ -1005,7 +1007,7 @@ function catalogFor(x) {
 function rowHTML(r) {
   const m = r.m, b = r.best, lms = state.lms.online ? inLms(m) : null;
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
-    <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)" aria-label="Watch ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
+    <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
       <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)}</span></div></div>
     <div class="num">${fmtParams(m.params)}</div>
@@ -1553,7 +1555,7 @@ function renderDetail() {
   $("detail").innerHTML = `<section class="card">
     <h1 class="d-title">${esc(m.name)}</h1>
     <a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener">huggingface.co/${esc(m.id)} ↗</a>
-    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}<span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${mtpTag(m)}${m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Watch list (W)">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
+    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}<span class="tag">${fmtParams(m.params)} parameters</span>${m.moe ? `<span class="tag">MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}</span>` : ""}<span class="tag">max ${fmtCtx(m.ctx)} context</span><span class="tag">${esc(m.license)}</span>${m.added ? `<span class="tag">${esc(m.added)}</span>` : ""}${m.downloads ? `<span class="tag">${m.downloads.toLocaleString("en")} downloads</span>` : ""}${mtpTag(m)}${m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}<button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W)" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${state.tab === k}">${l}</button>`).join("")}</div></section>${body}`;
 }
 
@@ -1786,20 +1788,27 @@ function mtpTag(m) {
   const s = mtpState(m);
   return s.yes ? `<span class="tag ${s.notInFile ? "" : "okay"}" title="${esc(MTP_WHAT + "\nSource: " + s.src + ".")}">MTP${s.name ? " (from the name)" : s.notInFile ? " (not in this file)" : ""}</span>` : "";
 }
-// The key/value part of a GGUF file header, read from Hugging Face in 4 MB pieces (the tokenizer
-// lists come first, so a key like <arch>.nextn_predict_layers can sit 10 MB or more into the file).
-async function ggufHeader(url, maxBytes = 64 * 1024 * 1024) {
+// The key/value part of a GGUF file header, read in 4 MB pieces (the tokenizer lists come first, so a
+// key like <arch>.nextn_predict_layers can sit 10 MB or more into the file). src = a Hugging Face URL
+// (Range requests) or a local File from the chosen folder.
+async function ggufHeader(src, maxBytes = 64 * 1024 * 1024) {
   const CH = 4 * 1024 * 1024, td = new TextDecoder();
   let buf = new Uint8Array(0), view = new DataView(buf.buffer), pos = 0, ended = false;
   const more = async (need) => {
     while (buf.length < need) {
       if (ended) throw new Error("the file ended inside the header");
       if (buf.length >= maxBytes) throw new Error(`the header is larger than ${maxBytes / 1048576} MB`);
-      const res = await fetch(url, { headers: { ...hfHeaders(), Range: `bytes=${buf.length}-${buf.length + CH - 1}` } });
-      if (res.status === 401 || res.status === 403) throw new Error("gated or private: accept the license on Hugging Face and set your token");
-      if (res.status !== 206 && res.status !== 200) throw new Error(`Hugging Face answered ${res.status}`);
-      const chunk = new Uint8Array(await res.arrayBuffer());
-      if (res.status === 200 || chunk.length < CH) ended = true;
+      let chunk;
+      if (src instanceof Blob) {
+        chunk = new Uint8Array(await src.slice(buf.length, buf.length + CH).arrayBuffer());
+        if (chunk.length < CH) ended = true;
+      } else {
+        const res = await fetch(src, { headers: { ...hfHeaders(), Range: `bytes=${buf.length}-${buf.length + CH - 1}` } });
+        if (res.status === 401 || res.status === 403) throw new Error("gated or private: accept the license on Hugging Face and set your token");
+        if (res.status !== 206 && res.status !== 200) throw new Error(`Hugging Face answered ${res.status}`);
+        chunk = new Uint8Array(await res.arrayBuffer());
+        if (res.status === 200 || chunk.length < CH) ended = true;
+      }
       const next = new Uint8Array(buf.length + chunk.length); next.set(buf); next.set(chunk, buf.length);
       buf = next; view = new DataView(buf.buffer);
     }
@@ -1865,7 +1874,7 @@ function normLms(x) {
   const inst = (x.loaded_instances || [])[0];
   const p = /([\d.]+)\s*([BM])/i.exec(x.params_string || "");
   return { id: x.key, name: x.display_name || x.key, publisher: x.publisher || "", arch: x.architecture || "", quantization: x.quantization && x.quantization.name ? x.quantization.name : "",
-    sizeGB: (x.size_bytes || 0) / 1e9, params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? inst.config.context_length || 0 : 0,
+    sizeGB: (x.size_bytes || 0) / 1e9, sizeBytes: x.size_bytes || 0, params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? inst.config.context_length || 0 : 0,
     max_context_length: x.max_context_length || 0, type: x.type || "llm", vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use),
     reasoning: !!(x.capabilities && x.capabilities.reasoning),
     // LM Studio's own setting for a loaded model (speculative decoding with the model's MTP layers).
@@ -1906,8 +1915,76 @@ function bestSettingsRough(x) {
   }
   return null;
 }
+/* ---------- My models: GGUF headers of your own model files ---------- */
+// LM Studio's API gives no file paths. With the folder chosen for Downloads (LM Studio's models folder),
+// TensorTailor lists the .gguf files and reads only their headers. A model is matched by size: LM Studio's
+// size_bytes = the model file, plus the vision projector (mmproj) when there is one.
+const IS_MMPROJ = /mmproj/i;
+async function localGgufFiles(root, maxDepth = 3) {
+  const out = [];
+  const walk = async (dir, path, depth) => {
+    for await (const [name, h] of dir.entries()) {
+      if (out.length >= 5000) return;
+      if (h.kind === "directory") { if (depth < maxDepth && !name.startsWith(".")) await walk(h, path.concat(name), depth + 1); }
+      else if (/\.gguf$/i.test(name)) { const file = await h.getFile(); out.push({ dir: path.join("/"), name, size: file.size, file }); }
+    }
+  };
+  await walk(root, [], 0);
+  return out;
+}
+function matchLocalFile(x, files) {
+  const want = x.sizeBytes;
+  if (!want) return null;
+  const cands = [];
+  for (const f of files) {
+    if (IS_MMPROJ.test(f.name)) continue;
+    if (f.size === want) cands.push(f);
+    else if (files.some((p) => p.dir === f.dir && IS_MMPROJ.test(p.name) && f.size + p.size === want)) cands.push(f);
+  }
+  const pub = String(x.publisher || "").toLowerCase(), q = String(x.quantization || "").toLowerCase();
+  return cands.find((f) => pub && f.dir.toLowerCase().includes(pub) && (!q || f.name.toLowerCase().includes(q))) ||
+    cands.find((f) => pub && f.dir.toLowerCase().includes(pub)) || cands[0] || null;
+}
+async function scanLocalGguf(interactive) {
+  const s = state.localGguf;
+  if (s.busy) return;
+  s.busy = true; s.error = ""; s.needClick = false;
+  if (state.view === "mine") renderView();
+  try {
+    if (!(await dlFolder(interactive, interactive && !state.dl.root))) { s.needClick = true; return; }
+    const files = await localGgufFiles(state.dl.root);
+    s.folder = state.dl.root.name || "the chosen folder"; s.files = files.length; s.byId = new Map();
+    for (const x of state.lms.models) {
+      const f = matchLocalFile(x, files);
+      if (!f) continue;
+      const path = (f.dir ? f.dir + "/" : "") + f.name;
+      try {
+        const h = await ggufHeader(f.file);
+        const arch = h.kv["general.architecture"] || "";
+        s.byId.set(x.id, { path, arch, blocks: h.kv[arch + ".block_count"] || null, ctx: h.kv[arch + ".context_length"] || null, layers: Number(h.kv[arch + ".nextn_predict_layers"] || 0) });
+      } catch (e) { s.byId.set(x.id, { path, error: e.message }); }
+    }
+    s.done = true;
+  } catch (e) {
+    if (e.name !== "AbortError") s.error = e.message;
+  } finally {
+    s.busy = false;
+    if (state.view === "mine") renderView();
+  }
+}
+function localGgufLine() {
+  const s = state.localGguf, n = state.lms.models.length;
+  const btn = (label) => `<button class="btn small" id="btnLocalGguf">${label}</button>`;
+  if (s.busy) return `<div class="loading">Reading the GGUF headers of your model files${s.folder ? " in " + esc(s.folder) : ""}…</div>`;
+  if (s.error) return `<div class="warn-box">Could not read your model files: ${esc(s.error)}</div><p class="hint">${btn("Try again")}</p>`;
+  if (s.done) return `<p class="hint">Read from your files in <b>${esc(s.folder)}</b>: ${s.byId.size} of ${n} models matched (${s.files} .gguf files). Layers, maximum context and MTP come from each file's header. ${btn("Read again")}</p>`;
+  if (!state.dl.root) return `<p class="hint">LM Studio does not say which file a model uses. To read MTP, layers and maximum context from your own files, choose LM Studio's models folder (the same folder as for Downloads). TensorTailor only reads the start of each file. ${btn("Choose the models folder")}</p>`;
+  return `<p class="hint">To read MTP, layers and maximum context from your own files in <b>${esc(state.dl.root.name)}</b>, the browser needs your OK once. TensorTailor only reads the start of each file. ${btn("Read the model files")}</p>`;
+}
+
 function viewMine() {
   const s = state.lms;
+  if (s.online && state.dl.root && !state.localGguf.done && !state.localGguf.busy && !state.localGguf.needClick && !state.localGguf.error) setTimeout(() => scanLocalGguf(false), 0);
   if (!s.online) return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot warn"></span>${s.checked ? "LM Studio's server is not reachable at 127.0.0.1:1234." : "Looking for LM Studio…"}</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
     <section class="card"><p class="hint" style="margin-top:0">Start LM Studio, open the <b>Developer</b> tab, switch the server <b>on</b>, and press <b>Refresh</b>. TensorTailor then lists your models, their size and how well they run here.</p></section>`;
   const totalGB = s.models.reduce((t, x) => t + (x.sizeGB || 0), 0);
@@ -1924,18 +2001,25 @@ function viewMine() {
     const link = cat ? "https://huggingface.co/" + cat.m.id : "https://huggingface.co/models?search=" + encodeURIComponent(shortName(x.id));
     const lmsCaps = [x.vision ? "vision" : "", x.tools ? "tools" : "", x.reasoning ? "reason" : ""].filter(Boolean);
     const bundled = LMS_BUNDLED.test(x.id);
-    const mtpArch = x.mtp === true || x.mtpName;
-    return `<tr><td><div style="display:flex;gap:6px;align-items:center"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}</div></td>
-      <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + (x.mtp === true ? "\nLM Studio uses MTP for this loaded model." : "\nThe name says MTP."))}">MTP</span>` : ""}</td>
+    // From the model file's own GGUF header (when the folder was read): the strongest source for MTP.
+    const loc = state.localGguf.byId.get(x.id) || null;
+    const fileMtp = loc && !loc.error ? loc.layers > 0 : null;
+    const mtpArch = x.mtp === true || fileMtp === true || (fileMtp === null && x.mtpName);
+    const mtpWhy = x.mtp === true ? "LM Studio uses MTP for this loaded model." : fileMtp ? `The model file has ${loc.layers} MTP layer(s) (GGUF header of ${loc.path}).` : "The name says MTP.";
+    const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
+    // The same favorite star as in the Models list (stars belong to models in llmfit's list).
+    const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
+    return `<tr><td><div style="display:flex;gap:6px;align-items:center">${star}<a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}</div></td>
+      <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy)}">MTP</span>` : ""}${locLine}</td>
       <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
-      <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model to see if LM Studio uses it.")}">MTP (name)</span>` : ""}${warn}</td>
+      <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : fileMtp ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy + "\nIn LM Studio's load settings, turn on speculative decoding with MTP (or use Load in LM Studio in the Run tab).")}">MTP in file</span>` : fileMtp === null && x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model, or read your model files (above the list), to know for sure.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
       <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "")}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px">${esc(tipText)}</td>
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card"><table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <section class="card">${localGgufLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports.</p></section>`;
 }
 
@@ -2309,6 +2393,7 @@ function toggleWatch(id) {
   if (state.watch.has(id)) state.watch.delete(id); else state.watch.add(id);
   safeSet("localStorage", "tt-watch", JSON.stringify([...state.watch]));
   renderRowsWindow(); renderDetail();
+  if (state.view === "mine") renderView();
 }
 function openCompare() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
@@ -2483,7 +2568,7 @@ function wire() {
     const dl = t.closest("[data-dl]"); if (dl) { const f = (state.files.get(dl.dataset.dl) || {}).files || []; const file = f.find((x) => x.path === dl.dataset.dlpath); if (file) dlAdd(dl.dataset.dl, file); return; }
     const da = t.closest("[data-dlact]"); if (da) { dlAction(da.dataset.dlact, da.dataset.dlid); return; }
     if (t.closest("[data-view-dl]")) { setView("downloads"); return; }
-    if (t.id === "btnDlFolder") { dlFolder(true, true).then((ok) => { if (ok) toast("Folder chosen: " + state.dl.root.name); renderView(); }, (e) => { if (e.name !== "AbortError") toast(e.message); }); return; }
+    if (t.id === "btnDlFolder") { dlFolder(true, true).then((ok) => { if (ok) { toast("Folder chosen: " + state.dl.root.name); Object.assign(state.localGguf, { done: false, needClick: false, error: "", byId: new Map() }); } renderView(); }, (e) => { if (e.name !== "AbortError") toast(e.message); }); return; }
     const ab = t.closest("[data-addbattle]"); if (ab) { toggleCompare(ab.dataset.addbattle, true); toast("Added to the battle."); return; }
     const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
     const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
@@ -2491,12 +2576,13 @@ function wire() {
     const lf = t.closest("[data-loadfiles]"); if (lf) { state.files.delete(lf.dataset.loadfiles); loadFiles(lf.dataset.loadfiles); renderDetail(); return; }
     const ur = t.closest("[data-userepo]"); if (ur) { state.srcIdx["repo:" + state.selected] = ur.dataset.userepo; renderDetail(); return; }
     if (t.id === "btnFindGguf") { const r = selectedResult(); if (r) searchGgufCopies(r.m); return; }
-    const wd = t.closest("#detail [data-watch]"); if (wd) { toggleWatch(wd.dataset.watch); return; }
+    const wd = t.closest("#detail [data-watch], #viewPane [data-watch]"); if (wd) { toggleWatch(wd.dataset.watch); return; }
     if (t.id === "btnPreview") { const r = selectedResult(); if (r) startTyping((r.best.lo + r.best.hi) / 2); return; }
     if (t.id === "btnLmsRefresh") { checkLms().then(renderView); toast("Asking LM Studio for its models…"); return; }
     const ll = t.closest("[data-lmsload]"); if (ll) { openLmsLoad(ll.dataset.lmsload); return; }
     if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
     if (t.id === "btnNotices") { showAboutText("notices"); return; }
+    if (t.id === "btnLocalGguf") { scanLocalGguf(true); return; }
     if (t.id === "btnLicTexts") { showAboutText("licenses"); return; }
     if (t.id === "btnBattlePng") { battlePng(); return; }
   });

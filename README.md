@@ -20,7 +20,10 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 - **Load it in LM Studio.** Tab **Run** shows the LM Studio load settings for your PC. **Load in LM Studio with
   these settings** loads the model for you. You see what will be sent first.
 - **Check your own models.** **My models** lists the models in LM Studio, how well they run here and the best
-  setting.
+  setting. Give it LM Studio's models folder once, and it reads the header of each model file: layers, maximum
+  context and MTP, like LM Studio itself shows them.
+- **Keep favorites.** Click the star ☆ next to a model (or press `W`). **Only my favorites** shows just those,
+  and My models shows the same stars.
 - **Compare.** Tick 2 to 4 models and press **Compare**, or let them fight in **Battle**.
 - **Stay up to date.** The catalog button (top right) → **Fetch new models** adds the newest models from
   Hugging Face. Or paste any Hugging Face link in the search box and press Enter.
