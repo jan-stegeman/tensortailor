@@ -1789,7 +1789,7 @@ async function idbDo(store, mode, fn) {
     tx.oncomplete = () => resolve(req ? req.result : undefined); tx.onerror = () => reject(tx.error);
   });
 }
-const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note"];
+const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note", "rename"];
 function dlSave(job) { const o = {}; for (const k of DL_KEEP) o[k] = job[k]; return idbDo("jobs", "readwrite", (s) => s.put(o)).catch(() => {}); }
 async function dlLoad() {
   try {
@@ -1840,7 +1840,7 @@ function dlRefresh(force) {
 }
 async function dlRun(job) {
   const d = state.dl;
-  d.active = job; job.ctl = new AbortController(); job.error = ""; job.note = ""; job.speed = 0;
+  d.active = job; job.ctl = new AbortController(); job.error = ""; job.note = ""; job.rename = ""; job.speed = 0;
   try {
     if (!(await dlFolder(false))) throw new Error("The folder needs your permission again. Press Resume.");
     const [pub, name] = job.repo.split("/");
@@ -1851,6 +1851,11 @@ async function dlRun(job) {
     let existing = null;
     try { const fh = await fileDir.getFileHandle(fileName); if ((await fh.getFile()).size === job.bytes) existing = fh; } catch (e) { /* not there yet */ }
     if (existing) { job.note = "The complete file was already in the folder; it is only checked."; await dlVerify(job, existing); return; }
+    // Joined before, but the rename failed: rename it now and check it (no new download).
+    try {
+      const th = await fileDir.getFileHandle(fileName + ".tt-tmp");
+      if ((await th.getFile()).size === job.bytes) { await dlVerify(job, (await dlRenameTmp(job, fileDir, fileName)) || th); return; }
+    } catch (e) { /* no complete .tt-tmp */ }
     const partsDir = await dlDir(repoDir, [DL_PARTS, dlSafe(job.path)]);
     const n = Math.max(1, Math.ceil(job.bytes / job.partBytes)), partName = (i) => `part-${String(i + 1).padStart(5, "0")}`;
     const partLen = (i) => Math.min(job.bytes, (i + 1) * job.partBytes) - i * job.partBytes;
@@ -1901,11 +1906,8 @@ async function dlRun(job) {
       }
       await out.close();
     } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } throw e; }
-    let final = tmp;
-    try {
-      if (typeof tmp.move !== "function") throw new Error("no move()");
-      await tmp.move(fileName); final = await fileDir.getFileHandle(fileName);
-    } catch (e) { job.note = `The file could not get its real name (${e.message}). It is called ${fileName}.tt-tmp; rename it to ${fileName} after the check.`; }
+    const renamed = await dlRenameTmp(job, fileDir, fileName);
+    const final = renamed || tmp;
     try { await (await repoDir.getDirectoryHandle(DL_PARTS)).removeEntry(dlSafe(job.path), { recursive: true }); } catch (e) { /* parts stay; harmless */ }
     try { const pd = await repoDir.getDirectoryHandle(DL_PARTS); let empty = true; for await (const _ of pd.keys()) { empty = false; break; } if (empty) await repoDir.removeEntry(DL_PARTS); } catch (e) { /* keep it */ }
     await dlVerify(job, final);
@@ -1917,6 +1919,44 @@ async function dlRun(job) {
     if (job.status !== "removed") dlSave(job);
     dlRefresh(true); renderDetail(); dlNext();
   }
+}
+// "<name>.tt-tmp" -> "<name>". Windows can hold a big, just-written file for a while (for example while
+// the virus scanner reads it), so the rename is tried several times. On failure job.rename keeps the reason
+// and the Downloads view shows a warning with "Rename now": LM Studio only sees files ending in .gguf.
+async function dlRenameTmp(job, dir, fileName) {
+  let tmp;
+  try { tmp = await dir.getFileHandle(fileName + ".tt-tmp"); } catch (e) { return null; }
+  let last = null;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    try {
+      if (typeof tmp.move !== "function") throw new Error("this browser cannot rename files");
+      await tmp.move(fileName);
+      job.rename = "";
+      return await dir.getFileHandle(fileName);
+    } catch (e) {
+      last = e;
+      if (typeof tmp.move !== "function") break;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+  job.rename = `${last.name || "Error"}: ${last.message}`;
+  return null;
+}
+async function dlFileDir(job, create) {
+  const parts = job.path.split("/"), fileName = parts.pop(), [pub, name] = job.repo.split("/");
+  let dir = state.dl.root;
+  for (const n of [pub, name, ...parts]) dir = await dir.getDirectoryHandle(n, { create: !!create });
+  return { dir, fileName };
+}
+async function dlRenameNow(job) {
+  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
+  if (!(await dlFolder(true))) return;
+  try {
+    const { dir, fileName } = await dlFileDir(job);
+    const done = await dlRenameTmp(job, dir, fileName);
+    toast(done ? `Renamed: ${fileName}. LM Studio can see it now.` : "Windows did not allow the rename yet. Try again in a minute, or rename it in Explorer.");
+  } catch (e) { job.rename = `${e.name}: ${e.message}`; }
+  dlSave(job); dlRefresh(true);
 }
 // Read the finished file back from disk and compare its SHA-256 with Hugging Face's.
 async function dlVerify(job, handle) {
@@ -1948,10 +1988,12 @@ async function dlCheckAgain(job) {
   if (!(await dlFolder(true))) return;
   state.dl.active = job; job.ctl = new AbortController(); job.error = "";
   try {
-    const parts = job.path.split("/"), fileName = parts.pop();
-    const [pub, name] = job.repo.split("/");
-    const dir = await dlDir(state.dl.root, [pub, name, ...parts]);
-    await dlVerify(job, await dir.getFileHandle(fileName));
+    const { dir, fileName } = await dlFileDir(job);
+    let handle = null;
+    try { handle = await dir.getFileHandle(fileName); } catch (e) { /* maybe still called .tt-tmp */ }
+    // A file left as "<name>.tt-tmp" (rename failed before): rename it now, else check the .tt-tmp file.
+    if (!handle) handle = (await dlRenameTmp(job, dir, fileName)) || await dir.getFileHandle(fileName + ".tt-tmp");
+    await dlVerify(job, handle);
   } catch (e) {
     if (e && e.name === "AbortError") job.status = "done"; else { job.status = "failed"; job.error = e.name === "NotFoundError" ? "The file is not in the folder any more." : String(e.message || e); }
   } finally { state.dl.active = null; dlSave(job); dlRefresh(true); dlNext(); }
@@ -1962,6 +2004,7 @@ async function dlAction(act, id) {
   if (act === "pause") { if (job.ctl) job.ctl.abort(); else { job.status = "paused"; dlSave(job); dlRefresh(true); } return; }
   if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } job.status = "queued"; job.error = ""; await dlSave(job); dlRefresh(true); dlNext(); return; }
   if (act === "check") return dlCheckAgain(job);
+  if (act === "rename") return dlRenameNow(job);
   if (act === "remove") {
     // Removes the entry and its temporary parts. A finished model file stays on disk.
     job.removing = true;
@@ -1980,16 +2023,19 @@ function dlRow(j) {
   else if (j.status === "assembling") { p = (j.joined || 0) / j.bytes; text += ` · ${pct(p)}%`; }
   else if (j.status === "verifying") { p = (j.hashed || 0) / j.bytes; text += ` · ${pct(p)}% read from disk`; }
   else if (j.status === "done" || j.status === "mismatch") p = 1;
+  if (j.status === "done" && j.rename) text = "Checked ✓, but not renamed yet";
   const btn = (act, label, cls = "") => `<button class="btn small ${cls}" data-dlact="${act}" data-dlid="${esc(j.id)}">${label}</button>`;
   const acts = [];
   if (["downloading", "assembling", "verifying", "queued"].includes(j.status)) acts.push(btn("pause", "Pause"));
   if (["paused", "failed"].includes(j.status)) acts.push(btn("resume", "Resume", "primary"));
+  if (j.rename && !busy) acts.push(btn("rename", "Rename now", "primary"));
   if (["done", "mismatch"].includes(j.status) && !busy) acts.push(btn("check", "Check again"));
   acts.push(btn("remove", "Remove", "ghost"));
   const ok = j.status === "done" && j.gotSha;
   return `<tr><td><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
     <td style="min-width:260px"><div class="bar dlbar"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
     ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: ${esc(j.gotSha)}</div>` : ""}
+    ${j.rename ? `<div class="warn-box" style="margin-top:6px">The file is still called <b>${esc(j.path.split("/").pop())}.tt-tmp</b>, so LM Studio does not see it yet. Windows did not allow the rename (${esc(j.rename)}). Press <b>Rename now</b>, or in Explorer remove <b>.tt-tmp</b> from the end of the name.</div>` : ""}
     ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}</td>
     <td class="r" style="white-space:nowrap">${acts.join(" ")}</td></tr>`;
 }
