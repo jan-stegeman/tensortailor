@@ -176,6 +176,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .live-list li { margin: 2px 0; }
 .live-list button { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-align: left; }
 .live-list button:hover { text-decoration: underline; }
+#dlgHelp { width: min(860px, 94vw); }
+.help h3 { margin: 18px 0 6px; font-size: 15px; } .help h3:first-of-type { margin-top: 8px; }
+.help p { margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
+.help dl { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 7px 14px; margin: 0 0 6px; font-size: 13px; }
+.help dt { font-weight: 600; } .help dd { margin: 0; color: var(--muted); }
+.help i.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line); }
+.help kbd { font: 12px ui-monospace, monospace; padding: 1px 5px; border: 1px solid var(--line-2); border-radius: 4px; background: var(--panel-2); }
 .dlbar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
 .dlbar span { display: block; height: 100%; background: var(--accent); transition: width .3s; }
 .dlstate { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
@@ -331,6 +338,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
   <div class="top-actions">
     <button class="btn ghost" id="btnUpdate" title="About the model catalog"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span></button>
     <button class="btn" id="btnToken"><span class="dot" id="tokDot"></span><span id="tokText">HF token</span></button>
+    <button class="btn ghost" id="btnHelp" title="Help: what everything means (?)">Help</button>
     <button class="btn ghost" id="btnAbout" title="About and licenses">About</button>
     <button class="btn ghost" id="btnTheme" title="Light or dark (T)" aria-label="Switch light or dark">◐</button>
   </div>
@@ -419,6 +427,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       <div class="list-tools">
         <button class="btn small primary" id="btnSuggest">Suggest for this PC</button>
         <button class="btn small" id="btnExport" title="Save the list as a CSV file">Export CSV</button>
+        <button class="btn small ghost" id="btnLegend" title="What the colours, labels and numbers mean">Legend</button>
         <label class="sort">Sort
           <select id="sort">
             <option value="score">Best match</option><option value="tps">Fastest</option><option value="mem">Smallest</option>
@@ -429,7 +438,7 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
       </div>
     </div>
     <div class="table">
-      <div class="cols" aria-hidden="true"><span></span><span>Model</span><span class="r">Size</span><span>Best file</span><span>Memory</span><span class="r">Speed</span><span>Verdict</span><span>Score</span></div>
+      <div class="cols" aria-hidden="true"><span></span><span title="Model name, its labels and who made it">Model</span><span class="r" title="Number of parameters (B = billion, M = million)">Size</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
       <div class="rows" id="rows" role="listbox" aria-label="Models"></div>
     </div>
     <div class="tray" id="tray" hidden>
@@ -472,6 +481,93 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
   <div class="dlg-head"><h2>Model catalog</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body" id="catBody"></div>
   <div class="dlg-foot"><button class="btn" id="btnLiveClear">Remove fetched models</button><button class="btn primary" id="btnLiveFetch">Fetch new models</button></div>
+</dialog>
+
+<dialog id="dlgHelp">
+  <div class="dlg-head"><h2>Help: what everything means</h2><button class="btn ghost small" data-close>Close</button></div>
+  <div class="dlg-body help">
+    <p>Point at a bar, a speed, a verdict or a score in the list to see a short explanation with that model's own numbers. Press <kbd>?</kbd> to open this window, <kbd>Esc</kbd> to close it.</p>
+
+    <h3 id="help-memory">The memory bar</h3>
+    <p>The bar shows if a model fits in your graphics card's memory (VRAM). The whole bar is the VRAM you can use for models (your VRAM minus "Kept for Windows").</p>
+    <dl>
+      <dt><i class="sw seg-w"></i>Purple</dt><dd>The part that sits in VRAM: model file, KV cache and engine together. Fast.</dd>
+      <dt><i class="sw seg-ram"></i>Orange stripes</dt><dd>The model does not fit in VRAM. The rest goes to system RAM, which is about 10 times slower, so the model runs slower. The stripes are a warning sign, not to scale: the numbers below the bar give the real sizes, for example "3.2 GB VRAM + 75.0 GB RAM".</dd>
+      <dt>Empty part</dt><dd>VRAM that stays free.</dd>
+    </dl>
+    <p>The big bar in the detail panel (tab Overview) splits it further:</p>
+    <dl>
+      <dt><i class="sw seg-w"></i>Model file</dt><dd>The weights of the model (the .gguf file).</dd>
+      <dt><i class="sw seg-kv"></i>KV cache</dt><dd>Memory for the context (the text the model remembers). It grows with "Context length". KV cache Q8 or Q4 makes it smaller.</dd>
+      <dt><i class="sw seg-oh"></i>Engine + other</dt><dd>Buffers of llama.cpp / LM Studio.</dd>
+      <dt>Thin line</dt><dd>Where your VRAM ends, when the model is bigger than VRAM.</dd>
+    </dl>
+
+    <h3>Verdicts and "Runs on"</h3>
+    <dl>
+      <dt><span class="badge perfect">Runs well</span></dt><dd>Fits fully in VRAM with room to spare.</dd>
+      <dt><span class="badge marginal">Runs, but tight</span></dt><dd>Fits in VRAM, but with little room left. A longer context or another program can push it over.</dd>
+      <dt><span class="badge good">Runs, but slower</span></dt><dd>Part of the model runs from system RAM, or there is no GPU.</dd>
+      <dt><span class="badge tight">Won't fit</span></dt><dd>VRAM and RAM together are too small.</dd>
+      <dt>GPU</dt><dd>Everything in VRAM.</dd>
+      <dt>CPU+GPU</dt><dd>Part in VRAM, part in system RAM.</dd>
+      <dt>MoE offload</dt><dd>A "mixture of experts" model: it has many experts but uses only a few per word. The unused experts wait in system RAM, so even a very big model can run, more slowly.</dd>
+      <dt>CPU</dt><dd>No GPU: everything from system RAM.</dd>
+    </dl>
+    <p>The four tiles above the list count each verdict. Click a tile to show or hide those models.</p>
+
+    <h3>The other columns</h3>
+    <dl>
+      <dt>Size</dt><dd>Number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower.</dd>
+      <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size.</dd>
+      <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace.</dd>
+      <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context.</dd>
+    </dl>
+
+    <h3>Labels and icons</h3>
+    <dl>
+      <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
+      <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
+      <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (catalog button or a pasted link).</dd>
+      <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
+      <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
+      <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
+      <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
+      <dt><span class="chip lock">license</span></dt><dd>The license may ask you to accept terms on Hugging Face first (gated model).</dd>
+      <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
+    </dl>
+
+    <h3>Your hardware and settings (left)</h3>
+    <dl>
+      <dt>VRAM per GPU · Number of GPUs</dt><dd>Memory of one graphics card, and how many identical cards you have.</dd>
+      <dt>System RAM</dt><dd>Normal memory of the PC. Used when a model does not fit in VRAM.</dd>
+      <dt>Kept for Windows</dt><dd>VRAM that Windows and your screens use. Not available for models.</dd>
+      <dt>RAM speed</dt><dd>How fast system RAM is (GB/s). Sets the speed of the part that runs from RAM.</dd>
+      <dt>CPU cores</dt><dd>Used for the CPU part of a model.</dd>
+      <dt>Detect · Import…</dt><dd>Fill these in from the browser, or from a PowerShell line that reads your real hardware.</dd>
+      <dt>What if I upgrade?</dt><dd>Shows which models would run well with one more GPU or 128 GB more RAM (label "upgrade").</dd>
+      <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
+      <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
+      <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
+      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them.</dd>
+    </dl>
+
+    <h3>The detail panel (right)</h3>
+    <dl>
+      <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization.</dd>
+      <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
+      <dt>Run</dt><dd>Ready commands for LM Studio and settings for AI agents.</dd>
+      <dt>Plan</dt><dd>llmfit's planner: what hardware the model needs, which routes work, how many chats fit.</dd>
+    </dl>
+
+    <h3>Views (top) and keys</h3>
+    <dl>
+      <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
+      <dt>Catalog button</dt><dd>Where the list comes from, and "Fetch new models" from Hugging Face.</dd>
+      <dt>HF token</dt><dd>Read-only Hugging Face token for gated models. It stays only in this browser tab.</dd>
+      <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> watch list · <kbd>T</kbd> light or dark · <kbd>?</kbd> help.</dd>
+    </dl>
+  </div>
 </dialog>
 
 <dialog id="dlgAbout">
@@ -745,7 +841,9 @@ function bestView(row, F, vram) {
   const tps = row[F.estimated_tps] || 0;
   let inGpu = need, inRam = 0;
   if (mode === "CPU") { inGpu = 0; inRam = need; }
-  else if (mode === "MoE offload") { inRam = row[F.moe_offloaded_gb] || 0; inGpu = Math.max(0, need - inRam); }
+  // llmfit's MoE offload: memory_required_gb is what stays in VRAM (active experts, KV cache, engine);
+  // moe_offloaded_gb (the inactive experts) comes on top of it, in system RAM.
+  else if (mode === "MoE offload") { inGpu = need; inRam = row[F.moe_offloaded_gb] || 0; }
   else if (mode === "CPU+GPU") { inGpu = Math.min(need, vram); inRam = Math.max(0, need - vram); }
   const band = String(conf).startsWith("measured") ? [0.95, 1.05] : mode === "GPU" ? [0.75, 1] : [0.6, 1];
   const sc = row[F.score_components] || [0, 0, 0, 0];
@@ -812,6 +910,27 @@ function memBar(b) {
   const ramFlag = b.inRam > 0.05 ? `<span class="seg-ram" style="width:${clamp(100 - gpuPart, 4, 100).toFixed(1)}%"></span>` : "";
   return `<div class="bar" aria-hidden="true"><span class="seg-w" style="width:${gpuPart.toFixed(1)}%"></span>${ramFlag}</div>`;
 }
+// Hover texts for the list (the Help window has the long version).
+function memTip(b) {
+  const total = b.mode === "MoE offload"
+    ? `Needed: ${gb(b.inGpu + b.inRam)} in total (${gb(b.inGpu)} in VRAM: active experts, KV cache and engine; ${gb(b.inRam)} of experts in RAM).`
+    : `Needed: ${gb(b.need)} (model file + KV cache for the context + engine).`;
+  if (b.vram === 0) return `No GPU: everything runs from system RAM.\n${total}\nThe bar is your usable RAM.`;
+  if (b.mode === "GPU") return `Fits in the GPU's memory (VRAM).\n${total}\nPurple = used VRAM: ${gb(b.need)} of your ${gb(b.vram)} usable VRAM.\nThe empty part of the bar is VRAM that stays free.`;
+  const why = b.mode === "MoE offload" ? "MoE offload: the experts that are not in use wait in system RAM." : "Too big for VRAM: the rest goes to system RAM.";
+  return `${why}\n${total}\nPurple = in VRAM: ${gb(b.inGpu)}.\nOrange stripes = in system RAM: ${gb(b.inRam)}. System RAM is much slower than VRAM, so the model runs slower.\nThe stripes are a warning sign, not to scale.`;
+}
+function speedTip(b) {
+  if (!b.tps) return "No speed: the model does not fit.";
+  const how = String(b.conf).startsWith("measured") ? "Measured on similar hardware (llmfit's benchmark data)." : "Estimated by llmfit from memory speed and model size. The real speed can be lower.";
+  return `About ${speedRange(b)} tokens per second (a token is about ¾ of a word).\n${how}\nReading pace is about ${READING_PACE} tok/s.`;
+}
+const VERDICT_TIP = {
+  well: "Runs well: fits fully in VRAM with room to spare.",
+  tight: "Runs, but tight: fits in VRAM, but with little room left. A longer context or other programs can push it over.",
+  slower: "Runs, but slower: part of the model runs from system RAM, or there is no GPU.",
+  nofit: "Won't fit: VRAM and RAM together are too small."
+};
 function memLabel(b) {
   if (b.vram === 0) return `${gb(b.need)} in RAM`;
   if (b.inRam > 0.05) return `${gb(b.inGpu)} VRAM + ${gb(b.inRam)} RAM`;
@@ -855,11 +974,11 @@ function rowHTML(r) {
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? '<span class="chip moe">MoE</span>' : ""}${r.upgradeOnly ? '<span class="chip upg">upgrade</span>' : ""}</div>
       <div class="sub">${capIcons(m.caps)}${isNew(m) ? '<span class="chip new">NEW</span>' : ""}${m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? '<span class="chip meas">measured</span>' : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm">${esc(m.runtime)}</span>` : ""}${lms ? '<span class="chip lms">in LM Studio</span>' : ""}${m.gated ? '<span class="chip lock">license</span>' : ""}<span class="idt">${esc(m.provider)}</span></div></div>
     <div class="num">${fmtParams(m.params)}</div>
-    <div><span class="quant">${esc(b.q)}</span></div>
-    <div class="membar">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
-    <div class="num tps">${speedRange(b)}<small>tok/s</small></div>
-    <div>${verdict(b.plain)}<div class="mode">${b.mode}</div></div>
-    <div>${ring(b.score)}</div></div>`;
+    <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
+    <div class="membar" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
+    <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
+    <div title="${esc(VERDICT_TIP[b.plain] + "\nRuns on: " + b.mode + ".")}">${verdict(b.plain)}<div class="mode">${b.mode}</div></div>
+    <div title="${esc(`Score ${Math.round(b.score || 0)} of 100: llmfit's match for this PC.\nQuality ${Math.round(b.parts.quality)} · speed ${Math.round(b.parts.speed)} · fit ${Math.round(b.parts.fit)} · context ${Math.round(b.parts.context)} (each 0–100).`)}">${ring(b.score)}</div></div>`;
 }
 const sizeBucket = (p) => (p <= 8 ? "s" : p <= 35 ? "m" : p <= 100 ? "l" : "xl");
 // GGUF sources from llmfit; a model whose own repo is a GGUF repo is its own source.
@@ -975,6 +1094,13 @@ function notesFor(r, d) {
   return n;
 }
 function poolBar(b, d) {
+  if (b.mode === "MoE offload") {
+    // VRAM part (active experts + KV cache + engine) and the inactive experts in system RAM.
+    const all = b.vram + b.inRam, q = (v) => clamp((v / all) * 100, 0, 100).toFixed(2) + "%";
+    return `<div class="pool"><div class="bar" title="Purple = in VRAM: active experts, KV cache and engine. Orange stripes = the inactive experts in system RAM (slower). The thin line = where your VRAM ends."><span class="seg-w" style="width:${q(b.inGpu)}"></span><span style="width:${q(b.vram - b.inGpu)}"></span><span class="seg-ram" style="width:${q(b.inRam)}"></span><span style="position:absolute;left:${q(b.vram)};top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.6"></span></div>
+      <div class="pool-scale"><span>0</span><span>VRAM ends at ${gb(b.vram)}</span><span>${gb(all)} VRAM + experts in RAM</span></div>
+      <div class="pool-legend"><span><i class="seg-w"></i>In VRAM ${gb(b.inGpu)} (active experts, KV cache, engine)</span><span><i class="seg-ram"></i>Experts in RAM ${gb(b.inRam)}</span></div></div>`;
+  }
   const total = b.mode === "GPU" ? b.vram : b.pool || b.need;
   const p = (v) => clamp((v / total) * 100, 0, 100).toFixed(2) + "%";
   let weights = b.need, kv = 0;
@@ -983,7 +1109,7 @@ function poolBar(b, d) {
   const engine = Math.max(0, b.need - weights - kv);
   const gpuW = Math.min(weights, b.inGpu), ramW = Math.max(0, weights - gpuW);
   const vMark = b.mode === "GPU" || !b.vram ? "" : `<span style="position:absolute;left:${p(b.vram)};top:-3px;bottom:-3px;width:2px;background:var(--text);opacity:.6"></span>`;
-  return `<div class="pool"><div class="bar"><span class="seg-w" style="width:${p(gpuW)}"></span><span class="seg-ram" style="width:${p(ramW)}"></span><span class="seg-kv" style="width:${p(kv)}"></span><span class="seg-oh" style="width:${p(engine)}"></span>${vMark}</div>
+  return `<div class="pool"><div class="bar" title="Purple = model file in VRAM. Orange stripes = the part of the model file in system RAM (slower). Blue = KV cache (memory for the context). Grey = engine and other buffers.${vMark ? " The thin line = where your VRAM ends." : ""}"><span class="seg-w" style="width:${p(gpuW)}"></span><span class="seg-ram" style="width:${p(ramW)}"></span><span class="seg-kv" style="width:${p(kv)}"></span><span class="seg-oh" style="width:${p(engine)}"></span>${vMark}</div>
     <div class="pool-scale"><span>0</span>${b.mode !== "GPU" && b.vram ? `<span>VRAM ends at ${gb(b.vram)}</span>` : ""}<span>${gb(total)} ${b.mode === "GPU" ? "usable VRAM" : "memory pool"}</span></div>
     <div class="pool-legend"><span><i class="seg-w"></i>Model file ${gb(weights)}</span>${ramW > 0.05 ? `<span><i class="seg-ram"></i>of which in RAM ${gb(ramW)}</span>` : ""}${plan ? `<span><i class="seg-kv"></i>KV cache ${gb(kv)}</span><span><i class="seg-oh"></i>Engine + other ${gb(engine)}</span>` : ""}</div></div>`;
 }
@@ -991,6 +1117,7 @@ function mathLine(b) {
   if (b.mode === "GPU") return `${gb(b.vram)} usable VRAM − ${gb(b.need)} needed = ${gb(b.vram - b.need)} free`;
   if (b.level === "tight") return `${gb(b.need)} needed > ${gb(b.pool)} available: does not fit`;
   if (b.mode === "CPU") return `${gb(b.need)} needed from ${gb(b.pool)} RAM (no GPU)`;
+  if (b.mode === "MoE offload") return `${gb(b.inGpu)} in VRAM (of ${gb(b.vram)}) + ${gb(b.inRam)} experts in RAM (slower)`;
   return `${gb(b.need)} needed − ${gb(b.vram)} VRAM = ${gb(b.inRam)} in RAM (slower)`;
 }
 function tabOverview(r, d) {
@@ -1000,7 +1127,7 @@ function tabOverview(r, d) {
     <div class="verdict-big">${verdict(b.plain)}<span class="tag">${b.mode}</span><span class="tag">llmfit: ${LLMFIT_LABEL[b.level]}</span><span class="tag ${String(b.conf).startsWith("measured") ? "okay" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
     <div class="stats">
       <div class="stat"><div class="k">Speed tok/s</div><div class="v">${speedRange(b)}</div></div>
-      <div class="stat"><div class="k">Memory</div><div class="v">${b.need.toFixed(1)} <small>GB</small></div></div>
+      <div class="stat" title="${b.mode === "MoE offload" ? `Total: ${gb(b.inGpu)} in VRAM + ${gb(b.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(b.mode === "MoE offload" ? b.inGpu + b.inRam : b.need).toFixed(1)} <small>GB</small></div></div>
       <div class="stat"><div class="k">Best file</div><div class="v" style="font-size:14px" title="${esc(b.q)}">${esc(b.q)}</div></div>
       <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Usable context</div><div class="v">${fmtCtx(r.ctxFit)}</div></div>
     </div>
@@ -1788,6 +1915,13 @@ function exportCsv() {
   saveFile("tensortailor-models.csv", new Blob([head.join(",") + "\r\n" + lines.join("\r\n")], { type: "text/csv" }));
   toast(`Saved ${lines.length.toLocaleString("en")} models to tensortailor-models.csv in your Downloads folder.`);
 }
+function openHelp(section) {
+  const d = $("dlgHelp");
+  if (!d.open) d.showModal();
+  const body = d.querySelector(".dlg-body");
+  const target = section ? document.getElementById(section) : null;
+  body.scrollTop = target ? target.offsetTop - body.offsetTop - 8 : 0;
+}
 function renderAbout() {
   const b = state.build, i = state.info;
   $("aboutBody").innerHTML = `<p><b>TensorTailor</b> finds the AI models that fit your PC. It runs fully in this page; nothing is installed.</p>
@@ -1912,6 +2046,8 @@ function wire() {
   $("btnLiveFetch").addEventListener("click", fetchNewModels);
   $("btnLiveClear").addEventListener("click", clearLive);
   $("btnAbout").addEventListener("click", () => { renderAbout(); $("dlgAbout").showModal(); });
+  $("btnHelp").addEventListener("click", () => openHelp());
+  $("btnLegend").addEventListener("click", () => openHelp("help-memory"));
   $("btnTheme").addEventListener("click", toggleTheme);
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
   document.addEventListener("keydown", (e) => {
@@ -1920,6 +2056,8 @@ function wire() {
     if (document.querySelector("dialog[open]")) return;
     if (e.key === "/" && !typing) { e.preventDefault(); $("q").focus(); return; }
     if (e.key === "Escape" && typing) { ae.blur(); return; }
+    if (e.key === "Escape" && state.view !== "models") { setView("models"); return; }
+    if (e.key === "?" && !typing) { e.preventDefault(); openHelp(); return; }
     if (typing || e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key >= "1" && e.key <= "4") { setView(["models", "mine", "battle", "downloads"][Number(e.key) - 1]); return; }
     if (state.view !== "models") return;
@@ -1940,6 +2078,7 @@ function wire() {
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
   state.token = safeGet("sessionStorage", "tt-token") || "";
   document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.insertAdjacentHTML("afterbegin", capIcon(b.dataset.cap)));
+  document.querySelectorAll("[data-helpcap]").forEach((s) => { s.outerHTML = capIcon(s.dataset.helpcap); });
   fillHwInputs(); renderUseCases(); renderToken(); renderUsable(); wire(); renderDetail();
   checkLms(); dlLoad();
   try {
