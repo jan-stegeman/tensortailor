@@ -1932,18 +1932,23 @@ async function localGgufFiles(root, maxDepth = 3) {
   await walk(root, [], 0);
   return out;
 }
+// For models from LM Studio's own catalog, size_bytes can differ a little from the file (seen: 21 KB and
+// 180 KB on 13-18 GB files), so a difference up to 1 MiB and at most 0.01 % counts; the smallest wins.
 function matchLocalFile(x, files) {
   const want = x.sizeBytes;
   if (!want) return null;
+  const LOCAL_SIZE_SLACK = Math.min(1024 * 1024, want * 1e-4);
   const cands = [];
   for (const f of files) {
     if (IS_MMPROJ.test(f.name)) continue;
-    if (f.size === want) cands.push(f);
-    else if (files.some((p) => p.dir === f.dir && IS_MMPROJ.test(p.name) && f.size + p.size === want)) cands.push(f);
+    const totals = [f.size].concat(files.filter((p) => p.dir === f.dir && IS_MMPROJ.test(p.name)).map((p) => f.size + p.size));
+    const diff = Math.min(...totals.map((t) => Math.abs(want - t)));
+    if (diff <= LOCAL_SIZE_SLACK) cands.push({ f, diff });
   }
   const pub = String(x.publisher || "").toLowerCase(), q = String(x.quantization || "").toLowerCase();
-  return cands.find((f) => pub && f.dir.toLowerCase().includes(pub) && (!q || f.name.toLowerCase().includes(q))) ||
-    cands.find((f) => pub && f.dir.toLowerCase().includes(pub)) || cands[0] || null;
+  const score = (c) => c.diff + (pub && c.f.dir.toLowerCase().includes(pub) ? 0 : 0.5) + (q && c.f.name.toLowerCase().includes(q) ? 0 : 0.25);
+  cands.sort((a, b) => score(a) - score(b));
+  return cands.length ? cands[0].f : null;
 }
 async function scanLocalGguf(interactive) {
   const s = state.localGguf;
