@@ -118,7 +118,7 @@ jobs:
           DRY: ${{ steps.llmfit.outputs.dry }}
         run: |
           set -euo pipefail
-          LAST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName // ""')
+          LAST=$(gh release list --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // ""')
           RELEASE=true
           WHY="new build"
           if [ "$DRY" = "true" ]; then

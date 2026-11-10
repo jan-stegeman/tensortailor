@@ -1,0 +1,151 @@
+name: Weekly catalog
+
+# Every Monday: llmfit's own scraper (scripts/scrape_hf_models.py, MIT, the same
+# llmfit tag as the engine) refreshes the model catalog from Hugging Face, going
+# on from our previous catalog. llmfit's own checks run on the result. If all
+# pass, the catalog is stored as assets of the fixed pre-release "catalog"
+# (not in git: 17 MB per week). The Tuesday release (weekly.yml) uses it, and
+# falls back to llmfit's own catalog when it is missing, old, or failed.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Monday 05:00 UTC (llmfit's own refresh runs at 02:00)
+  workflow_dispatch:
+    inputs:
+      discover_limit:
+        description: "Models to discover (llmfit uses 5000)"
+        default: "5000"
+      publish:
+        description: "Store the result as the 'catalog' release (off = test only)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-catalog
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 130
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get llmfit at the engine's tag
+        id: llmfit
+        run: |
+          set -euo pipefail
+          TAG=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
+          git clone --quiet --depth 1 --branch "$TAG" https://github.com/AlexsJones/llmfit vendor/llmfit
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "llmfit $TAG, scraper SHA-256 $(sha256sum vendor/llmfit/scripts/scrape_hf_models.py | cut -c1-16)…" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Start from our previous catalog (or llmfit's)
+        id: base
+        working-directory: vendor/llmfit
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          BASE="llmfit $(grep -oP 'tag = "\K[^"]+' "$GITHUB_WORKSPACE/engine/Cargo.toml")"
+          if gh release download catalog -R "$GITHUB_REPOSITORY" -D prev -p hf_models.json -p gguf_sources_cache.json -p release_date_cache.json -p catalog-info.json 2>/dev/null \
+             && python3 -m json.tool prev/hf_models.json > /dev/null; then
+            cp prev/hf_models.json llmfit-core/data/hf_models.json
+            for f in gguf_sources_cache.json release_date_cache.json; do [ -f "prev/$f" ] && cp "prev/$f" "data/$f" || true; done
+            BASE="our catalog of $(python3 -c 'import json; print(json.load(open("prev/catalog-info.json"))["built"])' 2>/dev/null || echo '?')"
+          fi
+          N=$(python3 -c 'import json; print(len(json.load(open("llmfit-core/data/hf_models.json"))))')
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "base_models=$N" >> "$GITHUB_OUTPUT"
+          echo "Start: $BASE, $N entries" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Same command as llmfit's weekly-model-update.yml. HF_TOKEN raises the
+      # rate limits and unlocks gated models; without it they are skipped.
+      - name: Refresh the catalog with llmfit's scraper
+        timeout-minutes: 100
+        working-directory: vendor/llmfit
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          LIMIT: ${{ inputs.discover_limit || '5000' }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$LIMIT" =~ ^[0-9]+$ ]]; then echo "::error::discover_limit must be a number"; exit 1; fi
+          if [ -z "${HF_TOKEN:-}" ]; then echo "::warning::No HF_TOKEN secret: lower rate limits, gated models skipped."; fi
+          python3 scripts/scrape_hf_models.py -n "$LIMIT" --threads 8
+
+      - name: llmfit's checks - valid JSON and the metadata guard
+        working-directory: vendor/llmfit
+        run: |
+          python3 -m json.tool llmfit-core/data/hf_models.json > /dev/null
+          python3 scripts/test_preserve_catalog_metadata.py
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: llmfit's checks - catalog schema and known hybrid KV
+        working-directory: vendor/llmfit
+        run: cargo test -p llmfit-core hf_models_
+
+      - name: Our check - the catalog did not shrink
+        id: size
+        working-directory: vendor/llmfit
+        env:
+          BASE_N: ${{ steps.base.outputs.base_models }}
+        run: |
+          set -euo pipefail
+          N=$(python3 -c 'import json; print(len(json.load(open("llmfit-core/data/hf_models.json"))))')
+          echo "models=$N" >> "$GITHUB_OUTPUT"
+          echo "After the scrape: $N entries (start: $BASE_N)" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$N" -lt $(( BASE_N * 95 / 100 )) ]; then echo "::error::The catalog shrank by more than 5%: not stored."; exit 1; fi
+
+      - name: Store as the 'catalog' release
+        if: inputs.publish != false
+        working-directory: vendor/llmfit
+        env:
+          TAG: ${{ steps.llmfit.outputs.tag }}
+          BASE: ${{ steps.base.outputs.base }}
+          N: ${{ steps.size.outputs.models }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp llmfit-core/data/hf_models.json out/
+          for f in gguf_sources_cache.json release_date_cache.json; do [ -f "data/$f" ] && cp "data/$f" out/ || true; done
+          SHA=$(sha256sum out/hf_models.json | cut -d' ' -f1)
+          BUILT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          python3 - "$BUILT" "$TAG" "$N" "$SHA" "$BASE" "$RUN_URL" > out/catalog-info.json <<'PY'
+          import json, sys
+          built, tag, n, sha, base, run = sys.argv[1:]
+          print(json.dumps({"built": built, "llmfit_tag": tag, "models": int(n), "sha256": sha, "base": base,
+                            "checks": ["json", "test_preserve_catalog_metadata.py", "cargo test hf_models_", "no shrink > 5%"],
+                            "run": run}, indent=1))
+          PY
+          if ! gh release view catalog -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create catalog -R "$GITHUB_REPOSITORY" --prerelease --latest=false \
+              --title "Model catalog (weekly, used by the Tuesday release)" \
+              --notes "Refreshed every Monday by .github/workflows/catalog.yml with llmfit's own scraper. Not a TensorTailor release."
+          fi
+          gh release upload catalog -R "$GITHUB_REPOSITORY" --clobber out/*
+          echo "Stored: $N models, SHA-256 $SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the result (also when not stored)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-run
+          path: |
+            vendor/llmfit/llmfit-core/data/hf_models.json
+            vendor/llmfit/data/*.json
+          retention-days: 7
+          if-no-files-found: ignore
