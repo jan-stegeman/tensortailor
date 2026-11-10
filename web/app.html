@@ -1110,6 +1110,8 @@ function renderDetail() {
 // and its own conversion all run in the engine; the page only fetches. Fetched
 // models stay in this browser (local storage) until "Remove fetched models".
 const LIVE_KEY = "tt-live";
+// llmfit's rankable_models(): what it leaves out of every ranked list.
+const NOT_RANKED = "either llmfit cannot run the model with this PC's GPU backend (for example a speech model), or it does not trust the entry (a draft model, or a size that does not match the name). Such models are in the list, but not analysed.";
 const PAGE_EXPAND = ["downloads", "likes"]; // for the page only; llmfit ignores them
 function loadLiveStore() {
   try {
@@ -1207,15 +1209,17 @@ async function clearLive() {
 }
 function renderCatalogDlg() {
   const L = state.live, r = state.liveResult, ref = esc(state.info.llmfit_ref || "");
-  const names = L.models.map((m) => m.name).reverse();
+  const ranked = new Set(state.results.map((x) => x.m.id));
+  const names = L.models.map((m) => m.name).reverse(), shown = names.filter((n) => ranked.has(n)), left = names.filter((n) => !ranked.has(n));
   $("catBody").innerHTML = `<p>The list comes from llmfit ${ref}. llmfit's own updater (<code>llmfit update</code>) adds the newest trending and most downloaded models from Hugging Face. <b>Fetch new models</b> does the same in this page, with llmfit's own code.</p>
     <dl class="lic"><dt>From llmfit ${ref}</dt><dd>${Number(state.info.catalog_models || 0).toLocaleString("en")} models</dd>
     <dt>Fetched live</dt><dd>${L.models.length ? `${L.models.length} models` + (L.at ? ` · last fetch ${esc(L.at)}` : " (from checked links)") : "none yet"}</dd></dl>
     ${state.liveLog ? `<p class="status-line"><span class="dot warn"></span>${esc(state.liveLog)}</p>` : ""}
     ${r && r.error ? `<div class="warn-box">Stopped: ${esc(r.error)}</div>` : ""}
-    ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}.</p>` : ""}
+    ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.added.length ? ` (${r.added.filter((n) => ranked.has(n)).length} analysed for this PC)` : ""}${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}.</p>` : ""}
     ${r && r.warn && r.warn.length ? `<p class="hint">Some lists did not load: ${esc(r.warn[0])}</p>` : ""}
-    ${names.length ? `<p style="margin-bottom:0">Fetched models (newest first). Click one to open it:</p><ul class="live-list">${names.map((n) => `<li><button data-show="${esc(n)}">${esc(n)}</button></li>`).join("")}</ul>` : ""}
+    ${shown.length ? `<p style="margin-bottom:0">Fetched models analysed for this PC (${shown.length}, newest first). Click one to open it:</p><ul class="live-list">${shown.map((n) => `<li><button data-show="${esc(n)}">${esc(n)}</button></li>`).join("")}</ul>` : ""}
+    ${left.length ? `<p style="margin-bottom:0">Left out of llmfit's ranking on this PC (${left.length}): ${esc(NOT_RANKED)}</p><ul class="live-list">${left.map((n) => `<li>${esc(n)} <a href="https://huggingface.co/${esc(n)}" target="_blank" rel="noopener">↗</a></li>`).join("")}</ul>` : ""}
     <p class="hint">Fetched models get the label <b>live</b> and stay in this browser until you remove them. Most are new, so the filter "Popular (10,000+ downloads)" can hide them. Gated models (such as Llama) need your token for the exact layout; without it they get llmfit's rough estimate, like in llmfit.</p>`;
   $("btnLiveFetch").disabled = state.liveBusy || !state.ready;
   $("btnLiveFetch").textContent = state.liveBusy ? "Fetching…" : "Fetch new models";
@@ -1239,7 +1243,8 @@ async function checkHfLink(id) {
     if (!unknown.length) {
       const hit = state.results.find((r) => r.m.id.toLowerCase() === e.id.toLowerCase());
       if (hit) { state.lookup = null; state.search = ""; $("q").value = ""; showModel(hit.m.id, "overview"); return; }
-      state.lookup = { id, msg: `llmfit already has this model under a very similar name. Search for "${e.id.split("/")[1]}".` };
+      const inList = state.catalog.some((c) => c.name.toLowerCase() === e.id.toLowerCase());
+      state.lookup = { id, msg: inList ? "This model is in the list, but llmfit leaves it out of its ranking on this PC: " + NOT_RANKED : `llmfit already has this model under a very similar name. Search for "${e.id.split("/")[1]}".` };
       return;
     }
     const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
@@ -1250,6 +1255,10 @@ async function checkHfLink(id) {
     }
     addLive(model, e); saveLiveStore();
     await applyLive();
+    if (!state.results.some((r) => r.m.id === model.name)) {
+      state.lookup = { id, msg: "Added to the list, but llmfit leaves it out of its ranking on this PC: " + NOT_RANKED };
+      return;
+    }
     state.lookup = null; state.search = ""; $("q").value = "";
     showModel(model.name, "overview");
     toast(`Checked live: ${shortName(model.name)} is now in the list (label "live").`);
@@ -1473,6 +1482,7 @@ function selectModel(id, scroll) {
   renderRowsWindow(); renderDetail();
 }
 function showModel(id, tab) {
+  if (state.ready && !state.results.some((r) => r.m.id === id)) { toast("llmfit does not analyse this model on this PC, so there are no details to show."); return; }
   setView("models");
   if (!state.visible.some((r) => r.m.id === id)) { state.search = ""; $("q").value = ""; state.show.nofit = true; renderList(); }
   if (tab) state.tab = tab;
