@@ -84,6 +84,44 @@ jobs:
           if [ -z "${HF_TOKEN:-}" ]; then echo "::warning::No HF_TOKEN secret: lower rate limits, gated models skipped."; fi
           python3 scripts/scrape_hf_models.py -n "$LIMIT" --threads 8
 
+      # llmfit reads these fields as u32/u64 (HfModelEntry in models.rs). One value out
+      # of range makes llmfit's whole catalog unreadable (the engine would not start),
+      # e.g. a config.json that claims a context of 100,000,000,000 tokens. Such rows
+      # are taken out and listed; nothing is changed or made up.
+      - name: Our check - take out rows llmfit cannot read
+        id: unreadable
+        working-directory: vendor/llmfit
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          U32 = ["context_length", "num_experts", "active_experts", "num_attention_heads", "num_key_value_heads",
+                 "num_hidden_layers", "head_dim", "hidden_size", "vocab_size", "moe_intermediate_size",
+                 "shared_expert_intermediate_size"]
+          U64 = ["parameters_raw", "active_parameters", "hf_downloads", "hf_likes"]
+          path = "llmfit-core/data/hf_models.json"
+          rows = json.load(open(path))
+          def bad(r):
+              for k, top in [(k, 2**32 - 1) for k in U32] + [(k, 2**64 - 1) for k in U64]:
+                  v = r.get(k)
+                  if v is None:
+                      continue
+                  if isinstance(v, bool) or not isinstance(v, int) or v < 0 or v > top:
+                      return f"{k}={v}"
+              return None
+          keep, dropped = [], []
+          for r in rows:
+              why = bad(r)
+              (dropped.append(f"{r.get('name')} ({why})") if why else keep.append(r))
+          if dropped:
+              json.dump(keep, open(path, "w"), indent=2, ensure_ascii=False)
+              open(path, "a").write("\n")
+          print("dropped=" + json.dumps(dropped))
+          import sys
+          print(f"Rows llmfit cannot read, taken out: {len(dropped)}" + "".join(f"\n  - {d}" for d in dropped), file=sys.stderr)
+          PY
+          echo "Rows taken out (llmfit cannot read them): $(grep -oP '^dropped=\K.*' "$GITHUB_OUTPUT" | tail -n1)" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: llmfit's checks - valid JSON and the metadata guard
         working-directory: vendor/llmfit
         run: |
@@ -116,6 +154,7 @@ jobs:
           TAG: ${{ steps.llmfit.outputs.tag }}
           BASE: ${{ steps.base.outputs.base }}
           N: ${{ steps.size.outputs.models }}
+          DROPPED: ${{ steps.unreadable.outputs.dropped }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -125,10 +164,12 @@ jobs:
           SHA=$(sha256sum out/hf_models.json | cut -d' ' -f1)
           BUILT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           python3 - "$BUILT" "$TAG" "$N" "$SHA" "$BASE" "$RUN_URL" > out/catalog-info.json <<'PY'
-          import json, sys
+          import json, os, sys
           built, tag, n, sha, base, run = sys.argv[1:]
           print(json.dumps({"built": built, "llmfit_tag": tag, "models": int(n), "sha256": sha, "base": base,
-                            "checks": ["json", "test_preserve_catalog_metadata.py", "cargo test hf_models_", "no shrink > 5%"],
+                            "checks": ["rows llmfit cannot read taken out", "json", "test_preserve_catalog_metadata.py",
+                                       "cargo test hf_models_", "no shrink > 5%"],
+                            "taken_out": json.loads(os.environ.get("DROPPED") or "[]"),
                             "run": run}, indent=1))
           PY
           if ! gh release view catalog -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
