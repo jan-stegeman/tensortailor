@@ -199,8 +199,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .q { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--line-2); font-size: 10px; color: var(--muted); cursor: help; }
 .help h3 { margin: 18px 0 6px; font-size: 15px; } .help h3:first-of-type { margin-top: 8px; }
 .help p { margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
-.help dl { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 7px 14px; margin: 0 0 6px; font-size: 13px; }
+.help dl { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 0 14px; margin: 0 0 6px; font-size: 13px; }
 .help dt { font-weight: 600; } .help dd { margin: 0; color: var(--muted); }
+/* One row per item, with a thin line between the rows. */
+.help dt, .help dd { padding: 7px 0; border-top: 1px solid var(--line); }
+.help dl > dt:first-child, .help dl > dt:first-child + dd { border-top: 0; }
 .help i.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line); }
 .help kbd { font: 12px ui-monospace, monospace; padding: 1px 5px; border: 1px solid var(--line-2); border-radius: 4px; background: var(--panel-2); }
 .dlbar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
@@ -647,28 +650,45 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt>MoE offload</dt><dd>A "mixture of experts" model: it has many experts but uses only a few per word. The unused experts wait in system RAM, so even a very big model can run, more slowly.</dd>
       <dt>CPU</dt><dd>No GPU: everything from system RAM.</dd>
     </dl>
-    <p>The four tiles above the list count each verdict. Click a tile to show or hide those models.</p>
-
-    <h3>The other columns</h3>
+    <h3>Above the list</h3>
     <dl>
-      <dt>Size</dt><dd>Number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower.</dd>
+      <dt>Top picks for this PC</dt><dd>Three suggestions that follow your filters: <b>Best overall</b>, <b>Highest quality</b> and <b>Fastest</b>, each with its verdict, file and speed. <b>View details</b> opens the model; <b>Add to battle</b> puts it in Battle. The <b>Top picks</b> button shows or hides the strip.</dd>
+      <dt>The four tiles</dt><dd>Count each verdict. Click a tile to show or hide those models; a hidden tile has a dashed border and says "HIDDEN".</dd>
+      <dt>Count line</dt><dd>How many models are shown, how many the tiles hide, and how many llmfit analysed.</dd>
+      <dt>Filter chips</dt><dd>Every active filter is a chip: click its × to remove it. <b>Clear all</b> shows every analysed model; <b>Defaults</b> gives the start values.</dd>
+      <dt>Export CSV</dt><dd>Saves the shown list as a CSV file (for a spreadsheet).</dd>
+      <dt>Legend</dt><dd>Opens this help at "The memory bar".</dd>
+      <dt>Sort</dt><dd>Best match, fastest, smallest, largest, longest usable context, newest, most downloaded, or name.</dd>
+    </dl>
+
+    <h3>The columns</h3>
+    <dl>
+      <dt>Model</dt><dd>The name (↗ opens it on Hugging Face), its labels and icons (see below), the publisher and the number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower. The star makes it a favorite; the box selects it for compare or battle.</dd>
       <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size.</dd>
+      <dt>Memory</dt><dd>The memory bar (see above), with the memory the model needs.</dd>
       <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace.</dd>
+      <dt>Verdict</dt><dd>How well it runs here, and where it runs (GPU, CPU+GPU, MoE offload, CPU).</dd>
       <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context.</dd>
+      <dt>Chosen row</dt><dd>The model you clicked (or opened with <b>Show</b> or <b>View details</b>) has a purple background and border; its details are on the right.</dd>
     </dl>
 
     <h3>Labels and icons</h3>
     <dl>
-      <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
+      <dt><span class="caps"><span data-helpcap="vision"></span></span> Vision</dt><dd>The model can read images (photos, screenshots). It does not make images.</dd>
+      <dt><span class="caps"><span data-helpcap="tools"></span></span> Tool use</dt><dd>The model can call functions, so AI agents can use it.</dd>
+      <dt><span class="caps"><span data-helpcap="reason"></span></span> Reasoning</dt><dd>The model thinks step by step before it answers. "(from the model name)" means the name says so, not the model card.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
-      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model; "MTP in file" comes from the header of your own model file. To read your files, My models asks once for LM Studio's models folder (the same folder as for Downloads); TensorTailor matches each model to its file by size and reads only the start of the file (layers, maximum context, MTP). For models that TensorTailor added itself ("live" or "from LM Studio"), the header also gives the KV cache size (KV heads, head size, and how many layers keep the whole context), so llmfit counts it exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
+      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. In LM Studio, speculative decoding with MTP can then answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). For the MTP labels in My models, see "My models" below.</dd>
+      <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list.</dd>
+      <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
+      <dt><span class="chip">license</span> (grey)</dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
+      <dt><span class="chip lock">license</span> (orange)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
+      <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
-      <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
-      <dt><span class="chip lock">license</span></dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one); without it, the label is a guess from the license name. When you open a model, TensorTailor also asks Hugging Face live if the repo is really "gated" (you accept the terms on Hugging Face first, and TensorTailor then needs your HF token to read the files) and remembers the answer for 7 days: the label then says <b>gated</b> (token needed), or stays <b>license</b> in grey (own terms, but no token needed). Many copies and fine-tunes are not gated. A repo with an open license can be gated too. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
     </dl>
 
@@ -684,22 +704,44 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
-      <dt>Filters</dt><dd>"Runs in LM Studio (llama.cpp)" and "Popular (10,000+ downloads)" are on by default. New or rare models can be hidden by them. Models that are already in your LM Studio always pass "Popular". Your choices on the left (filters, what it is for, context length, KV cache, sort and the four verdict tiles) are kept in this browser, also after a reload. <b>Reset</b> puts the filters back to the start values. Above the list, every active filter is a chip: click its × to remove it, <b>Clear all</b> to see every analysed model, <b>Defaults</b> for the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
+      <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
       <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
+    </dl>
+
+    <h3>Filters (left)</h3>
+    <dl>
+      <dt>Language · Size</dt><dd>Only models for a language, or of a size (number of parameters).</dd>
+      <dt>Vision · Tool use · Reasoning</dt><dd>Only models with that skill (see the icons above). You can switch on more than one.</dd>
+      <dt>Runs in LM Studio (llama.cpp)</dt><dd>Only models that LM Studio can run. On by default.</dd>
+      <dt>Known GGUF download</dt><dd>Only models with a known GGUF copy on Hugging Face (the file type LM Studio uses).</dd>
+      <dt>Released in the last 60 days</dt><dd>Only new models (label NEW).</dd>
+      <dt>Only my favorites ★</dt><dd>Only the models you starred.</dd>
+      <dt>Already in LM Studio</dt><dd>Only the models you have in LM Studio (label "in LM Studio").</dd>
+      <dt>Open license (Apache, MIT)</dt><dd>Only models with a plain open license.</dd>
+      <dt>No token needed</dt><dd>Hides the models that are gated on Hugging Face (label "gated").</dd>
+      <dt>Fits fully in VRAM</dt><dd>Only models that run fully on the graphics card.</dd>
+      <dt>Popular (10,000+ downloads)</dt><dd>Only models with 10,000 or more downloads. On by default. New or rare models can be hidden by it; models in your LM Studio always pass.</dd>
     </dl>
 
     <h3>The detail panel (right)</h3>
     <dl>
-      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. <b>☆ Favorite</b> stars the model. This part stays in view while you scroll.</dd>
-      <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization. When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well.</dd>
+      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. <b>☆ Favorite</b> stars the model. Below the name: the labels, and one line with the facts (parameters, maximum context, license with "(gated)" or "(not gated)", release date, downloads). This part stays in view while you scroll.</dd>
+      <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization. When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" lists llmfit's reasons.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
-      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them. Below it: ready commands and settings for AI agents.</dd>
+      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them.</dd>
+      <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
       <dt>Plan</dt><dd>llmfit's planner: what hardware the model needs, which routes work, how many chats fit.</dd>
     </dl>
 
     <h3>Views (top) and keys</h3>
     <dl>
       <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
+      <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
+      <dt>My models: your files</dt><dd>My models asks once for LM Studio's models folder (the same folder as for Downloads). TensorTailor matches each model to its file by size and reads only the start of the file. The Arch column then shows the layers and the maximum context ("65 layers · max 256K"); point at it for the KV cache figures (KV heads, head size, how many layers keep the whole context). For models that TensorTailor added itself ("live" or "from LM Studio"), llmfit then counts the KV cache exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
+      <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
+      <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
+      <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash; at the end the file is read back and its SHA-256 compared with Hugging Face's (<b>Check again</b> reads it once more). A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Tools (top right)</dt><dd><b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token</b>: for gated models (the dot on Tools is green when a token is set). <b>About and licenses</b>. <b>Light or dark</b> (key <kbd>T</kbd>).</dd>
       <dt>HF token</dt><dd>Read-only Hugging Face token for gated models. It stays only in this browser tab.</dd>
@@ -2526,7 +2568,7 @@ function battlePoints(r) {
 }
 function viewBattle() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
-  if (rs.length < 2) return `<div class="view-head"><h1>Battle</h1></div><section class="card empty">Pick 2 to 4 models with the checkbox in the list (or "Add to battle" in Suggest). They fight on this PC and one winner is named.</section>`;
+  if (rs.length < 2) return `<div class="view-head"><h1>Battle</h1></div><section class="card empty">Pick 2 to 4 models with the checkbox in the list (or "Add to battle" in Top picks). They fight on this PC and one winner is named.</section>`;
   const fighters = rs.map((r) => ({ r, p: battlePoints(r) })), alive = fighters.filter((f) => f.p);
   const win = alive.slice().sort((a, b) => b.p.total - a.p.total)[0];
   const rounds = [["quality", 45], ["speed", 30], ["memory", 15], ["context", 10]];
