@@ -20,7 +20,7 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 - **Load it in LM Studio.** Tab **Run** shows the LM Studio load settings for your PC. **Load in LM Studio with
   these settings** loads the model for you. You see what will be sent first.
 - **Check your own models.** **My models** lists the models in LM Studio, how well they run here and the best
-  setting. Give it LM Studio's models folder once, and it reads the header of each model file: layers, maximum
+  setting (the same advice as tab Run). Give it LM Studio's models folder once, and it reads the header of each model file: layers, maximum
   context and MTP, like LM Studio itself shows them. LM Studio models that llmfit's list does not have are added
   by themselves (read live from Hugging Face, or made from LM Studio's own data), so the filter **Already in LM
   Studio** in Models shows all of them.

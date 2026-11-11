@@ -1114,13 +1114,22 @@ function lmsPairOk(x, m) {
   const pub = String(x.publisher || "").toLowerCase();
   return (pub && m.id.toLowerCase().startsWith(pub + "/")) || norm(m.name) === norm(shortName(x.id)) || !pub;
 }
+// A link only counts when its row is in the results (an old link can point to a row that is gone).
+// inLms and catalogFor then agree, so the Run card and My models talk about the same LM Studio file.
+let resultIds = null, resultIdsOf = null;
+function lmsLinkOk(x) {
+  const link = state.lmsLinks[x.id];
+  if (!link) return false;
+  if (resultIdsOf !== state.results) { resultIdsOf = state.results; resultIds = new Set(state.results.map((r) => r.m.id)); }
+  return resultIds.has(link);
+}
 function inLms(m) {
   if (!state.lms.models.length) return null;
-  return state.lms.models.find((x) => state.lmsLinks[x.id] === m.id) || state.lms.models.find((x) => !state.lmsLinks[x.id] && lmsPairOk(x, m)) || null;
+  return state.lms.models.find((x) => lmsLinkOk(x) && state.lmsLinks[x.id] === m.id) || state.lms.models.find((x) => !lmsLinkOk(x) && lmsPairOk(x, m)) || null;
 }
 function catalogFor(x) {
   const link = state.lmsLinks[x.id];
-  if (link) { const r = state.results.find((y) => y.m.id === link); if (r) return r; }
+  if (link && lmsLinkOk(x)) { const r = state.results.find((y) => y.m.id === link); if (r) return r; }
   const cands = state.results.filter((r) => lmsPairOk(x, r.m));
   const pub = String(x.publisher || "").toLowerCase();
   return cands.find((r) => pub && r.m.id.toLowerCase().startsWith(pub + "/")) || cands[0] || null;
@@ -1506,6 +1515,7 @@ async function loadLmsSettings(r, quant) {
     Object.assign(entry, { loading: false, rows });
   } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
   if (state.selected === r.m.id && state.tab === "run") renderDetail();
+  if (state.view === "mine") renderView();
 }
 // llmfit's planner knows only these GGUF quants (plan.rs SUPPORTED_QUANTS); LM Studio files often have others
 // (Q4_K_S, IQ4_XS, Q5_K_S …). Those are counted as the nearest quant of the same bit size.
@@ -1516,19 +1526,31 @@ function planQuant(q) {
   const bits = /^I?Q(\d)/.exec(u);
   return bits ? { 1: "Q2_K", 2: "Q2_K", 3: "Q3_K_M", 4: "Q4_K_M", 5: "Q5_K_M", 6: "Q6_K", 8: "Q8_0" }[bits[1]] || "Q4_K_M" : "Q4_K_M";
 }
+// Shared by the Run tab's LM Studio card and My models, so both give the same advice.
+// The file the settings are for: the one in LM Studio, else llmfit's best file for this PC.
+const FILE_QUANT = /^Q\d|^IQ\d|^F16|^BF16/i;
+function lmsFileQuant(lms, b) {
+  return FILE_QUANT.test((lms && lms.quantization) || "") ? lms.quantization.toUpperCase() : FILE_QUANT.test(b.q) ? b.q : "Q4_K_M";
+}
+// 85 % of the usable VRAM: leaves room for the vision projector and LM Studio's buffers.
+function lmsBudget() { return usableVram(false) * 0.85; }
+// The planner's rows (memory per context) and the longest context that fits, with KV F16 and with KV Q8_0.
+function lmsPlanFor(r, lms) {
+  const fileQuant = lmsFileQuant(lms, r.best), quant = planQuant(fileQuant);
+  const e = state.detail.get("lmset|" + detailKey(r.m.id) + "|" + quant);
+  if (!e) setTimeout(() => loadLmsSettings(r, quant), 0);
+  const budget = lmsBudget(), fits = (v) => v != null && v <= budget;
+  const ok = e && !e.loading && !e.error;
+  return { fileQuant, quant, e, budget, fits, bestF16: ok ? e.rows.filter((x) => fits(x.f16)).pop() || null : null, bestQ8: ok ? e.rows.filter((x) => fits(x.q8)).pop() || null : null };
+}
 function lmsSettingsCard(r, repo, file) {
   const m = r.m, b = r.best, lms = inLms(m);
-  const fileQuant = /^Q\d|^IQ\d|^F16|^BF16/i.test((lms && lms.quantization) || "") ? lms.quantization.toUpperCase() : /^Q\d|^IQ\d|^F16|^BF16/i.test(b.q) ? b.q : "Q4_K_M";
-  const quant = planQuant(fileQuant);
-  const key = "lmset|" + detailKey(m.id) + "|" + quant, e = state.detail.get(key);
-  if (!e) setTimeout(() => loadLmsSettings(r, quant), 0);
-  const usable = usableVram(false), budget = usable * 0.85;
+  const { fileQuant, quant, e, budget, fits, bestF16, bestQ8 } = lmsPlanFor(r, lms);
+  const usable = usableVram(false);
   const asQ = quant !== fileQuant ? ` (counted as ${quant}: llmfit has no ${fileQuant}; the sizes are close)` : "";
   const head = `<div class="card-head"><h2>LM Studio load settings for this PC</h2><span class="tag" title="llmfit's estimate for ${esc(fileQuant + asQ)} on ${esc(state.hw.gpuName)} with ${gb(usable)} usable VRAM; budget ${gb(budget)} (85 %) leaves room for the vision projector and LM Studio's buffers">${esc(fileQuant)}${quant !== fileQuant ? " ≈ " + esc(quant) : ""} · ${gb(usable)} VRAM</span></div>`;
   if (!e || e.loading) return `<section class="card">${head}<div class="loading">Calculating the settings…</div></section>`;
   if (e.error) return `<section class="card">${head}<p class="hint">Could not calculate: ${esc(e.error)}</p></section>`;
-  const fits = (v) => v != null && v <= budget;
-  const bestF16 = e.rows.filter((x) => fits(x.f16)).pop(), bestQ8 = e.rows.filter((x) => fits(x.q8)).pop();
   const allGpu = !!bestF16 || !!bestQ8;
   const files = repo && state.files.get(repo) && state.files.get(repo).files || [];
   // The GGUF file of this quant (the one in LM Studio), else any model file: layers and MTP from its header.
@@ -2297,6 +2319,29 @@ function localGgufLine() {
   return `<p class="hint">To read MTP, layers and maximum context from your own files in <b>${esc(state.dl.root.name)}</b>, the browser needs your OK once. TensorTailor only reads the start of each file. ${btn("Read the model files")}</p>`;
 }
 
+// "Best setting" in My models. Matched to llmfit's list: the same planner numbers as the Run tab's LM Studio card,
+// capped at LM Studio's maximum context. Not matched: the rough estimate from the file size.
+function mineBestSetting(x, cat) {
+  const kvTxt = (t) => t.kv !== "fp16" ? " with KV " + t.kv.toUpperCase() : "";
+  if (!cat) {
+    const tip = x.sizeGB > 0 ? bestSettingsRough(x) : null;
+    const text = !tip ? "Does not fit in VRAM at any context." : tip.plain === "tight" ? `Fits in VRAM, but tight, up to ${fmtCtx(tip.ctx)}${kvTxt(tip)}.` : `Runs well up to ${fmtCtx(tip.ctx)}${kvTxt(tip)} (rough).`;
+    const warn = x.loaded && x.loadedCtx && tip && x.loadedCtx > tip.ctx ? "more than fits comfortably" : "";
+    return { text, tip: "Rough estimate from the file size (this model is not matched to llmfit's list).", warn };
+  }
+  const p = lmsPlanFor(cat, x);
+  if (!p.e || p.e.loading) return { text: "Calculating with llmfit's planner…", tip: "", warn: "" };
+  if (p.e.error) return { text: "Could not calculate: " + p.e.error, tip: "", warn: "" };
+  const cap = (c) => Math.min(c, x.max_context_length || Infinity);
+  const f = p.bestF16 ? cap(p.bestF16.ctx) : 0, q = p.bestQ8 ? cap(p.bestQ8.ctx) : 0;
+  const text = f ? `Runs well up to ${fmtCtx(f)}${q > f ? ` · ${fmtCtx(q)} with KV Q8_0` : ""}.`
+    : q ? `Up to ${fmtCtx(q)} with KV Q8_0.`
+    : p.e.rows.length && p.e.rows[0].f16 != null ? `Tight even at ${fmtCtx(p.e.rows[0].ctx)} (${gb(p.e.rows[0].f16)} of ${gb(usableVram(false))}): keep the context small.`
+    : "Does not fit fully in VRAM, even with a short context.";
+  const tip = `llmfit's planner for ${p.fileQuant}${p.quant !== p.fileQuant ? ` (counted as ${p.quant})` : ""}: the same advice as the LM Studio card in the Run tab. KV Q8_0 = K and V cache at Q8_0 in LM Studio's load settings. Budget: 85 % of the usable VRAM${x.max_context_length ? `; capped at LM Studio's maximum of ${fmtCtx(x.max_context_length)}` : ""}.`;
+  const warn = !x.loaded || !x.loadedCtx ? "" : x.loadedCtx > Math.max(f, q) ? "more than fits in VRAM" : x.loadedCtx > f ? "fits only with K and V cache at Q8_0" : "";
+  return { text, tip, warn };
+}
 function viewMine() {
   const s = state.lms;
   if (s.online && state.dl.root && !state.localGguf.done && !state.localGguf.busy && !state.localGguf.needClick && !state.localGguf.error) setTimeout(() => scanLocalGguf(false), 0);
@@ -2310,9 +2355,9 @@ function viewMine() {
     const rough = !cat && !isEmb && x.sizeGB > 0 ? roughFromFile(x, ctxNow, "fp16") : null;
     const plain = cat ? cat.best.plain : rough ? rough.plain : null;
     const range = cat ? speedRange(cat.best) : rough ? speedRange(rough) : "—";
-    const tip = !isEmb && x.sizeGB > 0 ? bestSettingsRough(x) : null;
-    const tipText = isEmb ? "" : !tip ? "Does not fit in VRAM at any context." : tip.plain === "tight" ? `Fits in VRAM, but tight, up to ${fmtCtx(tip.ctx)}${tip.kv !== "fp16" ? " with KV " + tip.kv.toUpperCase() : ""}.` : `Runs well up to ${fmtCtx(tip.ctx)}${tip.kv !== "fp16" ? " with KV " + tip.kv.toUpperCase() : ""} (rough).`;
-    const warn = x.loaded && x.loadedCtx && tip && x.loadedCtx > tip.ctx ? `<div class="hash" style="color:var(--marginal)">Loaded at ${fmtCtx(x.loadedCtx)}: more than fits comfortably.</div>` : "";
+    const best = isEmb ? { text: "", tip: "", warn: "" } : mineBestSetting(x, cat);
+    const tipText = best.text;
+    const warn = best.warn ? `<div class="hash" style="color:var(--marginal)">Loaded at ${fmtCtx(x.loadedCtx)}: ${best.warn}.</div>` : "";
     const link = cat ? "https://huggingface.co/" + cat.m.id : "https://huggingface.co/models?search=" + encodeURIComponent(shortName(x.id));
     const lmsCaps = [x.vision ? "vision" : "", x.tools ? "tools" : "", x.reasoning ? "reason" : ""].filter(Boolean);
     const bundled = LMS_BUNDLED.test(x.id);
@@ -2330,12 +2375,12 @@ function viewMine() {
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : fileMtp ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy + "\nIn LM Studio's load settings, turn on speculative decoding with MTP (or use Load in LM Studio in the Run tab).")}">MTP in file</span>` : fileMtp === null && x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model, or read your model files (above the list), to know for sure.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
-      <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "")}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px">${esc(tipText)}</td>
+      <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "")}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
     <section class="card">${localGgufLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports.</p></section>`;
+      <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>`;
 }
 
 /* ===================== Battle ===================== */
