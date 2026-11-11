@@ -1693,12 +1693,21 @@ function tabRun(r) {
   const file = f && f.files ? (f.files.find((x) => x.path.endsWith(".gguf") && quantOfFile(x.path) === String(b.q).toUpperCase()) || {}).path : null;
   const ctx = r.ctx || CTX_STEPS[state.ctxIdx], kv = state.kvq;
   const lmsId = lms ? lms.id : (m.name || "").toLowerCase();
+  // In LM Studio with another quant than llmfit's best file: the card talks about your own file first and
+  // names llmfit's pick as an option (higher quality but tighter, or smaller but lower quality).
+  const ownQ = state.engine === "lms" && lms && lms.quantization ? lms.quantization.toUpperCase() : "";
+  const own = ownQ && ownQ !== String(b.q).toUpperCase();
+  const qBits = (q) => /^F32/i.test(q) ? 32 : /^B?F16/i.test(q) ? 16 : Number((/^I?Q(\d)/i.exec(q) || [])[1] || 0);
+  const otherFile = !own ? "" : `<p class="hint">${qBits(b.q) > qBits(ownQ)
+    ? `Higher quality: <b>${esc(b.q)}</b>, llmfit's best file for this PC (${esc(memLabel(b))}, ${esc(PLAIN[b.plain].label.toLowerCase())}). It is a new download (tab <b>Files</b>) and leaves less room for context than your ${esc(ownQ)}.`
+    : qBits(b.q) < qBits(ownQ) ? `llmfit's best file for this PC is <b>${esc(b.q)}</b> (${esc(memLabel(b))}): smaller, so it fits with more room, but lower quality than your ${esc(ownQ)}.`
+    : `llmfit's best file for this PC is <b>${esc(b.q)}</b> (${esc(memLabel(b))}), about the same size as your ${esc(ownQ)}.`}</p>`;
   let body = "", base = "";
   if (state.engine === "lms") {
     base = "http://127.0.0.1:1234/v1";
     body = (lms ? `<div class="ok-box">Already in LM Studio as <b>${esc(lms.id)}</b>.</div>` : repo ? cmdLine("download", `lms get ${repo}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) +
       cmdLine("load", `lms load ${lmsId} --gpu max --context-length ${ctx}`) + cmdLine("server", "lms server start") +
-      (kv !== "fp16" ? `<p class="hint">KV cache ${kv.toUpperCase()}: in LM Studio open the model's load settings and set K and V cache quantization to ${kv.toUpperCase()}.</p>` : "");
+      (kv !== "fp16" ? `<p class="hint">KV cache ${kv.toUpperCase()}: in LM Studio open the model's load settings and set K and V cache quantization to ${kv.toUpperCase()}.</p>` : "") + otherFile;
   } else if (state.engine === "llama") {
     base = "http://127.0.0.1:8080/v1";
     const path = file ? `${LMS_FOLDER}\\${repo.replace("/", "\\")}\\${file.replace(/\//g, "\\")}` : "<path to the .gguf file>";
@@ -1710,7 +1719,7 @@ function tabRun(r) {
   const opencode = JSON.stringify({ provider: { local: { npm: "@ai-sdk/openai-compatible", options: { baseURL: base }, models: { [lmsId]: {} } } } }, null, 2);
   const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = "${lmsId}"`;
   return `${state.engine === "lms" && b.plain !== "nofit" ? lmsSettingsCard(r, setRepo, file) : ""}<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
-    <p class="hint" style="margin-top:0">${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)} · context ${fmtCtx(ctx)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
+    <p class="hint" style="margin-top:0">${own ? `Your file in LM Studio · quant <b>${esc(ownQ)}</b>` : `${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)}`} · context ${fmtCtx(ctx)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
   <section class="card"><div class="card-head"><h2>Use it in an AI agent</h2></div>
     <p class="hint" style="margin-top:0">Base address <code>${base}</code> · model <code>${esc(lmsId)}</code></p>
     <div class="card-head" style="margin:10px 0 0"><small>OpenCode — opencode.json</small><button class="btn small" data-copy="${esc(opencode)}" data-what="OpenCode settings">Copy</button></div><pre class="block">${esc(opencode)}</pre>
