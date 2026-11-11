@@ -158,7 +158,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 8px 0 2p
 .rows { overflow: auto; flex: 1; position: relative; }
 .row { height: 60px; border-bottom: 1px solid var(--line); cursor: pointer; overflow: hidden; }
 .row:hover { background: var(--panel-2); }
-.row[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.row[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 24%, var(--panel)); box-shadow: inset 5px 0 0 var(--accent), inset 0 0 0 1px var(--accent); }
+.row[aria-selected="true"] .m-name .t { font-weight: 700; }
+.row[aria-selected="true"].is-tight .m-name, .row[aria-selected="true"].is-tight .num { opacity: 1; }
 .row.is-tight .m-name, .row.is-tight .num { opacity: .6; }
 .row-acts { display: flex; align-items: center; gap: 4px; }
 .row input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
@@ -2922,7 +2924,8 @@ function selectModel(id, scroll) {
   state.selected = id;
   const sr = state.results.find((x) => x.m.id === id);
   if (sr) $("srStatus").textContent = `${sr.m.name}: ${PLAIN[sr.best.plain].label}, best file ${sr.best.q}.`;
-  if (scroll) { const i = state.visible.findIndex((r) => r.m.id === id); const el = $("rows"); if (i >= 0) { const y = i * ROW_H; if (y < el.scrollTop) el.scrollTop = y; else if (y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = y + ROW_H - el.clientHeight; } }
+  // scroll: true = just into view (arrow keys); "center" = in the middle of the list (Show from another view).
+  if (scroll) { const i = state.visible.findIndex((r) => r.m.id === id); const el = $("rows"); if (i >= 0) { const y = i * ROW_H; if (scroll === "center") el.scrollTop = Math.max(0, y - (el.clientHeight - ROW_H) / 2); else if (y < el.scrollTop) el.scrollTop = y; else if (y + ROW_H > el.scrollTop + el.clientHeight) el.scrollTop = y + ROW_H - el.clientHeight; } }
   renderRowsWindow(); renderDetail();
 }
 function showModel(id, tab) {
@@ -2930,7 +2933,7 @@ function showModel(id, tab) {
   setView("models");
   if (!state.visible.some((r) => r.m.id === id)) { state.search = ""; $("q").value = ""; state.show.nofit = true; renderList(); }
   if (tab) state.tab = tab;
-  selectModel(id, true);
+  selectModel(id, "center");
 }
 function moveSelection(step) { const ids = state.visible.map((r) => r.m.id); if (!ids.length) return; const i = ids.indexOf(state.selected); selectModel(ids[clamp(i < 0 ? 0 : i + step, 0, ids.length - 1)], true); }
 function startTyping(tps) {
