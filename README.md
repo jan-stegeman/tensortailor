@@ -62,6 +62,8 @@ change in the page).
 | **My models:** your LM Studio models (demo data in this picture) | **Battle:** 2 to 4 models compete, one wins |
 | ![Downloads: one file done with its SHA-256 checked from disk, one downloading, one waiting](docs/screenshots/downloads-dark.png) | ![A pasted Hugging Face link, checked live and opened](docs/screenshots/live-check-light.png) |
 | **Downloads:** resume after a crash, SHA-256 read back from disk (demo data in this picture) | **Live check:** paste any Hugging Face link |
+| ![Run tab: the LM Studio load settings for this PC, for the file you have in LM Studio](docs/screenshots/run-dark.png) | ![Help: every label and icon on its own row](docs/screenshots/help-dark.png) |
+| **Run:** what to set in LM Studio, or let TensorTailor load it (demo data) | **Help:** every label, icon, filter and view explained |
 
 ## Privacy
 
@@ -112,14 +114,17 @@ GitHub Actions builds the page on every push (artifact `tensortailor-html`).
 
 ### Test it
 
-`tools/cdp_test.mjs` opens the page in headless Edge through the DevTools protocol, runs test steps and saves
-screenshots. Make the README pictures again after a change:
+`tools/cdp_test.mjs` opens the page in headless Chrome (or Edge) through the DevTools protocol, runs test steps
+and saves screenshots. Make the README pictures again after a change:
 
 ```powershell
-$edge = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+$chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 $page = "file:///" + ((Resolve-Path "dist\tensortailor.html").Path -replace '\\', '/')
-node tools/cdp_test.mjs $edge $page "$env:TEMP\tt-last.png" "state.ready && state.results.length > 0" tools/readme-screenshots.json
+node tools/cdp_test.mjs $chrome $page "$env:TEMP\tt-last.png" "state.ready && state.results.length > 0" tools/readme-screenshots.json
 ```
+
+The built-in Help must stay complete: `web/build.mjs` runs `web/help-check.mjs` first, and the build stops when a
+filter, view, sort choice or label of the page has no row in the Help.
 
 All pictures are 1600 × 900 and show the page in light and dark mode. The "My models" and "Downloads" pictures
 use made-up demo data.
@@ -134,7 +139,9 @@ use made-up demo data.
 | `engine/about.toml`, `engine/about.hbs` | cargo-about settings: the licenses of the Rust crates in the engine |
 | `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
 | `web/build.mjs` | Makes the single file `dist/tensortailor.html` |
-| `tools/cdp_test.mjs` | Tests the built page in headless Edge (DevTools protocol) and takes screenshots |
+| `web/help-check.mjs` | Stops the build when the Help misses a filter, view, sort choice or label |
+| `tools/fetch-gated.mjs` | Hugging Face's list of gated models, for the "gated" labels (run by the build action) |
+| `tools/cdp_test.mjs` | Tests the built page in headless Chrome or Edge (DevTools protocol) and takes screenshots |
 | `tools/test-sha256.mjs` | Checks the page's SHA-256 against Node's crypto and measures its speed |
 | `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |

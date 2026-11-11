@@ -1,11 +1,11 @@
 [
-  { "log": "select Qwen3-14B files", "js": "(() => { showModel('Qwen/Qwen3-14B', 'files'); return state.selected; })()", "wait": 800 },
-  { "log": "check files", "js": "(() => { const b = document.querySelector('[data-loadfiles]'); if (!b) return 'no button'; b.click(); return 'clicked ' + b.dataset.loadfiles; })()", "wait": 5000 },
-  { "log": "files tab", "js": "document.getElementById('detail').innerText.slice(0, 1400)" },
-  { "log": "run tab", "js": "(() => { state.tab = 'run'; renderDetail(); return document.getElementById('detail').innerText.slice(300, 1100); })()", "wait": 500 },
+  { "log": "select Qwen3-14B files (waits until the list is calculated)", "js": "(async () => { for (let i = 0; i < 200 && !state.results.length; i++) await new Promise((r) => setTimeout(r, 100)); const inList = state.results.some((r) => r.m.id === 'Qwen/Qwen3-14B'); showModel('Qwen/Qwen3-14B', 'files'); return 'selected: ' + state.selected + ' | in the list: ' + inList + (state.selected === 'Qwen/Qwen3-14B' ? ' | OK' : ' | FAIL'); })()", "wait": 800 },
+  { "log": "check files", "js": "(() => { const b = document.querySelector('[data-loadfiles]'); if (!b) return 'no button (the files load by themselves)'; b.click(); return 'clicked ' + b.dataset.loadfiles; })()", "wait": 5000 },
+  { "log": "files tab", "js": "(() => { const t = document.getElementById('detail').innerText; return (/Qwen3-14B/.test(t) ? 'OK Qwen3-14B | ' : 'FAIL other model | ') + t.slice(0, 1200); })()" },
+  { "log": "run tab", "js": "(() => { state.tab = 'run'; renderDetail(); const t = document.getElementById('detail').innerText; return (/Run it on this PC/.test(t) ? 'OK run card | ' : 'FAIL no run card | ') + t.slice(300, 1100); })()", "wait": 500 },
   { "log": "plan tab", "js": "(() => { state.tab = 'plan'; renderDetail(); return 'ok'; })()", "wait": 1500 },
-  { "log": "plan text", "js": "document.getElementById('detail').innerText.slice(280, 1700)" },
+  { "log": "plan text", "js": "(() => { const t = document.getElementById('detail').innerText; return (/Qwen3-14B/.test(t) ? 'OK Qwen3-14B | ' : 'FAIL other model | ') + t.slice(280, 1700); })()" },
   { "log": "my models", "js": "(() => { setView('mine'); return document.getElementById('viewPane').innerText.slice(0, 1800); })()", "wait": 500 },
-  { "log": "battle", "js": "(() => { state.compare = ['Qwen/Qwen3-14B', 'google/gemma-4-E4B-it', 'Qwen/Qwen3.5-9B']; setView('battle'); return document.getElementById('viewPane').innerText.slice(0, 900); })()", "wait": 500 },
-  { "log": "back to models, overview", "js": "(() => { setView('models'); state.tab = 'overview'; renderDetail(); return 'ok'; })()", "wait": 800 }
+  { "log": "battle", "js": "(() => { state.compare = ['Qwen/Qwen3-14B', 'google/gemma-4-E4B-it', 'Qwen/Qwen3.5-9B']; setView('battle'); const t = document.getElementById('viewPane').innerText; return (/Pick 2 to 4/.test(t) ? 'FAIL no battle | ' : 'OK battle | ') + t.slice(0, 900); })()", "wait": 500 },
+  { "log": "back to models, overview", "js": "(() => { setView('models'); state.tab = 'overview'; renderDetail(); return state.selected === 'Qwen/Qwen3-14B' ? 'OK' : 'FAIL ' + state.selected; })()", "wait": 800 }
 ]

@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
+import { helpCheck } from "./help-check.mjs";
 
 const [pkg = "engine/pkg-nomod", out = "dist/tensortailor.html", hfModels = "vendor/llmfit/llmfit-core/data/hf_models.json"] = process.argv.slice(2);
 
@@ -51,6 +52,9 @@ if (existsSync(gatedFile)) {
 const gatedJson = JSON.stringify(gated).replace(/</g, "\\u003c");
 
 const template = readFileSync(new URL("./app.html", import.meta.url), "utf8");
+// The built-in Help must explain every filter, view, sort choice and label (web/help-check.mjs).
+const helpProblems = helpCheck(template);
+if (helpProblems.length) throw new Error("the Help is not up to date:\n  - " + helpProblems.join("\n  - ") + "\nAdd a row to the Help (dlgHelp in web/app.html).");
 const glue = readFileSync(join(pkg, "tensortailor_engine.js"), "utf8");
 const wasm = readFileSync(join(pkg, "tensortailor_engine_bg.wasm"));
 const libRs = readFileSync(new URL("../engine/src/lib.rs", import.meta.url), "utf8");
