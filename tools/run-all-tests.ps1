@@ -10,7 +10,7 @@ $page = "file:///" + ((Resolve-Path "dist\tensortailor.html").Path -replace '\\'
 node web/build.mjs engine/pkg-nomod dist/tensortailor.html D:\AI\temp\hf_models_v1.1.20.json *> D:\AI\temp\build.log
 if ($LASTEXITCODE -ne 0) { "BUILD FAILED"; Get-Content D:\AI\temp\build.log; exit 1 }
 "build OK"
-$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs"
+$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure"
 $served = "test-local-gguf", "test-downloads", "test-vision-download", "test-updates", "test-groups"
 $bad = 0
 foreach ($t in $plain + $served) {

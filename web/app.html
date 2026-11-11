@@ -688,7 +688,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
-      <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
+      <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
     </dl>
 
@@ -741,6 +741,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
       <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
       <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. TensorTailor never replaces or deletes a file.</dd>
+      <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model. With GPU measurements of models in llmfit's list, other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the list marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash; at the end the file is read back and its SHA-256 compared with Hugging Face's (<b>Check again</b> reads it once more). A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
@@ -869,7 +870,7 @@ const CHIP_TIP = {
   new: "Released in the last 60 days.",
   moe: "Mixture of experts: many experts, only a few work per word. Fast for its size; the unused experts can wait in system RAM (MoE offload).",
   upg: 'Only runs well with the upgrade you switched on under "What if I upgrade?".',
-  meas: "The speed comes from real measurements on similar hardware (llmfit's benchmark data), not from an estimate.",
+  meas: "The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate.",
   lms: "You already have this model in LM Studio.",
   fromLms: "In your LM Studio, not in llmfit's list, and llmfit could not read it from Hugging Face. TensorTailor made this row from what LM Studio and the model file's header say (parameters, quant, layers, context), and llmfit's formulas give the verdict. Rougher than a model from llmfit's list.",
   runtime: "This model needs {rt}, not llama.cpp. LM Studio on Windows cannot run it."
@@ -1125,7 +1126,7 @@ function memTip(b) {
 }
 function speedTip(b) {
   if (!b.tps) return "No speed: the model does not fit.";
-  const how = String(b.conf).startsWith("measured") ? "Measured on similar hardware (llmfit's benchmark data)." : "Estimated by llmfit from memory speed and model size. The real speed can be lower.";
+  const how = String(b.conf).startsWith("measured") ? "Measured on similar hardware (llmfit's own community results)." : "Estimated by llmfit from memory speed and model size. The real speed can be lower.";
   return `About ${speedRange(b)} tokens per second (a token is about ¾ of a word).\n${how}\nReading pace is about ${READING_PACE} tok/s.`;
 }
 const VERDICT_TIP = {
@@ -1429,7 +1430,7 @@ function tabOverview(r, d) {
   return `<section class="card">
     <div class="verdict-big">${verdict(b.plain)}<span class="tag">${b.mode}</span><span class="tag">llmfit: ${LLMFIT_LABEL[b.level]}</span><span class="tag ${String(b.conf).startsWith("measured") ? "okay" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
     <div class="stats">
-      <div class="stat"><div class="k">Speed tok/s</div><div class="v">${speedRange(b)}</div></div>
+      <div class="stat"><div class="k">Speed tok/s</div><div class="v">${speedRange(b)}</div>${measLine(r)}</div>
       <div class="stat" title="${b.mode === "MoE offload" ? `Total: ${gb(b.inGpu)} in VRAM + ${gb(b.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(b.mode === "MoE offload" ? b.inGpu + b.inRam : b.need).toFixed(1)} <small>GB</small></div></div>
       <div class="stat"><div class="k">Best file</div><div class="v" style="font-size:14px" title="${esc(b.q)}">${esc(b.q)}</div></div>
       <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Usable context</div><div class="v">${fmtCtx(r.ctxFit)}</div></div>
@@ -2640,6 +2641,88 @@ function simGroupsCard(totalGB) {
   };
   return `<section class="card">${head}${err}<p class="hint" style="margin-top:0">${gs.length} group${gs.length === 1 ? "" : "s"} of models made from the same base model (fine-tunes, uncensored versions or other quants). Together ${gb(gs.reduce((t, g) => t + g.total, 0))}; keeping one per group would free up to ${gb(gs.reduce((t, g) => t + g.free, 0))}.</p>${gs.map(block).join("")}${foot}</section>`;
 }
+/* ---------- Estimate next to measurement ---------- */
+// "Measure" asks LM Studio (POST /api/v1/chat, store: false) to write a short text with a model that is ALREADY
+// loaded. It never loads one: /api/v1/chat would load an unloaded model by itself with default settings. LM Studio's
+// tokens_per_second is kept next to llmfit's estimate of that moment (localStorage "tt-measured"). Measurements of
+// models that run fully on the GPU give a factor for this PC: measured / middle of llmfit's range (the median).
+const MEAS_KEY = "tt-measured";
+const measStore = loadJsonStore(MEAS_KEY);
+const measState = { busy: null, step: "", error: null };
+const MEAS_PROMPT = "Write a story of about 250 words about a lighthouse keeper who finds a message in a bottle.";
+// llmfit's estimate for YOUR file: llmfit counts its best file (b.q); the speed goes with the bytes read per
+// token, so the range is scaled by (size of llmfit's file) / (size of your file).
+function measEstimate(x) {
+  const cat = catalogFor(x), loc = state.localGguf.byId.get(x.id);
+  if (cat && cat.best.tps > 0) {
+    const b = cat.best, ownQ = lmsOwnQuant(x), P = cat.m.params || 0;  // billions
+    const ownGB = loc && loc.size ? loc.size / 1e9 : x.sizeGB;
+    let k = 1;
+    if (ownQ && ownQ !== String(b.q).toUpperCase() && P > 0 && ownGB > 0) k = clamp(P * (LMS_BPP[planQuant(b.q)] || 0.58) / ownGB, 0.5, 2);
+    return { lo: b.lo * k, hi: b.hi * k, mode: b.mode, src: "llmfit", id: cat.m.id, q: b.q, ownQ: ownQ || b.q, scaled: k !== 1 };
+  }
+  const r = x.sizeGB > 0 ? roughFromFile(x, Math.min(CTX_STEPS[state.ctxIdx], x.max_context_length || 32768), "fp16") : null;
+  return r && r.tps > 0 ? { lo: r.lo, hi: r.hi, mode: r.mode, src: "rough", id: null } : null;
+}
+async function measureSpeed(id) {
+  if (measState.busy) { toast("One measurement at a time."); return; }
+  if (state.lmsLoad && state.lmsLoad.phase === "busy") { toast("Wait until LM Studio has loaded the model."); return; }
+  measState.busy = id; measState.error = null; measState.step = "Asking LM Studio which models are loaded…";
+  renderView(); renderDetail();
+  try {
+    await checkLms();
+    const x = state.lms.models.find((y) => y.id === id);
+    if (!x || !x.loaded || !x.instances.length) throw new Error("The model is not loaded in LM Studio. Load it first (Run tab → Load in LM Studio), then measure.");
+    const inst = x.instances[0], est = measEstimate(x);
+    measState.step = "Warming up…"; renderView();
+    await lmsPost("/api/v1/chat", { model: inst, input: "Say OK.", max_output_tokens: 8, temperature: 0, store: false });
+    measState.step = "Measuring: writing about 256 tokens…"; renderView();
+    const res = await lmsPost("/api/v1/chat", { model: inst, input: MEAS_PROMPT, max_output_tokens: 256, temperature: 0, store: false });
+    const s = res.stats || {}, tps = Number(s.tokens_per_second), out = Number(s.total_output_tokens || 0);
+    if (!(tps > 0)) throw new Error("LM Studio gave no speed (stats.tokens_per_second is missing).");
+    measStore[id] = { tps, ttft: Number(s.time_to_first_token_seconds || 0), out, t: Date.now(), ctx: x.loadedCtx || 0, mtp: x.mtp, name: x.name, est };
+    safeSet("localStorage", MEAS_KEY, JSON.stringify(measStore));
+    toast(`Measured ${x.name}: ${fmtT(tps)} tok/s${est ? ` (estimated ${fmtT(est.lo)}–${fmtT(est.hi)})` : ""}.`);
+  } catch (e) { measState.error = { id, msg: e.message }; }
+  finally { measState.busy = null; renderView(); renderDetail(); }
+}
+// The factor for this PC from the measurements (GPU only, at least 32 tokens written), or null.
+function pcFactor() {
+  const rs = Object.values(measStore).filter((m) => m.est && m.est.src === "llmfit" && m.est.mode === "GPU" && m.out >= 32 && m.est.hi > 0)
+    .map((m) => m.tps / ((m.est.lo + m.est.hi) / 2)).sort((a, b) => a - b);
+  if (!rs.length) return null;
+  const h = rs.length >> 1;
+  return { f: rs.length % 2 ? rs[h] : (rs[h - 1] + rs[h]) / 2, n: rs.length };
+}
+const pctOf = (f) => Math.round(f * 100) + " %";
+function measTip(ms) {
+  const e = ms.est;
+  return `Measured on this PC on ${dayOf(ms.t)} with LM Studio: ${fmtT(ms.tps)} tok/s while writing ${ms.out} tokens; first token after ${ms.ttft.toFixed(2)} s.${ms.ctx ? ` Loaded with context ${ms.ctx.toLocaleString("en")}.` : ""}${ms.mtp ? " MTP was on." : ""}`
+    + (e ? `\nEstimate then: ${fmtT(e.lo)}–${fmtT(e.hi)} tok/s (${e.src === "llmfit" ? `llmfit${e.scaled ? `, scaled from its ${e.q} to your ${e.ownQ} file by size` : ""}` : "rough, from the file size"}). Measured = ${pctOf(ms.tps / ((e.lo + e.hi) / 2))} of the middle.` : "");
+}
+// The measure line in My models' Speed column.
+function measCell(x) {
+  const ms = measStore[x.id];
+  const busy = measState.busy === x.id ? `<div class="hash">${esc(measState.step)}</div>` : "";
+  const err = measState.error && measState.error.id === x.id ? `<div class="hash" style="color:var(--tight)" title="${esc(measState.error.msg)}">not measured: ${esc(measState.error.msg.slice(0, 60))}${measState.error.msg.length > 60 ? "…" : ""}</div>` : "";
+  const got = ms ? `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)}${ms.est.scaled ? " for your " + esc(ms.est.ownQ) : ""}` : ""}</div>` : "";
+  const btn = x.loaded && !busy ? `<button class="btn small" data-measure="${esc(x.id)}" title="${esc("Ask LM Studio to write about 256 tokens with this loaded model (about 10–30 seconds) and keep the real speed next to the estimate. Nothing is loaded or unloaded.")}">${ms ? "Measure again" : "Measure"}</button>` : "";
+  return got + busy + err + btn;
+}
+function measSummaryLine() {
+  const all = Object.values(measStore);
+  if (!all.length) return state.lms.models.some((x) => x.loaded) ? `<p class="hint">Real speed: press <b>Measure</b> next to a loaded model. LM Studio then writes about 256 tokens, and TensorTailor keeps the measured speed next to the estimate.</p>` : "";
+  const pf = pcFactor();
+  return `<p class="hint">Measured on this PC: ${all.length} model${all.length === 1 ? "" : "s"}. ${pf ? `On the GPU, the real speed is ${pctOf(pf.f)} of llmfit's estimate (median of ${pf.n}); the detail panel shows "your PC" speeds corrected with it.` : "No GPU measurement of a model in llmfit's list yet, so no factor for this PC."}</p>`;
+}
+// For the detail panel: the measurement of your LM Studio file of this model, or llmfit's range corrected for this PC.
+function measLine(r) {
+  const lms = inLms(r.m), ms = lms ? measStore[lms.id] : null;
+  if (ms) return `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est && ms.est.scaled ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)} for your ${esc(ms.est.ownQ)}` : lms && lmsOwnQuant(lms) && lmsOwnQuant(lms) !== String(r.best.q).toUpperCase() ? ` (your ${esc(lmsOwnQuant(lms))})` : ""}</div>`;
+  const pf = pcFactor(), b = r.best;
+  if (!pf || b.mode !== "GPU" || !(b.tps > 0)) return "";
+  return `<div class="hash" title="${esc(`llmfit's estimate × ${pf.f.toFixed(2)}: on this PC your measurements were ${pctOf(pf.f)} of llmfit's estimate on the GPU (median of ${pf.n}). Not measured for this model.`)}">your PC: ~${fmtT(b.lo * pf.f)}–${fmtT(b.hi * pf.f)}</div>`;
+}
 /* ---------- LM Studio models that llmfit's list does not have ---------- */
 // So "Already in LM Studio" in Models shows every LM Studio model: (1) the model's folder name is its Hugging Face
 // repo: llmfit's own conversion reads it live (label "live"), unless llmfit's parameter count is far from LM
@@ -2828,11 +2911,11 @@ function viewMine() {
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : fileMtp ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy + "\nIn LM Studio's load settings, turn on speculative decoding with MTP (or use Load in LM Studio in the Run tab).")}">MTP in file</span>` : fileMtp === null && x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model, or read your model files (above the list), to know for sure.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
-      <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "")}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
+      <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "") + measCell(x)}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card">${localGgufLine()}${updSummaryLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <section class="card">${localGgufLine()}${updSummaryLine()}${measSummaryLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>${simGroupsCard(totalGB)}`;
 }
 
@@ -3282,7 +3365,7 @@ function renderAbout() {
     <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
     <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
     <dt>Rust libraries</dt><dd>The engine also contains Rust crates (MIT, Apache-2.0 and similar licenses). ${b.notices ? `<button class="btn small" id="btnNotices">Show the licenses</button>` : "This local build has no list inside; see THIRD-PARTY-NOTICES.txt with each release."}</dd>
-    <dt>Measured speeds</dt><dd>llmfit's own community results (MIT) and llmfit's cache of results from localmaxxing.com.</dd>
+    <dt>Measured speeds</dt><dd>llmfit's own community results (MIT). llmfit's cache of results from localmaxxing.com is left out: their terms give no license for the data. Your own measurements (My models → Measure) stay in this browser.</dd>
     <dt>Models</dt><dd>Never included. Each model keeps its own license; some are gated.</dd>
     <dt>Privacy</dt><dd>No tracking. The page only talks to huggingface.co (when you check files, fetch new models or check a link) and to LM Studio on 127.0.0.1.</dd>
     <dt>License</dt><dd>TensorTailor: MIT License. No warranty. <button class="btn small" id="btnLicTexts">Show the license texts</button></dd></dl>
@@ -3458,6 +3541,7 @@ function wire() {
     if (t.id === "btnNotices") { showAboutText("notices"); return; }
     if (t.id === "btnLocalGguf") { scanLocalGguf(true); return; }
     if (t.id === "btnUpdCheck") { checkUpdates(true); return; }
+    const ms = t.closest("[data-measure]"); if (ms) { measureSpeed(ms.dataset.measure); return; }
     if (t.id === "btnGrpCheck") { for (const k of Object.keys(baseStore)) baseStore[k].t = 0; findGroups(true); return; }
     const us = t.closest("[data-updsha]"); if (us) { updHash(us.dataset.updsha); return; }
     if (t.closest("[data-updstop]")) { if (updState.ctl) updState.ctl.abort(); return; }

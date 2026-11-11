@@ -27,6 +27,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
   (**update available**, with a link to what changed); **Check SHA-256** compares your file exactly. Below the list,
   **Similar models and disk space** groups models made from the same base model (for example three versions of one
   27B model, 53 GB) and shows how much space keeping one of them would free. Nothing is replaced or deleted.
+- **Measure the real speed.** Press **Measure** next to a model that is loaded in LM Studio: LM Studio writes about
+  256 tokens and TensorTailor shows the measured speed next to the estimate. Your measurements also correct the
+  estimates of other models for your PC ("your PC: ~A–B" in the detail panel). Measure never loads a model.
 - **Keep favorites.** Click the star ☆ next to a model (or press `W`). **Only my favorites** shows just those,
   and My models shows the same stars.
 - **Compare.** Tick 2 to 4 models and press **Compare**, or let them fight in **Battle**.
@@ -81,8 +84,9 @@ change in the page).
 
 ## Good to know
 
-- The verdicts and speeds are **estimates** from llmfit's formulas (or measured results, when llmfit has them
-  for your GPU). Real speed depends on the program, its settings and the prompt.
+- The verdicts and speeds are **estimates** from llmfit's formulas (or measured results from llmfit's own
+  community data, when it has them for your GPU). Real speed depends on the program, its settings and the
+  prompt: **Measure** in My models shows the real speed on your PC.
 - Downloads need Edge or Chrome (they use the browser's folder access). Pick LM Studio's models folder once;
   by default that is `C:\Users\<you>\.lmstudio\models`.
 - LM Studio's API cannot set GPU offload and K/V cache quantization. When TensorTailor loads a model, LM Studio
@@ -96,7 +100,9 @@ change in the page).
 
 - **Engine:** llmfit-core, compiled to WebAssembly (`engine/`). Two small changes for the browser only:
   the clock in the recency bonus, and llmfit's update code split so the page can fetch from Hugging Face itself
-  and then use llmfit's own conversion (`engine/tools/patch-llmfit.sh`).
+  and then use llmfit's own conversion (`engine/tools/patch-llmfit.sh`). One data change: llmfit's cache of
+  benchmark results from localmaxxing.com is left out (`engine/tools/strip-benchmark-cache.sh`), because their
+  terms give no license for the data; llmfit's own community results (MIT) stay in.
 - **Model list:** every Monday `.github/workflows/catalog.yml` runs llmfit's own scraper (same llmfit version as
   the engine) and stores a fresh catalog as the pre-release `catalog`, after llmfit's own checks. The Tuesday
   release uses it; if it is missing, old or failed, the release uses llmfit's own catalog. The release notes say
@@ -138,6 +144,7 @@ use made-up demo data.
 | --- | --- |
 | `engine/` | Rust crate that wraps llmfit-core and builds it to WebAssembly |
 | `engine/tools/patch-llmfit.sh` | The two small browser changes to llmfit-core (clock, and the update code split) |
+| `engine/tools/strip-benchmark-cache.sh` | Leaves llmfit's localmaxxing.com benchmark cache out (browser copy and golden copy) |
 | `engine/tools/hf-fixtures.json` | 13 fixed Hugging Face models: the live conversion must be the same natively and in WebAssembly |
 | `engine/about.toml`, `engine/about.hbs` | cargo-about settings: the licenses of the Rust crates in the engine |
 | `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
@@ -149,6 +156,7 @@ use made-up demo data.
 | `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
+| `tools/test-measure.json` | Measure in My models with a made-up LM Studio: warm-up + measured run, never a load, the factor for this PC |
 | `tools/test-groups.json` | Similar models in My models: made-up files under real repo names, Hugging Face's base models, the file-header fallback (run with `CDP_SERVE_DIR`) |
 | `tools/test-updates.json` | Update check in My models: a real 1.2 MB GGUF and made-up files in test storage, Hugging Face's paths-info, SHA-256 (run with `CDP_SERVE_DIR`) |
 | `tools/readme-screenshots.json` | The steps that make the README pictures (with demo data) |
