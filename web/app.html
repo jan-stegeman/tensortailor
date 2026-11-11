@@ -530,20 +530,77 @@ dialog::backdrop { background: rgba(5, 7, 10, .5); backdrop-filter: blur(6px) sa
 .tile[aria-pressed="false"] { border: 1px dashed var(--line-2); box-shadow: none; }
 /* Scrollbars a little thinner. */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
+
+/* ==== Design v4, step D2: header and sidebar ==== */
+:root { --side: #fafbfc; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --side: #0c0f14; } }
+:root[data-theme="dark"] { --side: #0c0f14; }
+/* Header: glass, one fixed grid, so the search box keeps its width in every view. */
+.top { position: relative; z-index: 6; height: 58px; padding: 0 16px; grid-template-columns: 248px minmax(0, 1fr) auto; background: var(--glass); backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
+@media (max-width: 1420px) { .top { grid-template-columns: auto minmax(0, 1fr) auto; } }
+.logo { width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center; background: radial-gradient(120% 120% at 20% 10%, #a8aaff 0%, #6d6ff5 45%, #3b2fc9 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px rgba(109, 111, 245, .42); }
+.logo svg { width: 19px; height: 19px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; }
+.brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.015em; }
+.brand-sub { font-size: 11px; color: var(--faint); }
+.search { height: 36px; border-radius: 10px; }
+.search input { font-size: 13px; }
+.nav button { min-width: 104px; justify-content: center; }
+.nav .count[hidden] { display: inline-block !important; visibility: hidden; }
+.top-actions { gap: 2px; }
+.btn.icon { width: 34px; padding: 0; justify-content: center; position: relative; }
+.btn svg.ic { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#btnTools .dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; box-shadow: 0 0 0 2px var(--bg); }
+#btnTools .dot:not(.ok) { display: none; }
+/* Layout: the sidebar is flush at the left; the list and the detail keep their padding. */
+.layout { padding: 0; gap: 0; grid-template-columns: 264px minmax(0, 1fr) 446px; }
+.center { padding: 16px; }
+.detail { padding: 16px 16px 16px 0; }
+.view-pane { padding: 16px; }
+.layout.full .view-pane { padding: 16px; }
+/* Sidebar: one surface with hairline sections instead of cards. */
+.side { gap: 0; background: var(--side); border-right: 1px solid var(--line); padding: 4px 16px 24px; }
+.side > .card { background: transparent; box-shadow: none; border-radius: 0; padding: 14px 0 16px; border-bottom: 1px solid var(--line); }
+.side > .card:last-child { border-bottom: 0; }
+.side .card-head { margin-bottom: 12px; }
+.side .card-head h2, .side .fold-head h2 { font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.side .ctx-value { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); }
+.side .btn.ghost.small { height: 24px; padding: 0 6px; color: var(--accent); font-size: 12px; }
+.hw-gpu { background: transparent; box-shadow: none; padding: 0; }
+.hw-icon { width: 38px; height: 38px; border-radius: 10px; color: var(--perfect); background: linear-gradient(140deg, color-mix(in srgb, var(--perfect) 20%, transparent), color-mix(in srgb, var(--perfect) 6%, transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--perfect) 24%, transparent); font-size: 10px; letter-spacing: .04em; }
+.hw-name { font-size: 13px; }
+.usable { border-radius: 10px; padding: 9px 12px; }
+.hw-edit > summary { font-size: 12.5px; }
+.side .hint { font-size: 12px; color: var(--faint); }
+.side .field { font-size: 12px; color: var(--muted); }
+.side select { height: 32px; }
+/* Context slider: a thin track filled up to the knob (--p is set by the page). */
+input[type="range"] { -webkit-appearance: none; appearance: none; height: 22px; background: transparent; margin: 4px 0 0; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--accent-2), var(--accent)) 0 / var(--p, 60%) 100% no-repeat, var(--line); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px var(--accent-soft), 0 1px 3px rgba(0, 0, 0, .4); cursor: pointer; }
+input[type="range"]:focus-visible { outline: 0; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent-ring), 0 1px 3px rgba(0, 0, 0, .4); }
+.ticks { font-size: 10.5px; }
+/* Filter boxes as switches (still real checkboxes: keyboard and screen readers keep working). */
+.check-list { gap: 2px; }
+.check-list label { padding: 5px 0; color: var(--text-2); cursor: pointer; gap: 10px; }
+.check-list input[type="checkbox"] { -webkit-appearance: none; appearance: none; width: 28px; height: 16px; flex: none; margin: 0; border-radius: 99px; background: var(--line-2); position: relative; cursor: pointer; transition: background .15s; }
+.check-list input[type="checkbox"]::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: left .15s, background .15s; }
+.check-list input[type="checkbox"]:checked { background: var(--accent); }
+.check-list input[type="checkbox"]:checked::after { left: 14px; background: #fff; }
+.check-list input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Capability filters: one colour, like the rest of the sidebar (the chip's hover text explains it). */
+.side .chip-btn .cap { color: currentColor; }
+#capChips + .hint { display: none; }
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="brand">
-    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
-      <rect width="34" height="34" rx="9" fill="var(--accent)"/>
-      <path d="M8 9h18M17 9v17" stroke="var(--accent-text)" stroke-width="2.6" stroke-linecap="round"/>
-      <path d="M11 22c2 2.5 4 3.5 6 3.5s4-1 6-3.5" stroke="var(--accent-text)" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-dasharray="2 2.4" opacity=".8"/>
-    </svg>
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 6.5h12M12 6.5V19"/><path d="M8.5 15.5c1.2 1.6 2.3 2.2 3.5 2.2s2.3-.6 3.5-2.2" stroke-dasharray="1.6 1.8" stroke-width="1.4" opacity=".75"/></svg></div>
     <div>
       <div class="brand-name">TensorTailor</div>
-      <div class="brand-sub" id="brandSub">Engine: llmfit · WebAssembly</div>
+      <div class="brand-sub" id="brandSub">llmfit · runs offline</div>
     </div>
   </div>
   <div class="top-mid">
@@ -560,9 +617,9 @@ dialog::backdrop { background: rgba(5, 7, 10, .5); backdrop-filter: blur(6px) sa
     </nav>
   </div>
   <div class="top-actions">
-    <button class="btn ghost" id="btnHelp" title="Help: what everything means (?)">Help</button>
+    <button class="btn ghost icon" id="btnHelp" title="Help: what everything means (?)" aria-label="Help"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg></button>
     <div class="menu-wrap">
-      <button class="btn" id="btnTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu" title="Model catalog, Hugging Face token, About, light or dark"><span class="dot" id="toolsDot"></span>Tools <span aria-hidden="true">▾</span></button>
+      <button class="btn ghost icon" id="btnTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu" aria-label="Tools" title="Tools: model catalog, Hugging Face token, About, light or dark"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span class="dot" id="toolsDot"></span></button>
       <div class="menu" id="toolsMenu" role="menu" hidden>
         <button class="btn ghost" id="btnUpdate" role="menuitem" title="About the model catalog: fetch new models"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span></button>
         <button class="btn ghost" id="btnToken" role="menuitem"><span class="dot" id="tokDot"></span><span id="tokText">HF token</span></button>
@@ -3614,7 +3671,7 @@ function loadPrefs() {
   if (typeof p.kvq === "string" && [...$("kvq").options].some((o) => o.value === p.kvq)) state.kvq = p.kvq;
   if (typeof p.sort === "string" && [...$("sort").options].some((o) => o.value === p.sort)) state.sort = p.sort;
   syncFilterUi();
-  $("ctx").value = String(state.ctxIdx); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; $("ctx").setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens");
+  $("ctx").value = String(state.ctxIdx); $("ctx").style.setProperty("--p", (state.ctxIdx / 5 * 100) + "%"); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; $("ctx").setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens");
   $("kvq").value = state.kvq; $("sort").value = state.sort;
 }
 const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open license"], ["fFree", "free", "No token needed"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
@@ -3658,7 +3715,7 @@ function wire() {
   $("useCases").addEventListener("click", (e) => { const b = e.target.closest("[data-uc]"); if (!b) return; state.useCase = b.dataset.uc; renderUseCases(); renderList(); });
   $("upgrades").addEventListener("click", (e) => { const b = e.target.closest("[data-upg]"); if (!b) return; state.upg[b.dataset.upg] = !state.upg[b.dataset.upg]; renderUsable(); recompute(); });
   $("tiles").addEventListener("click", (e) => { const t = e.target.closest("[data-plain]"); if (!t) return; state.show[t.dataset.plain] = !state.show[t.dataset.plain]; renderList(); });
-  $("ctx").addEventListener("input", (e) => { state.ctxIdx = Number(e.target.value); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; e.target.setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"); recomputeSoon(); });
+  $("ctx").addEventListener("input", (e) => { state.ctxIdx = Number(e.target.value); e.target.style.setProperty("--p", (state.ctxIdx / 5 * 100) + "%"); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; e.target.setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"); recomputeSoon(); });
   $("kvq").addEventListener("change", (e) => { state.kvq = e.target.value; savePrefs(); renderDetail(); if (state.view === "mine") renderView(); });
   $("sort").addEventListener("change", (e) => { state.sort = e.target.value; renderList(); });
   let searchTimer = 0;
@@ -3830,7 +3887,7 @@ function wire() {
     state.catalog = await call("catalog");
     for (const c of state.catalog) { state.byName.set(c.name, c); }
     liveMetaToPage();
-    $("brandSub").textContent = `Engine: llmfit ${state.info.llmfit_ref} · WebAssembly`;
+    $("brandSub").textContent = `llmfit ${state.info.llmfit_ref} · runs offline`;
     $("catDot").className = "dot ok";
     renderCatalogText();
     state.ready = true;
