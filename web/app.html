@@ -780,6 +780,76 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .kpi b.num { text-align: left; }
 /* Cards in the views keep their full height (the view itself scrolls). */
 .view-pane > * { flex: none; }
+
+/* ==== Design v4, step D6: Battle, Downloads, empty and loading states, Tools menu, Help ==== */
+/* Empty states: an icon tile, a title, a sentence and actions. */
+.empty-state { text-align: center; padding: 44px 24px; color: var(--muted); }
+.es-art { width: 76px; height: 76px; margin: 0 auto 16px; border-radius: 22px; display: grid; place-items: center; color: var(--accent); background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), var(--panel); box-shadow: var(--elev), 0 18px 44px color-mix(in srgb, var(--accent) 14%, transparent); }
+.es-art svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.empty-state h2 { font: 650 20px var(--display); letter-spacing: -.02em; color: var(--text); margin: 0; }
+.empty-state p { margin: 8px auto 18px; max-width: 460px; font-size: 13.5px; }
+.empty-state p b { color: var(--text); }
+.es-acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.rows > .empty-state { padding-top: 60px; }
+/* Loading: shimmering skeleton rows until the first list is ready. */
+.sk { display: block; border-radius: 6px; background: linear-gradient(90deg, var(--line) 0%, var(--line-2) 50%, var(--line) 100%); background-size: 200% 100%; animation: sk 1.4s ease-in-out infinite; }
+@keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.sk-row { display: grid; grid-template-columns: 30px minmax(150px, 2.3fr) 70px minmax(112px, 1.2fr) 92px 118px 54px; gap: 12px; align-items: center; height: 60px; padding: 0 16px 0 46px; border-top: 1px solid var(--line); }
+/* Battle: ranks, avatars, one colour per category, the winner raised with a green glow. */
+.fighters { gap: 16px; align-items: end; }
+.fighter { padding: 20px; }
+.fighter.win { box-shadow: 0 0 0 1px color-mix(in srgb, var(--perfect) 45%, transparent), 0 18px 50px color-mix(in srgb, var(--perfect) 14%, transparent); padding-top: 28px; }
+.crown { top: -11px; left: 50%; right: auto; transform: translateX(-50%); height: 22px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; color: #04130a; background: linear-gradient(180deg, #6ef0a6, var(--perfect)); box-shadow: 0 4px 14px color-mix(in srgb, var(--perfect) 40%, transparent); }
+.place { font: 700 10.5px var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.fhead { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.fname-b { min-width: 0; }
+.fhead h3 { margin: 0; font: 650 16px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fighter .hash { font-family: var(--font); font-size: 12px; color: var(--muted); }
+.pts { font: 700 44px/1 var(--display); letter-spacing: -.04em; margin: 16px 0 12px; }
+.pts small { font: 600 13px var(--font); color: var(--muted); letter-spacing: 0; }
+.fighter.win .pts { color: var(--perfect); }
+.round { grid-template-columns: 70px 1fr 28px; font-size: 12px; margin-top: 8px; }
+.round .bar { height: 6px; border: 0; background: var(--line); border-radius: 6px; }
+.round .bar > span { border-radius: 6px; }
+.klegend { display: inline-flex; gap: 14px; }
+.klegend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.klegend span::before { content: ""; width: 9px; height: 9px; border-radius: 3px; background: var(--c); }
+.battle-why { display: flex; gap: 14px; align-items: flex-start; }
+.bw-ic { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--perfect); background: color-mix(in srgb, var(--perfect) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--perfect) 28%, transparent); }
+.bw-ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.battle-why .hint { margin-top: 4px; }
+/* Downloads: a file icon tile per row, a thin progress bar with a shine while it runs. */
+.dl-f { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.dl-ic { --c: var(--accent); width: 38px; height: 38px; flex: none; border-radius: 11px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 26%, transparent); }
+.dl-ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dl-ic.s-done { --c: var(--perfect); } .dl-ic.s-failed, .dl-ic.s-mismatch { --c: var(--tight); } .dl-ic.s-queued, .dl-ic.s-paused { --c: var(--faint); }
+.dlbar { height: 6px; border: 0; background: var(--line); border-radius: 6px; }
+.dlbar span { background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 6px; position: relative; overflow: hidden; }
+.dlbar.run span::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent); animation: shine 1.6s linear infinite; }
+@keyframes shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.dlstate { font-size: 12.5px; margin-top: 6px; }
+.layout.full .view-pane .ftable td { padding: 12px 8px; }
+/* Tools menu: groups, icons and key hints. */
+.menu { min-width: 300px; padding: 6px; }
+.menu .btn { height: 38px; font-weight: 500; color: var(--text-2); gap: 10px; }
+.menu .btn:hover { color: var(--text); }
+.menu .btn svg.ic { width: 16px; height: 16px; color: var(--faint); }
+.menu-lbl { padding: 8px 10px 4px; font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.menu-sep { height: 1px; background: var(--line); margin: 6px 4px; }
+.mi-r { margin-left: auto; font-size: 11px; color: var(--faint); font-weight: 400; }
+/* Help: a table of contents with a search box at the left. */
+#dlgHelp { width: min(1000px, 94vw); }
+#dlgHelp[open] { display: grid; grid-template-columns: 236px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: min(740px, 88vh); }
+#dlgHelp .dlg-head { grid-column: 1 / -1; }
+.help-nav { grid-row: 2; overflow: auto; display: flex; flex-direction: column; gap: 2px; padding: 14px 10px; background: var(--side); border-right: 1px solid var(--line); }
+.help-nav .help-q { flex: none; margin: 0 2px 10px; height: 34px; min-width: 0; }
+.pts.num, .kpi b.num { text-align: left; }
+.help-nav a { display: block; padding: 7px 10px; border-radius: 8px; font-size: 13px; color: var(--text-2); text-decoration: none; }
+.help-nav a:hover { background: var(--hover); }
+.help-nav a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+#dlgHelp .dlg-body { grid-row: 2; max-height: none; overflow: auto; padding: 20px 28px; }
+.help h3 { font: 650 16px var(--display); letter-spacing: -.01em; margin-top: 24px; }
+.help-none { color: var(--muted); font-size: 13.5px; }
 </style>
 </head>
 <body>
@@ -810,10 +880,13 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
     <div class="menu-wrap">
       <button class="btn ghost icon" id="btnTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu" aria-label="Tools" title="Tools: model catalog, Hugging Face token, About, light or dark"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span class="dot" id="toolsDot"></span></button>
       <div class="menu" id="toolsMenu" role="menu" hidden>
-        <button class="btn ghost" id="btnUpdate" role="menuitem" title="About the model catalog: fetch new models"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span></button>
+        <div class="menu-lbl" role="presentation">Data</div>
+        <button class="btn ghost" id="btnUpdate" role="menuitem" title="About the model catalog: fetch new models"><span class="dot" id="catDot"></span><span class="upd-lbl" id="catText">Catalog …</span><span class="mi-r">fetch new</span></button>
         <button class="btn ghost" id="btnToken" role="menuitem"><span class="dot" id="tokDot"></span><span id="tokText">HF token</span></button>
-        <button class="btn ghost" id="btnAbout" role="menuitem" title="About and licenses">About and licenses</button>
-        <button class="btn ghost" id="btnTheme" role="menuitem" title="Light or dark (T)">◐ Light or dark</button>
+        <div class="menu-sep" role="separator"></div>
+        <div class="menu-lbl" role="presentation">App</div>
+        <button class="btn ghost" id="btnTheme" role="menuitem" title="Light or dark (T)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg>Light or dark<span class="mi-r"><kbd>T</kbd></span></button>
+        <button class="btn ghost" id="btnAbout" role="menuitem" title="About and licenses"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>About and licenses</button>
       </div>
     </div>
   </div>
@@ -919,8 +992,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
     <div class="filter-row"><div class="active-filters" id="activeFilters"></div><div class="count" id="countText"></div></div>
     <div class="search-bar" id="searchBar" hidden></div>
     <div class="table">
-      <div class="cols" aria-hidden="true"><span></span><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
-      <div class="rows" id="rows" role="listbox" aria-label="Models"></div>
+      <div class="cols" aria-hidden="true"><span></span><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Grey = in VRAM (amber end: little room left). Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
+      <div class="rows" id="rows" role="listbox" aria-label="Models"><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:45%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:62%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:79%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:56%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:73%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:50%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:67%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:84%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:61%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div></div>
     </div>
     <div class="tray" id="tray" hidden>
       <span class="lbl">Selected:</span><span id="trayChips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="spacer"></span>
@@ -976,12 +1049,13 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 <dialog id="dlgHelp" aria-labelledby="dlgHelp-title">
   <div class="dlg-head"><h2 id="dlgHelp-title">Help: what everything means</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body help">
-    <p>Point at a bar, a speed, a verdict or a score in the list to see a short explanation with that model's own numbers. Press <kbd>?</kbd> to open this window, <kbd>Esc</kbd> to close it.</p>
+    <p>Point at a bar, a speed, a verdict or a score in the list to see a short explanation with that model's own numbers. Press <kbd>?</kbd> to open this window, <kbd>Esc</kbd> to close it. The list at the left jumps to a part; its search box shows only the rows that contain your words.</p>
 
     <h3 id="help-memory">The memory bar</h3>
     <p>The bar shows if a model fits in your graphics card's memory (VRAM). The whole bar is the VRAM you can use for models (your VRAM minus "Kept for Windows").</p>
     <dl>
-      <dt><i class="sw seg-w"></i>Purple</dt><dd>The part that sits in VRAM: model file, KV cache and engine together. Fast.</dd>
+      <dt><i class="sw" style="background:var(--data)"></i>Grey bar</dt><dd>The part that sits in VRAM: model file, KV cache and engine together. Fast. The number at the right of the line below it is how much of your usable VRAM that is.</dd>
+      <dt><i class="sw" style="background:var(--marginal)"></i>Amber end</dt><dd>Less than 12 % of the usable VRAM stays free: it runs, but a longer context or other programs can push it over.</dd>
       <dt><i class="sw seg-ram"></i>Orange stripes</dt><dd>The model does not fit in VRAM. The rest goes to system RAM, which is about 10 times slower, so the model runs slower. The stripes are a warning sign, not to scale: the numbers below the bar give the real sizes, for example "3.2 GB VRAM + 75.0 GB RAM".</dd>
       <dt>Empty part</dt><dd>VRAM that stays free.</dd>
     </dl>
@@ -1023,7 +1097,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
       <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace.</dd>
       <dt>Verdict</dt><dd>How well it runs here, and where it runs (GPU, CPU+GPU, MoE offload, CPU).</dd>
       <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context.</dd>
-      <dt>Chosen row</dt><dd>The model you clicked (or opened with <b>Show</b> or <b>View details</b>) has a purple background and border; its details are on the right.</dd>
+      <dt>Chosen row</dt><dd>The model you clicked (or opened with <b>Show</b> or <b>View details</b>) has a purple tint and a glowing purple bar at its left edge; its details are on the right.</dd>
     </dl>
 
     <h3>Labels and icons</h3>
@@ -1477,9 +1551,9 @@ function memTip(b) {
     ? `Needed: ${gb(b.inGpu + b.inRam)} in total (${gb(b.inGpu)} in VRAM: active experts, KV cache and engine; ${gb(b.inRam)} of experts in RAM).`
     : `Needed: ${gb(b.need)} (model file + KV cache for the context + engine).`;
   if (b.vram === 0) return `No GPU: everything runs from system RAM.\n${total}\nThe bar is your usable RAM.`;
-  if (b.mode === "GPU") return `Fits in the GPU's memory (VRAM).\n${total}\nPurple = used VRAM: ${gb(b.need)} of your ${gb(b.vram)} usable VRAM.\nThe empty part of the bar is VRAM that stays free.`;
+  if (b.mode === "GPU") return `Fits in the GPU's memory (VRAM).\n${total}\nThe grey bar = used VRAM: ${gb(b.need)} of your ${gb(b.vram)} usable VRAM; its end turns amber when less than 12 % stays free.\nThe empty part of the bar is VRAM that stays free.`;
   const why = b.mode === "MoE offload" ? "MoE offload: the experts that are not in use wait in system RAM." : "Too big for VRAM: the rest goes to system RAM.";
-  return `${why}\n${total}\nPurple = in VRAM: ${gb(b.inGpu)}.\nOrange stripes = in system RAM: ${gb(b.inRam)}. System RAM is much slower than VRAM, so the model runs slower.\nThe stripes are a warning sign, not to scale.`;
+  return `${why}\n${total}\nThe grey bar = in VRAM: ${gb(b.inGpu)}.\nOrange stripes = in system RAM: ${gb(b.inRam)}. System RAM is much slower than VRAM, so the model runs slower.\nThe stripes are a warning sign, not to scale.`;
 }
 function speedTip(b) {
   if (!b.tps) return "No speed: the model does not fit.";
@@ -1658,6 +1732,8 @@ function renderSearchBar() {
   state.searchAll = save;
   const hidden = total - withFilters;
   const hub = state.hubSearch && state.hubSearch.q.toLowerCase() === s ? state.hubSearch : null;
+  // Nothing at all matches: the empty state in the list has the same buttons (only a running search stays here).
+  if (!total && !hub) { el.hidden = true; return; }
   el.hidden = false;
   el.innerHTML = `<span><b>${(state.searchAll ? total : withFilters).toLocaleString("en")}</b> models in the list match "${esc(raw)}"${state.searchAll ? " (filters off)" : hidden ? `, <b>${hidden.toLocaleString("en")}</b> more are hidden by your filters` : ""}.</span>
     ${state.searchAll ? `<button class="btn small" data-searchfilters="1">Filters on again</button>` : hidden ? `<button class="btn small" data-searchall="1">Show all ${total.toLocaleString("en")}</button>` : ""}
@@ -1679,7 +1755,10 @@ function renderList() {
   const lookupId = hfRepoId(state.search.trim());
   // A pasted link shows its live check; a typed "org/name" only when nothing matches.
   if (!state.visible.length || (lookupId && state.lookup && state.lookup.id === lookupId)) {
-    el.innerHTML = lookupId ? lookupHTML(lookupId) : `<div class="empty">No models match. Turn on more tiles above, reset the filters, or clear the search.</div>`;
+    const raw = state.search.trim();
+    el.innerHTML = lookupId ? lookupHTML(lookupId) : emptyState(ES_ICON.search, "No models match",
+      searchText() ? `Nothing in the list matches <b>"${esc(raw)}"</b> with your filters. Hugging Face may have it: TensorTailor reads it live and tells you if it fits.` : "Turn on more tiles above, or loosen the filters.",
+      (searchText() ? `<button class="btn primary" data-hubsearch="${esc(raw)}" ${state.liveBusy ? "disabled" : ""}>Search Hugging Face</button>` : "") + `<button class="btn" data-unfilter="all">Clear the filters</button><button class="btn ghost" data-unfilter="defaults">Defaults</button>`);
   } else {
     if (el.scrollTop > state.visible.length * ROW_H) el.scrollTop = 0;
     renderRowsWindow();
@@ -3396,18 +3475,37 @@ function battlePoints(r) {
   const p = { quality: 45 * b.parts.quality / 100, speed: 30 * sp, memory: 15 * mem, context: 10 * clamp(r.ctxFit / 32768, 0, 1) };
   p.total = p.quality + p.speed + p.memory + p.context; return p;
 }
+// One colour per category (the same in the legend).
+const ROUND_COL = { quality: "var(--accent)", speed: "var(--good)", memory: "var(--marginal)", context: "var(--perfect)" };
+const ORDINAL = ["1st", "2nd", "3rd", "4th"];
+// A friendly empty state: an icon tile, a title, a sentence and actions.
+function emptyState(icon, title, text, actions) {
+  return `<div class="empty-state"><span class="es-art" aria-hidden="true">${icon}</span><h2>${title}</h2><p>${text}</p>${actions ? `<div class="es-acts">${actions}</div>` : ""}</div>`;
+}
+const ES_ICON = {
+  battle: '<svg viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>',
+  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  down: '<svg viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>'
+};
 function viewBattle() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
-  if (rs.length < 2) return `<div class="view-head"><h1>Battle</h1></div><section class="card empty">Pick 2 to 4 models with the checkbox in the list (or "Add to battle" in Top picks). They fight on this PC and one winner is named.</section>`;
+  if (rs.length < 2) return `<div class="view-head"><h1>Battle</h1></div><section class="card">${emptyState(ES_ICON.battle, "Pick 2 to 4 models", 'Tick the box next to models in the list (or "Add to battle" in Top picks). They fight on this PC and one winner is named.', `<button class="btn primary" data-view-models="1">Go to the list</button>`)}</section>`;
   const fighters = rs.map((r) => ({ r, p: battlePoints(r) })), alive = fighters.filter((f) => f.p);
-  const win = alive.slice().sort((a, b) => b.p.total - a.p.total)[0];
+  const ranked = alive.slice().sort((a, b) => b.p.total - a.p.total), win = ranked[0];
   const rounds = [["quality", 45], ["speed", 30], ["memory", 15], ["context", 10]];
   const led = win ? rounds.map(([k]) => k).filter((k) => alive.every((f) => win.p[k] >= f.p[k] - 0.5)) : [];
-  const card = (f) => `<section class="card fighter ${win && f === win ? "win" : ""} ${f.p ? "" : "out"}">${win && f === win ? '<span class="crown">WINNER</span>' : ""}<h3 title="${esc(f.r.m.id)}">${esc(f.r.m.name)}</h3><div class="hash">${esc(f.r.best.q)} · ${speedRange(f.r.best)} tok/s</div>
-    ${f.p ? `<div class="pts">${f.p.total.toFixed(0)}<small style="font-size:13px"> / 100</small></div>${rounds.map(([k, max]) => `<div class="round"><span>${k}</span><div class="bar"><span style="width:${(f.p[k] / max * 100).toFixed(0)}%"></span></div><span class="r">${f.p[k].toFixed(0)}</span></div>`).join("")}` : `<div class="warn-box">Knocked out: it does not fit on this PC.</div>`}</section>`;
+  const card = (f) => {
+    const rank = f.p ? ranked.indexOf(f) : -1, isWin = win && f === win;
+    return `<section class="card fighter ${isWin ? "win" : ""} ${f.p ? "" : "out"}">${isWin ? '<span class="crown">★ WINNER</span>' : ""}<span class="place">${rank >= 0 ? ORDINAL[rank] + " place" : "Knocked out"}</span>
+    <div class="fhead">${avatar(f.r.m, isWin)}<div class="fname-b"><h3 title="${esc(f.r.m.id)}">${esc(f.r.m.name)}</h3><div class="hash">${esc(f.r.best.q)} · ${speedRange(f.r.best)} tok/s</div></div></div>
+    ${f.p ? `<div class="pts num">${f.p.total.toFixed(0)}<small> / 100</small></div>${rounds.map(([k, max]) => `<div class="round"><span>${k}</span><div class="bar"><span style="width:${(f.p[k] / max * 100).toFixed(0)}%;background:${ROUND_COL[k]}"></span></div><span class="r num">${f.p[k].toFixed(0)}</span></div>`).join("")}` : `<div class="warn-box">Knocked out: it does not fit on this PC.</div>`}</section>`;
+  };
   const why = !win ? "No model fits on this PC." : `${esc(win.r.m.name)} wins with ${win.p.total.toFixed(0)} points` + (led.length ? `: best (or equal best) in ${led.join(", ")}.` : ".");
-  return `<div class="view-head"><h1>Battle</h1><span class="status-line">Points: quality 45 · speed 30 · memory 15 · context 10 (llmfit numbers)</span><span class="spacer"></span>${win ? `<button class="btn small" id="btnBattlePng">Save as picture</button><button class="btn small primary" data-show="${esc(win.r.m.id)}" data-gotab="files">Get the winner</button>` : ""}</div>
-    <div class="fighters">${fighters.map(card).join("")}</div><section class="card"><b>${why}</b><p class="hint">Speed gets full points at 20 tok/s and 60% at reading pace (7 tok/s). Memory gets full points at half of the usable memory. Context gets full points at 32K usable context.</p></section>`;
+  // A podium: the winner in the middle (2nd left, 3rd right); with 2 or 4 fighters, by rank.
+  const order = alive.length === 3 && fighters.length === 3 ? [ranked[1], ranked[0], ranked[2]] : ranked.concat(fighters.filter((f) => !f.p));
+  const legend = rounds.map(([k, max]) => `<span style="--c:${ROUND_COL[k]}">${k[0].toUpperCase() + k.slice(1)} ${max}</span>`).join("");
+  return `<div class="view-head"><h1>Battle</h1><span class="status-line klegend" title="Points: quality 45 · speed 30 · memory 15 · context 10 (llmfit numbers)">${legend}</span><span class="spacer"></span>${win ? `<button class="btn small" id="btnBattlePng">Save as picture</button><button class="btn small primary" data-show="${esc(win.r.m.id)}" data-gotab="files">Get the winner</button>` : ""}</div>
+    <div class="fighters" style="grid-template-columns:repeat(${fighters.length}, minmax(0, 1fr))">${order.map(card).join("")}</div><section class="card battle-why"><span class="bw-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></span><div><b>${why}</b><p class="hint">Speed gets full points at 20 tok/s and 60% at reading pace (7 tok/s). Memory gets full points at half of the usable memory. Context gets full points at 32K usable context.</p></div></section>`;
 }
 function battlePng() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean).map((r) => ({ r, p: battlePoints(r) }));
@@ -3716,8 +3814,9 @@ function dlRow(j) {
   if (["done", "mismatch"].includes(j.status) && !busy) acts.push(btn("check", "Check again"));
   acts.push(btn("remove", j.status === "done" ? "Remove from list" : "Remove", "ghost"));
   const ok = j.status === "done" && j.gotSha;
-  return `<tr><td><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
-    <td style="min-width:260px"><div class="bar dlbar${j.status === "done" && j.gotSha ? " done" : ""}"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
+  const icon = ["done"].includes(j.status) ? '<path d="m5 12 5 5 9-10"/>' : ["failed", "mismatch"].includes(j.status) ? '<path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/>' : '<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>';
+  return `<tr><td><div class="dl-f"><span class="dl-ic s-${esc(j.status)}" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div style="min-width:0"><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></div></div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
+    <td style="min-width:260px"><div class="bar dlbar${j.status === "done" && j.gotSha ? " done" : ""}${j.status === "downloading" ? " run" : ""}"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
     ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: <span data-copy="${esc(j.gotSha)}" data-what="SHA-256" title="${esc(j.gotSha)}&#10;Click to copy" style="cursor:copy">${esc(j.gotSha.slice(0, 16))}…</span></div>` : ""}
     ${j.rename ? `<div class="warn-box" style="margin-top:6px">The file is still called <b>${esc(j.path.split("/").pop())}.tt-tmp</b>, so LM Studio does not see it yet. Windows did not allow the rename (${esc(j.rename)}). Press <b>Rename now</b>, or in Explorer remove <b>.tt-tmp</b> from the end of the name.</div>` : ""}
     ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}${j.why ? `<div class="hash">${esc(j.why)}</div>` : ""}</td>
@@ -3728,7 +3827,7 @@ function viewDownloads() {
   const d = state.dl, jobs = d.jobs.slice().reverse();
   const folder = d.root ? `Folder: <b>${esc(d.root.name || "(browser test storage)")}</b>` : "No folder chosen yet";
   return `<div class="view-head"><h1>Downloads</h1><span class="status-line"><span class="dot ${d.root ? "ok" : "warn"}"></span>${folder}</span><span class="spacer"></span><button class="btn small" id="btnDlFolder">${d.root ? "Change folder" : "Choose folder"}</button></div>
-    <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : `<p class="hint" style="margin-top:0">No downloads yet. Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file.</p>`}</section>
+    <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : emptyState(ES_ICON.down, "No downloads yet", "Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file. It goes straight into LM Studio's models folder and is checked with SHA-256 at the end.", `<button class="btn primary" data-view-models="1">Go to the list</button>`)}</section>
     <section class="card"><details class="help-fold"><summary>How downloads work (folder, parts, check, vision, remove)</summary><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>; LM Studio shows yours under <b>My Models</b>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
     <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
     <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
@@ -3819,12 +3918,58 @@ function exportCsv() {
   saveFile("tensortailor-models.csv", new Blob([head.join(",") + "\r\n" + lines.join("\r\n")], { type: "text/csv" }));
   toast(`Saved ${lines.length.toLocaleString("en")} models to tensortailor-models.csv in your Downloads folder.`);
 }
+// Help: a table of contents built from its headings, and a search box that hides the rows that do not match.
+function buildHelpNav(d) {
+  if (d.querySelector(".help-nav")) return;
+  const body = d.querySelector(".dlg-body"), heads = [...body.querySelectorAll("h3")];
+  heads.forEach((h, i) => { if (!h.id) h.id = "help-s" + i; });
+  const nav = document.createElement("nav");
+  nav.className = "help-nav"; nav.setAttribute("aria-label", "Help sections");
+  nav.innerHTML = `<label class="search help-q"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="search" id="helpQ" placeholder="Search the Help" aria-label="Search the Help" autocomplete="off"></label>`
+    + heads.map((h) => `<a href="#${h.id}" data-helpsec="${h.id}">${esc(h.textContent)}</a>`).join("");
+  d.insertBefore(nav, body);
+  nav.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-helpsec]"); if (!a) return;
+    e.preventDefault(); const t = document.getElementById(a.dataset.helpsec); body.scrollTop = t.offsetTop - body.offsetTop - 8;
+  });
+  nav.querySelector("#helpQ").addEventListener("input", (e) => { filterHelp(body, heads, e.target.value); markHelpNav(nav, body, heads); });
+  body.addEventListener("scroll", () => markHelpNav(nav, body, heads));
+}
+function filterHelp(body, heads, q) {
+  q = q.trim().toLowerCase();
+  for (const dl of body.querySelectorAll("dl")) {
+    let any = false;
+    for (const dt of dl.querySelectorAll(":scope > dt")) {
+      const dd = dt.nextElementSibling, hit = !q || (dt.textContent + " " + (dd ? dd.textContent : "")).toLowerCase().includes(q);
+      dt.hidden = !hit; if (dd && dd.tagName === "DD") dd.hidden = !hit; if (hit) any = true;
+    }
+    dl.hidden = !any;
+  }
+  for (const p of body.querySelectorAll(":scope > p")) p.hidden = !!q && !p.textContent.toLowerCase().includes(q);
+  for (const h of heads) {
+    let el = h.nextElementSibling, any = false;
+    while (el && el.tagName !== "H3") { if (!el.hidden) any = true; el = el.nextElementSibling; }
+    h.hidden = !!q && !any && !h.textContent.toLowerCase().includes(q);
+  }
+  const none = q && heads.every((h) => h.hidden);
+  let msg = body.querySelector(".help-none");
+  if (none && !msg) { msg = document.createElement("p"); msg.className = "help-none"; body.prepend(msg); }
+  if (msg) { msg.hidden = !none; msg.textContent = none ? `Nothing in the Help matches "${q}".` : ""; }
+}
+function markHelpNav(nav, body, heads) {
+  const y = body.scrollTop + body.offsetTop + 24;
+  let cur = null;
+  for (const h of heads) if (!h.hidden && h.offsetTop <= y) cur = h.id;
+  nav.querySelectorAll("[data-helpsec]").forEach((a) => a.classList.toggle("on", a.dataset.helpsec === (cur || (heads[0] && heads[0].id))));
+}
 function openHelp(section) {
   const d = $("dlgHelp");
+  buildHelpNav(d);
   if (!d.open) d.showModal();
   const body = d.querySelector(".dlg-body");
   const target = section ? document.getElementById(section) : null;
   body.scrollTop = target ? target.offsetTop - body.offsetTop - 8 : 0;
+  body.dispatchEvent(new Event("scroll"));
 }
 function renderAbout() {
   const b = state.build, i = state.info;
@@ -4014,6 +4159,7 @@ function wire() {
     const t = e.target;
     if (t.id === "btnCloseSuggest") { setPicks(false); return; }
     if (t.closest("#btnOpenPicks")) { setPicks(true); return; }
+    if (t.closest("[data-view-models]")) { setView("models"); return; }
     const show = t.closest("[data-show]"); if (show) { const d = show.closest("dialog"); if (d) d.close(); showModel(show.dataset.show, show.dataset.gotab); return; }
     const hc = t.closest("[data-hfcheck]"); if (hc) { checkHfLink(hc.dataset.hfcheck); return; }
     const hs = t.closest("[data-hubsearch]"); if (hs) { searchHub(hs.dataset.hubsearch); return; }
