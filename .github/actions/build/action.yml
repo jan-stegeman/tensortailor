@@ -57,6 +57,19 @@ runs:
         cp "$CATALOG_FILE" "$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core/data/hf_models.json"
         echo "Built with our weekly catalog: $(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$CATALOG_FILE") entries" | tee -a "$GITHUB_STEP_SUMMARY"
 
+    # The original llmfit-core with only one change, the same as in the browser copy: no localmaxxing.com
+    # benchmark cache (tools/strip-benchmark-cache.sh). Golden answers from it prove that the browser patch
+    # changes no answer.
+    - name: Original llmfit-core without localmaxxing's cache (for the golden answers)
+      shell: bash
+      working-directory: engine
+      run: |
+        set -euo pipefail
+        TAG=$(grep -oP 'tag = "\K[^"]+' Cargo.toml)
+        rm -rf "$GITHUB_WORKSPACE/vendor/llmfit-golden"
+        git clone --quiet --depth 1 --branch "$TAG" https://github.com/AlexsJones/llmfit "$GITHUB_WORKSPACE/vendor/llmfit-golden"
+        bash tools/strip-benchmark-cache.sh "$GITHUB_WORKSPACE/vendor/llmfit-golden"
+
     - name: Native run (golden answers)
       shell: bash
       working-directory: engine
@@ -70,8 +83,10 @@ runs:
             --config "patch.\"https://github.com/AlexsJones/llmfit\".llmfit-core.path=\"$GITHUB_WORKSPACE/vendor/llmfit/llmfit-core\"" \
             -- golden-native.json
         else
-          # The original, unpatched llmfit-core: proves the patch changes no answer.
-          cargo run --release --example golden -- golden-native.json
+          # The original llmfit-core (only the benchmark cache left out): proves the patch changes no answer.
+          cargo run --release --example golden \
+            --config "patch.\"https://github.com/AlexsJones/llmfit\".llmfit-core.path=\"$GITHUB_WORKSPACE/vendor/llmfit-golden/llmfit-core\"" \
+            -- golden-native.json
         fi
 
     - name: Native run of the live-model functions (patched copy)

@@ -133,4 +133,7 @@ mo.write_text(text)
 print("TensorTailor live-model patch applied")
 PY
 
+# 3. Data: no localmaxxing.com benchmark cache (their terms give no data license).
+bash "$(dirname "$0")/strip-benchmark-cache.sh" "$DEST"
+
 echo "Patched llmfit-core $TAG in $DEST"

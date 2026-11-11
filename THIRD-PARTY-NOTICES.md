@@ -50,5 +50,8 @@ similar licenses. The exact list with every license text is made at build time b
 - **Model catalog:** llmfit's `hf_models.json` (or our weekly copy made with llmfit's own scraper): names,
   sizes and other facts read from the public Hugging Face API. The models themselves are never included;
   each model keeps its own license.
-- **Measured speeds:** llmfit embeds measured speeds: its own community results (`data/community`, MIT) and
-  a cache of results from [localmaxxing.com](https://localmaxxing.com).
+- **Measured speeds:** only llmfit's own community results (`data/community`, MIT). llmfit also embeds a
+  cache of results from [localmaxxing.com](https://localmaxxing.com); TensorTailor leaves that cache out
+  (`engine/tools/strip-benchmark-cache.sh`), because localmaxxing's terms give no license for the data.
+- **Your own measurements:** **Measure** in My models stores LM Studio's speed for your models in your
+  browser only (localStorage); nothing is sent anywhere.
