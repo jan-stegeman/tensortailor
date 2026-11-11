@@ -853,6 +853,23 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 
 /* ==== Refinement E1: the token key in the header (grey = no token, green = set) ==== */
 .btn.icon.key.on { color: var(--perfect); }
+/* ==== Refinement E3: the Files tab calmer (one line per file, hashes folded) ==== */
+.files-t { table-layout: fixed; }
+.files-t th:nth-child(1), .files-t td:nth-child(1) { width: auto; }
+.files-t th:nth-child(2), .files-t td:nth-child(2) { width: 90px; }
+.files-t th:nth-child(3), .files-t td:nth-child(3) { width: 92px; }
+.fsize { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.files-t td { padding: 9px 6px; }
+.fcell { min-width: 0; }
+.fline { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.fline .fname { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip; overflow-wrap: normal; word-break: normal; font-size: 12px; color: var(--text-2); }
+.files-t tr.pick .fname { color: var(--text); font-weight: 600; }
+.link-copy { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0; padding: 0; }
+.link-copy svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fsub { display: flex; gap: 6px; align-items: center; margin-top: 3px; font-size: 11.5px; }
+.fsub .rec { margin-left: 0; }
+.files-t .hash { margin-top: 3px; }
+.checks .btn.ghost.small { height: 24px; padding: 0 6px; color: var(--accent); font-size: 12px; }
 /* ==== Refinement E2: the Plan tab in plain words ==== */
 .stats.plan-need { grid-template-columns: 1fr 1fr; }
 .stats.plan-need .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
@@ -1172,7 +1189,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
       <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width. The width is remembered in this browser.</dd>
       <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization. When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
-      <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
+      <dt>Files</dt><dd>The real files on Hugging Face, one line per file (point at a long name for the full name; the copy button copies the download link), the file "best for this PC" first, and the verdict per file. <b>Download</b> saves a file into your folder and checks its SHA-256 at the end. <b>Show SHA-256 of each file</b> (under the table) shows the codes; click one to copy it.</dd>
       <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them.</dd>
       <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
       <dt>Plan</dt><dd>llmfit's planner: the minimum and recommended hardware, which routes work here (<b>GPU only</b>, <b>GPU + system RAM</b>, <b>CPU only</b>) with a verdict and speed for each, and <b>What would make it better?</b>: for example "+1.7 GB VRAM → Runs well (llmfit: Good)". Below: whether a target speed is reached, how many chats fit at the same time, and the disk space for your best models.</dd>
@@ -2018,6 +2035,8 @@ function fileKind(path) {
   if (p.endsWith(".imatrix") || p.includes("imatrix")) return ["helper file — not a model", "tag"];
   return ["other", "tag"];
 }
+// A long file name keeps its start and its end (the quant and the extension), with … in the middle.
+function midShort(s, max) { s = String(s); if (s.length <= max) return s; const tail = Math.ceil((max - 1) * 0.62), head = max - 1 - tail; return s.slice(0, head) + "\u2026" + s.slice(s.length - tail); }
 function tabFiles(r) {
   const m = r.m, b = r.best;
   const sources = ggufSources(m);
@@ -2051,13 +2070,15 @@ function tabFiles(r) {
       const models = shown.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file");
       const headFile = models.find((x) => quantOfFile(x.path) === String(b.q).toUpperCase()) || models.slice().sort((a, c) => a.size - c.size)[0];
       if (headFile) { if (!state.gguf.has(repo + "/" + headFile.path)) setTimeout(() => loadGgufHeader(m, repo, headFile.path), 0); html += ggufLine(repo, headFile.path); }
-      html += `<table class="ftable" style="margin-top:8px"><thead><tr><th>File</th><th class="r">Size</th><th title="llmfit planner, with extra safety room (as in Which file fits?)">Fits here</th><th></th></tr></thead><tbody>${shown.map((x) => {
+      // As many characters as fit next to size, verdict and button (the panel can be dragged wider).
+      const nameMax = Math.max(20, Math.floor((($("detail").clientWidth || 446) - 262) / 7.4));
+      html += `<table class="ftable files-t" style="margin-top:8px"><thead><tr><th>File</th><th title="llmfit planner, with extra safety room (as in Which file fits?)">Fits here</th><th></th></tr></thead><tbody>${shown.map((x) => {
         const k = fileKind(x.path), pick = isPick(x);
         const job = dlJob(repo, x.path);
-        return `<tr class="${pick ? "pick" : ""}"><td><div class="fname">${esc(x.path)}<button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link">⧉</button>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}</div>${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}${x.sha256 ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="r" style="white-space:nowrap">${fmtSize(x.size)}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
+        return `<tr class="${pick ? "pick" : ""}"><td class="fcell"><div class="fline"><span class="fname" title="${esc(x.path)}">${esc(midShort(x.path, nameMax))}</span><button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button></div><div class="fsub"><span class="fsize">${fmtSize(x.size)}</span>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}</div>${x.sha256 && state.showSha ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
       }).join("")}</tbody></table><p class="hint"><b>best for this PC</b> = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>) and LM Studio sees the file at once.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
-      html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>SHA-256 of each large file is shown; the page will check it after a download.</li></ul>`;
+      html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>Every download is checked with SHA-256 at the end. <button class="btn ghost small" data-showsha="1" aria-pressed="${!!state.showSha}">${state.showSha ? "Hide" : "Show"} SHA-256 of each file</button></li></ul>`;
     }
   }
   return html + "</section>";
@@ -4198,6 +4219,7 @@ function wire() {
     const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
     const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
     const cp = t.closest("[data-copy]"); if (cp) { copyText(cp.dataset.copy, cp.dataset.what || "Text"); return; }
+    if (t.closest("[data-showsha]")) { state.showSha = !state.showSha; renderDetail(); return; }
     const lf = t.closest("[data-loadfiles]"); if (lf) { state.files.delete(lf.dataset.loadfiles); loadFiles(lf.dataset.loadfiles); renderDetail(); return; }
     const ur = t.closest("[data-userepo]"); if (ur) { state.srcIdx["repo:" + state.selected] = ur.dataset.userepo; renderDetail(); return; }
     if (t.id === "btnFindGguf") { const r = selectedResult(); if (r) searchGgufCopies(r.m); return; }
