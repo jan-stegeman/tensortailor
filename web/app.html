@@ -658,7 +658,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
     <dl>
       <dt><span class="caps"><span data-helpcap="vision"></span><span data-helpcap="tools"></span><span data-helpcap="reason"></span></span> Vision · Tool use · Reasoning</dt><dd>The model can read images · call functions (for agents) · think step by step. "(from the model name)" means the name says so, not the model card.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
-      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model; "MTP in file" comes from the header of your own model file. To read your files, My models asks once for LM Studio's models folder (the same folder as for Downloads); TensorTailor matches each model to its file by size and reads only the start of the file (layers, maximum context, MTP).</dd>
+      <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). In My models, "MTP on/off" is LM Studio's own setting for a loaded model; "MTP in file" comes from the header of your own model file. To read your files, My models asks once for LM Studio's models folder (the same folder as for Downloads); TensorTailor matches each model to its file by size and reads only the start of the file (layers, maximum context, MTP). For models that TensorTailor added itself ("live" or "from LM Studio"), the header also gives the KV cache size (KV heads, head size, and how many layers keep the whole context), so llmfit counts it exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
@@ -1529,8 +1529,16 @@ function planQuant(q) {
 // Shared by the Run tab's LM Studio card and My models, so both give the same advice.
 // The file the settings are for: the one in LM Studio, else llmfit's best file for this PC.
 const FILE_QUANT = /^Q\d|^IQ\d|^F16|^BF16/i;
+// LM Studio does not always name the quant (seen: an empty name for a Q4_K_P file); then the name of the
+// matched model file tells it (My models reads LM Studio's folder).
+function lmsOwnQuant(lms) {
+  if (!lms) return "";
+  if (FILE_QUANT.test(lms.quantization || "")) return lms.quantization.toUpperCase();
+  const loc = state.localGguf.byId.get(lms.id), fromFile = loc && loc.path ? quantOfFile(loc.path.split("/").pop()) : "";
+  return FILE_QUANT.test(fromFile) ? fromFile : "";
+}
 function lmsFileQuant(lms, b) {
-  return FILE_QUANT.test((lms && lms.quantization) || "") ? lms.quantization.toUpperCase() : FILE_QUANT.test(b.q) ? b.q : "Q4_K_M";
+  return lmsOwnQuant(lms) || (FILE_QUANT.test(b.q) ? b.q : "Q4_K_M");
 }
 // 85 % of the usable VRAM: leaves room for the vision projector and LM Studio's buffers.
 function lmsBudget() { return usableVram(false) * 0.85; }
@@ -1596,7 +1604,7 @@ function lmsSettingsCard(r, repo, file) {
     loadBox = `<p class="hint">${state.lms.online ? lms ? "" : "To load it from here: download the model into LM Studio first (tab Files)." : "To load it from here: start LM Studio's server (Developer tab → server on), then open this tab again."}</p>`;
   }
   return `<section class="card">${head}${loadBox}
-    <p class="hint" style="margin-top:0">These settings are for <b>${esc(fileQuant)}</b>, ${lms && String(lms.quantization || "").toUpperCase() === fileQuant ? "the file you have in LM Studio" : "the best file for this PC"}. ${loadBox.includes("data-lmsload") ? "Or set it by hand. " : ""}In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
+    <p class="hint" style="margin-top:0">These settings are for <b>${esc(fileQuant)}</b>, ${lms && lmsOwnQuant(lms) === fileQuant ? "the file you have in LM Studio" : "the best file for this PC"}. ${loadBox.includes("data-lmsload") ? "Or set it by hand. " : ""}In LM Studio: <b>My Models</b> → the gear (⚙) next to the model, or <b>Load Model</b> with <b>Show advanced settings</b> on. Point at a <span class="q">?</span> for what a setting does. At the top, LM Studio shows its own "Estimated Memory Usage": keep the GPU value below about ${gb(usable * 0.92)}.</p>
     <div class="lmset">${rows.join("")}</div>
     <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">Memory per context (llmfit estimate, ${esc(quant)})</summary><table class="ftable"><thead><tr><th class="r">Context</th><th class="r">KV F16</th><th class="r">KV Q8_0</th></tr></thead><tbody>${e.rows.map((x) => `<tr><td class="r">${x.ctx.toLocaleString("en")}</td><td class="r" style="${fits(x.f16) ? "" : "color:var(--tight)"}">${x.f16 != null ? gb(x.f16) : "—"}</td><td class="r" style="${fits(x.q8) ? "" : "color:var(--tight)"}">${x.q8 != null ? gb(x.q8) : "—"}</td></tr>`).join("")}</tbody></table></details></section>`;
 }
@@ -1695,7 +1703,7 @@ function tabRun(r) {
   const lmsId = lms ? lms.id : (m.name || "").toLowerCase();
   // In LM Studio with another quant than llmfit's best file: the card talks about your own file first and
   // names llmfit's pick as an option (higher quality but tighter, or smaller but lower quality).
-  const ownQ = state.engine === "lms" && lms && lms.quantization ? lms.quantization.toUpperCase() : "";
+  const ownQ = state.engine === "lms" ? lmsOwnQuant(lms) : "";
   const own = ownQ && ownQ !== String(b.q).toUpperCase();
   const qBits = (q) => /^F32/i.test(q) ? 32 : /^B?F16/i.test(q) ? 16 : Number((/^I?Q(\d)/i.exec(q) || [])[1] || 0);
   const otherFile = !own ? "" : `<p class="hint">${qBits(b.q) > qBits(ownQ)
@@ -2072,10 +2080,12 @@ async function ggufHeader(src, maxBytes = 64 * 1024 * 1024) {
     if (t === 8) kv[key] = await str();
     else if (t === 9) {
       const at = await u32(), n = await u64();
-      if (at === 8) for (let j = 0; j < n; j++) { const l = await u64(); pos += l; }
-      else if (SIZE[at]) pos += n * SIZE[at];
+      // Short lists of numbers or booleans are kept (per-layer KV heads, sliding-window pattern); long ones
+      // (the tokenizer's vocabulary) and string lists are skipped.
+      if (at === 8) { for (let j = 0; j < n; j++) { const l = await u64(); pos += l; } kv[key] = `[${n} items]`; }
+      else if (SIZE[at] && n <= 1024) { const vals = []; for (let j = 0; j < n; j++) vals.push(await scalar(at)); kv[key] = vals; }
+      else if (SIZE[at]) { pos += n * SIZE[at]; kv[key] = `[${n} items]`; }
       else throw new Error("unexpected nested array in the header");
-      kv[key] = `[${n} items]`;
     } else if (SIZE[t]) kv[key] = await scalar(t);
     else throw new Error("unknown GGUF value type " + t);
   }
@@ -2090,7 +2100,7 @@ async function loadGgufHeader(m, repo, path) {
     const h = await ggufHeader(dlUrl(repo, path));
     const arch = h.kv["general.architecture"] || "";
     const layers = Number(h.kv[arch + ".nextn_predict_layers"] || 0);
-    Object.assign(entry, { loading: false, arch, layers, blocks: h.kv[arch + ".block_count"], ctx: h.kv[arch + ".context_length"], bytes: h.bytesRead, keys: Object.keys(h.kv).length });
+    Object.assign(entry, { loading: false, arch, layers, blocks: h.kv[arch + ".block_count"], ctx: h.kv[arch + ".context_length"], bytes: h.bytesRead, keys: Object.keys(h.kv).length, kvf: ggufKvFields(h.kv) });
     const x = state.mtp.get(m.id) || {};
     x.gguf = { file: path.split("/").pop(), layers };
     state.mtp.set(m.id, x);
@@ -2160,6 +2170,35 @@ function bestSettingsRough(x) {
 // TensorTailor lists the .gguf files and reads only their headers. A model is matched by size: LM Studio's
 // size_bytes = the model file, plus the vision projector (mmproj) when there is one.
 const IS_MMPROJ = /mmproj/i;
+// llmfit's precise KV cache fields, read from a GGUF header (the real file): layers, KV heads, head size, and how
+// many layers keep the whole context. Linear / state-space layers (Qwen3.5+ hybrids: full_attention_interval) and
+// sliding-window layers (Gemma: sliding_window_pattern) keep a fixed-size state, so they count as llmfit's
+// "linear" layers in attention_layout. MTP layers (nextn_predict_layers) are not model layers.
+function ggufKvFields(kv) {
+  const a = kv["general.architecture"];
+  if (!a) return null;
+  const g = (k) => kv[a + "." + k];
+  const blocks = Number(g("block_count") || 0) - Number(g("nextn_predict_layers") || 0);
+  if (!(blocks > 0)) return null;
+  const list = (v) => (Array.isArray(v) ? v : v == null ? [] : [v]).map(Number);
+  const heads = list(g("attention.head_count")), kvh = list(g("attention.head_count_kv"));
+  const swa = g("attention.sliding_window_pattern"), every = Number(g("full_attention_interval") || 0);
+  let full = [...Array(blocks).keys()];
+  if (Array.isArray(swa) && swa.length >= blocks) full = full.filter((i) => !swa[i]);
+  else if (every > 1) full = full.filter((i) => (i + 1) % every === 0);
+  if (kvh.length >= blocks) full = full.filter((i) => kvh[i] > 0);  // per-layer list: 0 = no attention in that layer
+  if (!full.length) return null;
+  const nKv = kvh.length > 1 ? Math.max(...full.map((i) => kvh[i] || 0)) : kvh[0] || heads[0] || 0;
+  const nHeads = heads.length ? Math.max(...heads) : 0, embed = Number(g("embedding_length") || 0);
+  const headDim = Number(g("attention.key_length") || 0) || (embed && nHeads ? Math.round(embed / nHeads) : 0);
+  if (!nKv || !headDim) return null;
+  return { num_hidden_layers: blocks, num_attention_heads: nHeads || null, num_key_value_heads: nKv, head_dim: headDim,
+    hidden_size: embed || null, attention_layout: full.length < blocks ? { full: full.length, linear: blocks - full.length } : null };
+}
+// The same fields as one short line (hover texts).
+function kvFieldsText(f) {
+  return `KV cache from the file: ${f.attention_layout ? `${f.attention_layout.full} of ${f.num_hidden_layers} layers keep the whole context` : `${f.num_hidden_layers} layers`} · ${f.num_key_value_heads} KV head${f.num_key_value_heads === 1 ? "" : "s"} · head size ${f.head_dim}`;
+}
 async function localGgufFiles(root, maxDepth = 3) {
   const out = [];
   const walk = async (dir, path, depth) => {
@@ -2206,7 +2245,7 @@ async function scanLocalGguf(interactive) {
       try {
         const h = await ggufHeader(f.file);
         const arch = h.kv["general.architecture"] || "";
-        s.byId.set(x.id, { path, arch, blocks: h.kv[arch + ".block_count"] || null, ctx: h.kv[arch + ".context_length"] || null, layers: Number(h.kv[arch + ".nextn_predict_layers"] || 0) });
+        s.byId.set(x.id, { path, arch, blocks: h.kv[arch + ".block_count"] || null, ctx: h.kv[arch + ".context_length"] || null, layers: Number(h.kv[arch + ".nextn_predict_layers"] || 0), kvf: ggufKvFields(h.kv) });
       } catch (e) { s.byId.set(x.id, { path, error: e.message }); }
     }
     s.done = true;
@@ -2248,8 +2287,25 @@ function lmsModelEntry(x, loc, repo) {
     is_moe: false, num_experts: null, active_experts: null, active_parameters: null, release_date: null, gguf_sources: [], capabilities: caps,
     format: "gguf", num_attention_heads: null, num_key_value_heads: null, num_hidden_layers: (loc && loc.blocks) || null, head_dim: null,
     attention_layout: null, license: "unknown", hidden_size: null, moe_intermediate_size: null, vocab_size: null,
-    shared_expert_intermediate_size: null, architecture: (loc && loc.arch) || x.arch || null
+    shared_expert_intermediate_size: null, architecture: (loc && loc.arch) || x.arch || null,
+    // The real file's header: llmfit then uses its precise KV cache formula instead of the rough one.
+    ...(loc && loc.kvf ? loc.kvf : {})
   };
+}
+// Rows that TensorTailor added for LM Studio models (live or "from LM Studio") get the KV cache fields of the
+// matched file's header. Returns the LM Studio names of the rows that changed. Rows of llmfit's own list are not touched.
+function enrichLmsRows() {
+  const changed = [];
+  for (const x of state.lms.models) {
+    const loc = state.localGguf.byId.get(x.id), name = state.lmsLinks[x.id];
+    if (!loc || !loc.kvf || !name) continue;
+    const row = state.live.models.find((y) => y.name === name);
+    if (!row) continue;
+    let diff = false;
+    for (const [k, v] of Object.entries(loc.kvf)) if (JSON.stringify(row[k] ?? null) !== JSON.stringify(v)) { row[k] = v; diff = true; }
+    if (diff) changed.push(x.name);
+  }
+  return changed;
 }
 function ensureLmsLinks() {
   if (!state.ready || !state.lms.online || state.lmsLinkBusy || state.localGguf.busy) return;
@@ -2261,12 +2317,13 @@ async function linkLmsModels(relink) {
   if (state.lmsLinkBusy || !state.ready || !state.lms.online) return;
   const isLmsRow = (n) => !!(state.live.meta[n] && state.live.meta[n].src === "lms");
   const todo = state.lms.models.filter((x) => !/embed/i.test(x.type) && (relink && isLmsRow(state.lmsLinks[x.id]) ? true : !catalogFor(x) && !state.lmsLinks[x.id]));
-  if (!todo.length) return;
+  const headers = state.lms.models.some((x) => (state.localGguf.byId.get(x.id) || {}).kvf);
+  if (!todo.length && !headers) return;
   state.lmsLinkBusy = true;
   const info = { live: [], lms: [], linked: [], failed: [] }, before = JSON.stringify(state.live), linksBefore = JSON.stringify(state.lmsLinks);
   let changed = false;
   try {
-    const fields = state.info.live ? await hubFields().catch(() => null) : null;
+    const fields = todo.length && state.info.live ? await hubFields().catch(() => null) : null;
     for (const x of todo) {
       const loc = state.localGguf.byId.get(x.id) || null;
       const parts = loc && !loc.error ? loc.path.split("/") : [];
@@ -2294,6 +2351,8 @@ async function linkLmsModels(relink) {
       }
       if (name) state.lmsLinks[x.id] = name;
     }
+    info.kv = enrichLmsRows();
+    if (info.kv.length) changed = true;
     if (changed) {
       // Never lose the fetched models: if llmfit refuses the new list, put the old one back.
       try { await applyLive(); }
@@ -2316,7 +2375,8 @@ function lmsLinkLine() {
   if (i.linked.length) parts.push(`found in the list under their Hugging Face name: ${i.linked.map(esc).join(", ")}`);
   if (i.lms.length) parts.push(`made from LM Studio's data and the file header (label "from LM Studio"): ${i.lms.map(esc).join(", ")}`);
   if (i.failed.length) parts.push(`not possible (no size or parameters known): ${i.failed.map(esc).join(", ")}`);
-  return (parts.length ? `<p class="hint">Added to Models, so "Already in LM Studio" shows them: ${parts.join("; ")}.</p>` : "") + (i.error ? `<div class="warn-box">${esc(i.error)}</div>` : "");
+  const kv = i.kv && i.kv.length ? `<p class="hint">KV cache now counted from your files' headers (layers, KV heads, head size; exact instead of rough): ${i.kv.map(esc).join(", ")}.</p>` : "";
+  return (parts.length ? `<p class="hint">Added to Models, so "Already in LM Studio" shows them: ${parts.join("; ")}.</p>` : "") + kv + (i.error ? `<div class="warn-box">${esc(i.error)}</div>` : "");
 }
 function localGgufLine() {
   const s = state.localGguf, n = state.lms.models.length;
@@ -2375,7 +2435,7 @@ function viewMine() {
     const fileMtp = loc && !loc.error ? loc.layers > 0 : null;
     const mtpArch = x.mtp === true || fileMtp === true || (fileMtp === null && x.mtpName);
     const mtpWhy = x.mtp === true ? "LM Studio uses MTP for this loaded model." : fileMtp ? `The model file has ${loc.layers} MTP layer(s) (GGUF header of ${loc.path}).` : "The name says MTP.";
-    const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
+    const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (loc.kvf ? "\n" + kvFieldsText(loc.kvf) + "." : "") + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
     // The same favorite star as in the Models list (stars belong to models in llmfit's list).
     const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
     return `<tr><td><div style="display:flex;gap:6px;align-items:center">${star}<a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}</div></td>
