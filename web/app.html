@@ -536,8 +536,8 @@ dialog::backdrop { background: rgba(5, 7, 10, .5); backdrop-filter: blur(6px) sa
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --side: #0c0f14; } }
 :root[data-theme="dark"] { --side: #0c0f14; }
 /* Header: glass, one fixed grid, so the search box keeps its width in every view. */
-.top { position: relative; z-index: 6; height: 58px; padding: 0 16px; grid-template-columns: 248px minmax(0, 1fr) auto; background: var(--glass); backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
-@media (max-width: 1420px) { .top { grid-template-columns: auto minmax(0, 1fr) auto; } }
+header.top { position: relative; z-index: 6; height: 58px; padding: 0 16px; grid-template-columns: 248px minmax(0, 1fr) auto; background: var(--glass); backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--line); }
+@media (max-width: 1420px) { header.top { grid-template-columns: auto minmax(0, 1fr) auto; } }
 .logo { width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center; background: radial-gradient(120% 120% at 20% 10%, #a8aaff 0%, #6d6ff5 45%, #3b2fc9 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 6px 18px rgba(109, 111, 245, .42); }
 .logo svg { width: 19px; height: 19px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; }
 .brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.015em; }
@@ -591,6 +591,155 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 /* Capability filters: one colour, like the rest of the sidebar (the chip's hover text explains it). */
 .side .chip-btn .cap { color: currentColor; }
 #capChips + .hint { display: none; }
+
+/* ==== Design v4, step D3: the model list ==== */
+:root { --data: #8a95a6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --data: #6b7789; } }
+:root[data-theme="dark"] { --data: #6b7789; }
+.center { gap: 10px; }
+/* Top picks: a slim strip of three pills (closed) or three cards (open). */
+.suggest.strip { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; }
+.pk-lbl { display: inline-flex; align-items: center; gap: 6px; font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); white-space: nowrap; margin-right: 2px; }
+.pk-lbl svg.ic, .sort svg.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pk { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 10px; border: 0; border-radius: 99px; background: var(--panel); box-shadow: var(--elev); font-size: 12px; min-width: 0; flex: 0 1 auto; color: var(--text); transition: box-shadow .15s; }
+.pk:hover { box-shadow: 0 0 0 1px var(--accent-ring); }
+.pk .k { color: var(--faint); font-weight: 600; }
+.pk b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pk .d { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--muted); }
+.pk .d.perfect { background: var(--perfect); } .pk .d.good { background: var(--good); } .pk .d.marginal { background: var(--marginal); } .pk .d.tight { background: var(--tight); }
+.suggest:not(.strip) { margin-bottom: 0; }
+.sug { padding: 14px 16px; gap: 8px; }
+.sug .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sug .k { color: var(--faint); font-size: 10.5px; letter-spacing: .08em; }
+/* One toolbar: verdict segments at the left, sort and icon buttons at the right. */
+.list-head { margin: 0; }
+.tiles { display: inline-flex; grid-template-columns: none; gap: 2px; padding: 3px; margin: 0; border-radius: 10px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
+.tile, .tile[aria-pressed="false"] { flex-direction: row; align-items: center; gap: 7px; height: 30px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; box-shadow: none; }
+.tile[aria-pressed="true"] { background: var(--panel); box-shadow: 0 0 0 1px var(--line-2), 0 1px 3px rgba(0, 0, 0, .15); }
+.tile .n { font: 700 13px var(--display); }
+.tile .n small { font-size: 10.5px; }
+.tile .l { font-size: 13px; color: var(--muted); }
+.tile[aria-pressed="true"] .l { color: var(--text-2); }
+.tile[aria-pressed="false"] .n { color: var(--faint); }
+.tile[aria-pressed="false"] .l { text-decoration: line-through; text-decoration-color: var(--faint); }
+.tile .off { display: none; }
+.list-tools { gap: 4px; }
+.sort { gap: 6px; padding-left: 10px; border-radius: 8px; color: var(--muted); }
+.sort select { height: 30px; font-weight: 600; font-size: 13px; }
+.btn.icon.small { width: 30px; height: 30px; }
+#btnSuggest[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+/* Filter chips with the count at the right. */
+.filter-row { display: flex; align-items: center; gap: 10px; min-height: 26px; }
+.filter-row .active-filters { flex: 1; margin: 0; min-height: 0; }
+.filter-row .count { font-size: 12px; color: var(--faint); white-space: nowrap; }
+.af-chip { border: 0; height: 24px; background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-ring); font-weight: 600; font-size: 12px; }
+.af-chip span { color: currentColor; opacity: .75; }
+.af-label { font-size: 12px; color: var(--faint); }
+.filter-row .active-filters .spacer { display: none; }
+.filter-row .active-filters .btn.ghost.small { height: 24px; padding: 0 6px; color: var(--accent); font-size: 12px; }
+/* Rows: monogram, star and compare box on hover, memory with GB and %, speed on one line, a small score ring. */
+.cols, .row { grid-template-columns: 24px 30px minmax(170px, 2.3fr) 70px minmax(112px, 1.2fr) 92px 118px 54px; gap: 12px; padding: 0 16px 0 10px; }
+.cols { height: 36px; border-bottom: 1px solid var(--line); }
+.row { border-bottom: 0; position: relative; transition: background .15s; }
+.row::before { content: ""; position: absolute; left: 16px; right: 16px; top: 0; height: 1px; background: var(--line); }
+.row:hover { background: var(--hover); }
+.row-acts { flex-direction: column; gap: 4px; }
+.row-acts .star, .row-acts input { opacity: 0; transition: opacity .15s; }
+.row:hover .row-acts .star, .row:hover .row-acts input, .row[aria-selected="true"] .row-acts .star, .row[aria-selected="true"] .row-acts input,
+.row-acts .star[aria-pressed="true"], .row-acts input:checked, .row-acts :focus-visible { opacity: 1; }
+.star { width: 20px; height: 18px; font-size: 14px; }
+.row input[type="checkbox"] { width: 14px; height: 14px; }
+.row[aria-selected="true"] { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 17%, transparent), color-mix(in srgb, var(--accent) 6%, transparent) 60%, transparent); box-shadow: none; }
+.row[aria-selected="true"]::after { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.row[aria-selected="true"]::before, .row[aria-selected="true"] + .row::before { display: none; }
+.av { --h: 250; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; font: 700 13px var(--display); color: hsl(var(--h) 80% 76%); background: linear-gradient(140deg, hsl(var(--h) 55% 30% / .55), hsl(var(--h) 55% 22% / .32)); box-shadow: inset 0 0 0 1px hsl(var(--h) 70% 70% / .22); }
+:root[data-theme="light"] .av { color: hsl(var(--h) 60% 34%); background: linear-gradient(140deg, hsl(var(--h) 85% 95%), hsl(var(--h) 70% 89%)); box-shadow: inset 0 0 0 1px hsl(var(--h) 60% 45% / .2); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .av { color: hsl(var(--h) 60% 34%); background: linear-gradient(140deg, hsl(var(--h) 85% 95%), hsl(var(--h) 70% 89%)); box-shadow: inset 0 0 0 1px hsl(var(--h) 60% 45% / .2); } }
+.av.lg { width: 46px; height: 46px; border-radius: 13px; font-size: 19px; }
+.m-name .nm { font-size: 14px; letter-spacing: -.005em; }
+.m-name .sub { color: var(--muted); font-size: 12px; }
+.chip.lms { background: transparent; box-shadow: none; padding: 0 2px; color: var(--good); display: inline-flex; align-items: center; gap: 5px; }
+.chip.lms::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.membar { gap: 6px; }
+.row .bar { height: 4px; border: 0; background: var(--line); }
+.row .seg-w { background: var(--data); border-radius: 4px; }
+.row .membar.hot .seg-w { background: linear-gradient(90deg, var(--data) 75%, var(--marginal)); }
+.memlabel { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--faint); }
+.memlabel span:first-child { color: var(--text-2); font-weight: 600; }
+.tps { font-size: 14px; }
+.tps small { display: inline; margin-left: 3px; color: var(--faint); font-size: 11px; }
+.row .mode { font-size: 11px; }
+.score { display: inline-flex; align-items: center; gap: 7px; font: 700 14px var(--display); color: var(--text); }
+.score i { width: 14px; height: 14px; border-radius: 50%; background: conic-gradient(var(--text-2) var(--v), var(--line-2) 0); -webkit-mask: radial-gradient(circle, transparent 4px, #000 4.5px); mask: radial-gradient(circle, transparent 4px, #000 4.5px); opacity: .85; }
+.row > div:last-child { justify-self: end; }
+.tray { padding: 8px 8px 8px 16px; margin-top: 0; }
+.tray-chip { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-2); }
+.empty { color: var(--muted); }
+
+/* ==== Design v4, step D4: the detail panel ==== */
+/* Width: a drag line at its left edge (--dw), wider by default on big screens. */
+.layout { position: relative; grid-template-columns: 264px minmax(0, 1fr) var(--dw, 446px); }
+@media (min-width: 1880px) { .layout { grid-template-columns: 264px minmax(0, 1fr) var(--dw, 540px); } }
+.split { position: absolute; top: 0; bottom: 0; right: calc(var(--dw, 446px) - 4px); width: 8px; cursor: col-resize; z-index: 4; }
+@media (min-width: 1880px) { .split { right: calc(var(--dw, 540px) - 4px); } }
+.split::after { content: ""; position: absolute; left: 3px; top: calc(50% - 20px); width: 2px; height: 40px; border-radius: 2px; background: var(--line-2); transition: background .15s, height .15s, top .15s; }
+.split:hover::after, .split:focus-visible::after, .layout.resizing .split::after { background: var(--accent); height: 80px; top: calc(50% - 40px); }
+.split:focus-visible { outline: 0; }
+.layout.wide .split, .layout.full .split { display: none; }
+.layout.resizing { cursor: col-resize; user-select: none; }
+/* Header: avatar, name with its link below, a star button; one facts line; the answer in a framed box. */
+.detail > .dhead { padding: 18px 18px 0; background: var(--glass); backdrop-filter: blur(14px) saturate(1.5); }
+.dh-top { align-items: center; gap: 12px; }
+.dh-name { flex: 1; min-width: 0; }
+.dh-name .d-title { font-size: 21px; line-height: 1.15; }
+.d-id { display: inline-block; margin-top: 3px; font-size: 12px; color: var(--muted); }
+.d-id:hover { color: var(--accent); text-decoration: none; }
+.btn.fav { width: 34px; height: 34px; font-size: 16px; color: var(--muted); }
+.btn.fav[aria-pressed="true"] { color: var(--star); border: 0; box-shadow: 0 0 0 1px color-mix(in srgb, var(--star) 40%, transparent); }
+.d-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.d-facts .d-meta { margin: 0; font-size: 12.5px; }
+.d-facts .caps .cap { color: var(--faint); border-color: var(--line-2); }
+.d-answer { margin-top: 14px; padding: 10px 10px 10px 12px; border: 1px solid transparent; border-radius: 12px; background: linear-gradient(var(--panel), var(--panel)) padding-box, linear-gradient(120deg, color-mix(in srgb, var(--vc, var(--accent)) 50%, transparent), var(--line) 45%) border-box; }
+.d-answer.v-well { --vc: var(--perfect); } .d-answer.v-tight { --vc: var(--marginal); } .d-answer.v-slower { --vc: var(--good); } .d-answer.v-nofit { --vc: var(--tight); }
+.d-file { font-size: 12.5px; }
+.tabs { margin: 14px -18px 0; padding: 0 18px; gap: 22px; border-top: 0; border-bottom: 0; }
+.tabs button { height: auto; padding: 10px 0 12px; font-size: 13px; border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { border-bottom-color: var(--accent); box-shadow: 0 6px 10px -8px var(--accent); }
+.detail.scrolled > .dhead .d-facts, .detail.scrolled > .dhead .d-id { display: none; }
+.detail.scrolled > .dhead .dh-name .d-title { font-size: 17px; }
+.detail.scrolled > .dhead .av.lg { width: 32px; height: 32px; border-radius: 9px; font-size: 14px; }
+/* Overview: the numbers as one strip with dividers; the equation in plain text; a stacked memory bar. */
+.verdict-big { gap: 6px; margin-bottom: 14px; }
+.verdict-big .badge { font-size: 13px; padding: 3px 10px; }
+.stats { gap: 0; border-radius: 12px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
+.stat { background: transparent; box-shadow: none; border-radius: 0; padding: 11px 13px; }
+.stat + .stat { border-left: 1px solid var(--line); }
+.stat .k { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; }
+.stat .v { font: 700 19px/1.2 var(--display); letter-spacing: -.02em; margin-top: 3px; }
+.stat .v small { font: 500 11.5px var(--font); color: var(--muted); letter-spacing: 0; }
+.math { font: 13px var(--font); background: transparent; box-shadow: none; padding: 12px 0 0; color: var(--muted); }
+.pool .bar { height: 10px; border-radius: 10px; border: 0; background: var(--line); gap: 2px; }
+.pool .bar > span:first-child { border-radius: 10px 0 0 10px; }
+.pool-legend { font-size: 11.5px; }
+.pool-legend i { border-radius: 2px; width: 8px; height: 8px; }
+.notes { padding-left: 0; list-style: none; gap: 8px; color: var(--text-2); }
+.notes li { display: flex; gap: 10px; }
+.notes li::before { content: ""; flex: none; width: 6px; height: 6px; margin-top: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+/* Run and Files: quieter rows. */
+.lmrow { border-top-color: var(--line); padding: 10px 0; }
+.lmhead b { font-weight: 650; }
+.lmload.top { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-ring); border-radius: 12px; }
+.cmd .who { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.ftable .fname { font-size: 12px; }
+.detail .card-head h2 { font-size: 14.5px; }
+/* The sticky header sits right at the top edge (no gap above it while you scroll). */
+.detail { padding-top: 0; }
+.detail > .dhead { top: 0; margin-top: 16px; }
+.detail > .card.empty { margin-top: 16px; }
+.d-meta .mi { white-space: nowrap; }
+.stats { grid-template-columns: 1.45fr 1fr 1fr .9fr; }
+/* The Load box in Run: button and its note under each other, so the box always grows with the text. */
+.lmload.top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; justify-items: start; align-items: start; padding: 12px 14px; }
 </style>
 </head>
 <body>
@@ -712,26 +861,25 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 
   <section class="center">
     <div class="suggest" id="suggest" hidden></div>
-    <div class="tiles" id="tiles"></div>
     <div class="list-head">
-      <div class="count" id="countText"></div>
+      <div class="tiles" id="tiles"></div>
       <div class="list-tools">
-        <button class="btn small primary" id="btnSuggest" aria-pressed="false" title="Show or hide the top picks for this PC">Top picks</button>
-        <button class="btn small" id="btnExport" title="Save the list as a CSV file">Export CSV</button>
-        <button class="btn small ghost" id="btnLegend" title="What the colours, labels and numbers mean">Legend</button>
-        <label class="sort">Sort
-          <select id="sort">
+        <label class="sort"><span class="sr-only">Sort</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16m-3-3 3 3 3-3M17 20V4m-3 3 3-3 3 3"/></svg>
+          <select id="sort" title="Sort the list">
             <option value="score">Best match</option><option value="tps">Fastest</option><option value="mem">Smallest</option>
             <option value="params">Largest</option><option value="ctx">Longest usable context</option><option value="added">Newest</option>
             <option value="pop">Most downloaded</option><option value="name">Name</option>
           </select>
         </label>
+        <button class="btn ghost icon small" id="btnSuggest" aria-pressed="false" aria-label="Top picks" title="Show or hide the top picks for this PC as cards"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></button>
+        <button class="btn ghost icon small" id="btnExport" aria-label="Export CSV" title="Export CSV: save the list as a CSV file"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m-4 4 4-4 4 4M5 14v5h14v-5"/></svg></button>
+        <button class="btn ghost icon small" id="btnLegend" aria-label="Legend" title="Legend: what the colours, labels and numbers mean"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg></button>
       </div>
     </div>
-    <div class="active-filters" id="activeFilters"></div>
+    <div class="filter-row"><div class="active-filters" id="activeFilters"></div><div class="count" id="countText"></div></div>
     <div class="search-bar" id="searchBar" hidden></div>
     <div class="table">
-      <div class="cols" aria-hidden="true"><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
+      <div class="cols" aria-hidden="true"><span></span><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Purple = in VRAM. Orange stripes = in system RAM (slower). Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
       <div class="rows" id="rows" role="listbox" aria-label="Models"></div>
     </div>
     <div class="tray" id="tray" hidden>
@@ -743,6 +891,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
   <aside class="detail" id="detail"></aside>
   <div class="sr-only" id="srStatus" role="status" aria-live="polite"></div>
   <section class="view-pane" id="viewPane"></section>
+  <div class="split" id="split" role="separator" aria-orientation="vertical" aria-label="Width of the detail panel" tabindex="0" title="Drag (or use the arrow keys) to change the width of the detail panel"></div>
 </main>
 
 <dialog id="dlgToken" aria-labelledby="dlgToken-title">
@@ -817,13 +966,13 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
     </dl>
     <h3>Above the list</h3>
     <dl>
-      <dt>Top picks for this PC</dt><dd>Three suggestions that follow your filters: <b>Best overall</b>, <b>Highest quality</b> and <b>Fastest</b>, each with its verdict, file and speed. <b>View details</b> opens the model; <b>Add to battle</b> puts it in Battle. The <b>Top picks</b> button shows or hides the strip.</dd>
-      <dt>The four tiles</dt><dd>Count each verdict. Click a tile to show or hide those models; a hidden tile has a dashed border and says "HIDDEN".</dd>
-      <dt>Count line</dt><dd>How many models are shown, how many the tiles hide, and how many llmfit analysed.</dd>
+      <dt>Top picks for this PC</dt><dd>Three suggestions that follow your filters: <b>Best overall</b>, <b>Highest quality</b> and <b>Fastest</b>, each with its verdict, file and speed. <b>View details</b> opens the model; <b>Add to battle</b> puts it in Battle. Closed, they are one slim strip with the three names (click a name to open it); the arrow at its right, or the sparkle button next to Sort, shows them as cards; <b>Hide</b> folds the cards back into the strip.</dd>
+      <dt>The four tiles</dt><dd>The segments at the left of the toolbar count each verdict. Click one to show or hide those models; a hidden one is crossed out and grey.</dd>
+      <dt>Count line</dt><dd>At the right of the filter chips: how many models are shown, how many the tiles hide, how many llmfit analysed, and how long that took.</dd>
       <dt>Filter chips</dt><dd>Every active filter is a chip: click its × to remove it. <b>Clear all</b> shows every analysed model; <b>Defaults</b> gives the start values.</dd>
-      <dt>Export CSV</dt><dd>Saves the shown list as a CSV file (for a spreadsheet).</dd>
-      <dt>Legend</dt><dd>Opens this help at "The memory bar".</dd>
-      <dt>Sort</dt><dd>Best match, fastest, smallest, largest, longest usable context, newest, most downloaded, or name.</dd>
+      <dt>Export CSV</dt><dd>The arrow-up button next to Sort: saves the shown list as a CSV file (for a spreadsheet).</dd>
+      <dt>Legend</dt><dd>The (i) button next to Sort: opens this help at "The memory bar".</dd>
+      <dt>Sort</dt><dd>The list next to the arrows icon: best match, fastest, smallest, largest, longest usable context, newest, most downloaded, or name.</dd>
     </dl>
 
     <h3>The columns</h3>
@@ -890,7 +1039,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 
     <h3>The detail panel (right)</h3>
     <dl>
-      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. <b>☆ Favorite</b> stars the model. Below the name: the labels, and one line with the facts (parameters, maximum context, license with "(gated)" or "(not gated)", release date, downloads). This part stays in view while you scroll.</dd>
+      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and one line with the facts (parameters, maximum context, license with "(gated)" or "(not gated)", release date, downloads). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs.</dd>
+      <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width. The width is remembered in this browser.</dd>
       <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization. When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
@@ -1306,11 +1456,16 @@ function memLabel(b) {
   if (b.inRam > 0.05) return `${gb(b.inGpu)} VRAM + ${gb(b.inRam)} RAM`;
   return `${gb(b.need)} of ${gb(b.vram)}`;
 }
+// Score: a small neutral ring and the number (the verdict next to it carries the colour).
 function ring(score) {
-  const r = 17, c = 2 * Math.PI * r, v = clamp(score || 0, 0, 100);
-  // Neutral colour: the score is a ranking number; the verdict next to it carries the green/amber/red meaning.
-  const col = "var(--accent)";
-  return `<svg class="ring" width="42" height="42" viewBox="0 0 42 42" role="img" aria-label="Score ${v.toFixed(0)}"><circle cx="21" cy="21" r="${r}" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="21" cy="21" r="${r}" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * v / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 21 21)"/><text x="21" y="25" text-anchor="middle">${v.toFixed(0)}</text></svg>`;
+  const v = clamp(score || 0, 0, 100);
+  return `<span class="score" role="img" aria-label="Score ${v.toFixed(0)}"><i style="--v:${v.toFixed(0)}%"></i>${v.toFixed(0)}</span>`;
+}
+// A monogram tile per model: the first letter of its name, a hue per maker (the same maker = the same colour).
+function avatarHue(s) { let h = 0; for (const ch of String(s).toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; }
+function avatar(m, big) {
+  const letter = (String(m.name).match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase();
+  return `<span class="av${big ? " lg" : ""}" style="--h:${avatarHue(m.provider || m.id.split("/")[0])}" aria-hidden="true">${letter}</span>`;
 }
 const verdict = (p) => `<span class="badge ${PLAIN[p].cls}">${PLAIN[p].label}</span>`;
 const speedRange = (b) => (!b || b.tps <= 0 ? "—" : `${fmtT(b.lo)}–${fmtT(b.hi)}`);
@@ -1353,12 +1508,13 @@ function rowHTML(r) {
   const m = r.m, b = r.best, lms = state.lms.online ? inLms(m) : null;
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
+    ${avatar(m)}
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
       <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
-    <div class="membar" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
+    <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabel(b)}</span>${b.vram > 0 ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
-    <div title="${esc(VERDICT_TIP[b.plain] + "\nRuns on: " + b.mode + ".")}">${verdict(b.plain)}<div class="mode">${b.mode}</div></div>
+    <div title="${esc(VERDICT_TIP[b.plain] + "\nRuns on: " + b.mode + ".")}">${verdict(b.plain)}${b.mode !== "GPU" ? `<div class="mode">${b.mode}</div>` : ""}</div>
     <div title="${esc(`Score ${Math.round(b.score || 0)} of 100: llmfit's match for this PC.\nQuality ${Math.round(b.parts.quality)} · speed ${Math.round(b.parts.speed)} · fit ${Math.round(b.parts.fit)} · context ${Math.round(b.parts.context)} (each 0–100).`)}">${ring(b.score)}</div></div>`;
 }
 const sizeBucket = (p) => (p <= 8 ? "s" : p <= 35 ? "m" : p <= 100 ? "l" : "xl");
@@ -1477,7 +1633,7 @@ function renderList() {
   state.visible = sortResults(base.filter((r) => state.show[r.best.plain]));
   renderSuggest();
   const hidden = base.length - state.visible.length;
-  $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden by the tiles` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` in ${(state.lastMs / 1000).toFixed(1)} s` : "");
+  $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` · ${(state.lastMs / 1000).toFixed(1)} s` : "");
   const el = $("rows");
   const lookupId = hfRepoId(state.search.trim());
   // A pasted link shows its live check; a typed "org/name" only when nothing matches.
@@ -1495,19 +1651,28 @@ function renderList() {
 /* ===================== Suggest ===================== */
 function renderSuggest() {
   const el = $("suggest");
-  if (!state.picksOpen || !state.ready) { el.hidden = true; return; }
+  if (!state.ready) { el.hidden = true; return; }
   const ok = state.results.filter((r) => passFilters(r) && r.best.plain !== "nofit" && !r.m.uses.includes("embedding"));
   const bestOverall = ok.filter((r) => r.best.lo >= 12).sort((a, b) => b.best.score - a.best.score)[0];
   const smartest = ok.filter((r) => r.best.lo >= READING_PACE).sort((a, b) => b.best.parts.quality - a.best.parts.quality || b.best.score - a.best.score)[0];
   const fastest = ok.filter((r) => r.best.parts.quality >= 60).sort((a, b) => b.best.tps - a.best.tps)[0];
-  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="n" title="${esc(r.m.id)}">${esc(r.m.name)}</span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedRange(r.best)} tok/s</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+  // Closed: one slim strip with the three names (click one to open it). Open: three cards.
+  if (!state.picksOpen) {
+    const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedRange(r.best) + " tok/s\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(r.m.name)}</b></button>` : "";
+    el.className = "suggest strip";
+    el.innerHTML = `<span class="pk-lbl"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Top picks</span>${pill("Best", bestOverall, "Highest score that still gives 12+ tok/s.")}${pill("Quality", smartest, "Best quality score at reading pace or faster.")}${pill("Fastest", fastest, "Quickest model whose quality score is 60 or more.")}<span class="spacer"></span><button class="btn ghost icon small" id="btnOpenPicks" aria-label="Show the top picks as cards" title="Show the top picks as cards"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`;
+    el.hidden = false;
+    return;
+  }
+  el.className = "suggest";
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(r.m.name)}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedRange(r.best)} tok/s</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
     : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
   el.innerHTML = `<div class="sug-head"><b>Top picks for this PC</b><span>They follow your filters. Point at a label for the rule.</span><span class="spacer"></span><button class="btn ghost small" id="btnCloseSuggest" title="Hide the top picks (the button Top picks shows them again)">Hide</button></div>` + card("Best overall", bestOverall, "Highest score that still gives 12+ tok/s.") + card("Highest quality", smartest, "Best quality score at reading pace or faster.") + card("Fastest", fastest, "Quickest model whose quality score is 60 or more.");
   el.hidden = false;
 }
 function setPicks(open) {
   state.picksOpen = open; safeSet("localStorage", "tt-picks", open ? "1" : "0");
-  const b = $("btnSuggest"); b.setAttribute("aria-pressed", String(open)); b.classList.toggle("primary", !open);
+  const b = $("btnSuggest"); b.setAttribute("aria-pressed", String(open));
   renderSuggest();
 }
 
@@ -1598,10 +1763,10 @@ function tabOverview(r, d) {
   return `<section class="card">
     <div class="verdict-big">${verdict(b.plain)}<span class="tag">${b.mode}</span><span class="tag">llmfit: ${LLMFIT_LABEL[b.level]}</span><span class="tag ${String(b.conf).startsWith("measured") ? "okay" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
     <div class="stats">
-      <div class="stat"><div class="k">Speed tok/s</div><div class="v">${speedRange(b)}</div>${measLine(r)}</div>
+      <div class="stat" title="Speed in tokens per second"><div class="k">Speed</div><div class="v">${speedRange(b)}${b.tps > 0 ? " <small>tok/s</small>" : ""}</div>${measLine(r)}</div>
       <div class="stat" title="${b.mode === "MoE offload" ? `Total: ${gb(b.inGpu)} in VRAM + ${gb(b.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(b.mode === "MoE offload" ? b.inGpu + b.inRam : b.need).toFixed(1)} <small>GB</small></div></div>
       <div class="stat"><div class="k">Best file</div><div class="v" style="font-size:14px" title="${esc(b.q)}">${esc(b.q)}</div></div>
-      <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Usable context</div><div class="v">${fmtCtx(r.ctxFit)}</div></div>
+      <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Context</div><div class="v">${fmtCtx(r.ctxFit)}</div></div>
     </div>
     <div class="math">${mathLine(b)}</div>
     ${poolBar(b, d)}
@@ -2072,11 +2237,9 @@ function renderDetail() {
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
     : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
   $("detail").innerHTML = `<section class="card dhead">
-    <div class="dh-top"><h1 class="d-title">${esc(m.name)}</h1><button class="btn small fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★ Favorite" : "☆ Favorite"}</button></div>
-    <a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener">huggingface.co/${esc(m.id)} ↗</a>
-    <div class="d-tags">${["vision", "tools", "reason"].filter((k) => m.caps.includes(k)).map((k) => `<span class="tag cap-label">${capIcon(k, k === "reason" && m.caps.includes("reason-name") ? " (from the model name)" : "")}${{ vision: "Vision", tools: "Tool use", reason: "Reasoning" }[k]}</span>`).join("")}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="tag browser">in LM Studio</span>` : ""}</div>
-    <div class="d-meta">${meta.map(esc).join(" · ")}</div>
-    <div class="d-answer">${verdict(b.plain)}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
+    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title">${esc(m.name)}</h1><a class="d-id" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face">huggingface.co/${esc(m.id)} ↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
+    <div class="d-facts">${capIcons(m.caps)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
+    <div class="d-answer v-${b.plain}">${verdict(b.plain)}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
   restoreFocus(focusKey);
 }
@@ -2114,7 +2277,7 @@ async function applyLive() {
 function renderCatalogText() {
   const n = state.live.models.length;
   $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models` + (n ? ` (${n} live)` : "");
-  $("q").placeholder = "Search or paste a HF link"; $("q").title = `Search ${state.catalog.length.toLocaleString("en")} models by name or publisher, or paste a Hugging Face link and press Enter to check it live`;
+  $("q").placeholder = "Search models, or paste a Hugging Face link"; $("q").title = `Search ${state.catalog.length.toLocaleString("en")} models by name or publisher, or paste a Hugging Face link and press Enter to check it live`;
 }
 function hfRepoId(s) {
   const raw = String(s || "").trim(), isUrl = /^https?:\/\//i.test(raw);
@@ -3710,7 +3873,37 @@ function resetFilters() {
   ["fGguf", "fNew", "fWatch", "fLms", "fOpen", "fFree", "fGpu"].forEach((id) => { $(id).checked = false; }); $("fLlama").checked = true; $("fPop").checked = true;
   document.querySelectorAll("[data-cap]").forEach((b) => b.setAttribute("aria-pressed", "false"));
 }
+// The detail panel's width: drag the line at its left edge (or arrow keys on it); remembered in this browser.
+const DETAIL_W_KEY = "tt-detail-w";
+function setDetailWidth(w, save) {
+  const lay = $("layout"), max = Math.max(380, Math.min(800, lay.clientWidth - 264 - 520));
+  const v = clamp(Math.round(w), 380, max);
+  lay.style.setProperty("--dw", v + "px");
+  $("split").setAttribute("aria-valuenow", String(v));
+  if (save) safeSet("localStorage", DETAIL_W_KEY, String(v));
+}
+function wireSplit() {
+  const sp = $("split"), lay = $("layout");
+  const saved = Number(safeGet("localStorage", DETAIL_W_KEY));
+  if (saved > 0) setDetailWidth(saved, false);
+  sp.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); sp.setPointerCapture(e.pointerId); lay.classList.add("resizing");
+    const move = (ev) => setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, false);
+    const up = (ev) => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); lay.classList.remove("resizing"); setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, true); renderRowsWindow(); };
+    sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
+  });
+  sp.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault(); e.stopPropagation();
+    const now = $("detail").getBoundingClientRect().width;
+    setDetailWidth(now + (e.key === "ArrowLeft" ? 24 : -24), true);
+  });
+  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); });
+  // The detail header shrinks to one line while you scroll (with a gap, so it does not flicker).
+  $("detail").addEventListener("scroll", () => { const d = $("detail"), t = d.scrollTop; if (t > 90) d.classList.add("scrolled"); else if (t < 20) d.classList.remove("scrolled"); });
+}
 function wire() {
+  wireSplit();
   $("nav").addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (b) setView(b.dataset.view); });
   $("useCases").addEventListener("click", (e) => { const b = e.target.closest("[data-uc]"); if (!b) return; state.useCase = b.dataset.uc; renderUseCases(); renderList(); });
   $("upgrades").addEventListener("click", (e) => { const b = e.target.closest("[data-upg]"); if (!b) return; state.upg[b.dataset.upg] = !state.upg[b.dataset.upg]; renderUsable(); recompute(); });
@@ -3755,6 +3948,7 @@ function wire() {
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (t.id === "btnCloseSuggest") { setPicks(false); return; }
+    if (t.closest("#btnOpenPicks")) { setPicks(true); return; }
     const show = t.closest("[data-show]"); if (show) { const d = show.closest("dialog"); if (d) d.close(); showModel(show.dataset.show, show.dataset.gotab); return; }
     const hc = t.closest("[data-hfcheck]"); if (hc) { checkHfLink(hc.dataset.hfcheck); return; }
     const hs = t.closest("[data-hubsearch]"); if (hs) { searchHub(hs.dataset.hubsearch); return; }
@@ -3854,7 +4048,7 @@ function wire() {
   loadPrefs();
   // Top picks: open on a first visit, then as the user left them.
   state.picksOpen = safeGet("localStorage", "tt-picks") !== "0";
-  $("btnSuggest").setAttribute("aria-pressed", String(state.picksOpen)); $("btnSuggest").classList.toggle("primary", !state.picksOpen);
+  $("btnSuggest").setAttribute("aria-pressed", String(state.picksOpen));
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
   // First visit (no saved hardware yet): show the hardware fields open.
   if (!safeGet("localStorage", "tt-hw")) $("hwEdit").open = true;
