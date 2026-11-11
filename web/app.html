@@ -740,6 +740,46 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .stats { grid-template-columns: 1.45fr 1fr 1fr .9fr; }
 /* The Load box in Run: button and its note under each other, so the box always grows with the text. */
 .lmload.top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; justify-items: start; align-items: start; padding: 12px 14px; }
+
+/* ==== Design v4, step D5: My models ==== */
+.view-pane { gap: 16px; }
+.view-head h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+.view-head .status-line { padding: 4px 10px 4px 8px; border-radius: 99px; font-size: 12px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
+.view-head .status-line .dot.ok { box-shadow: 0 0 0 3px var(--perfect-soft), 0 0 8px var(--perfect); }
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.kpi { position: relative; overflow: hidden; padding: 16px 16px 14px; }
+.kpi-l { font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.kpi-ic { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 26%, transparent); }
+.kpi-ic svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.kpi b { display: block; margin-top: 8px; font: 700 30px/1 var(--display); letter-spacing: -.03em; }
+.kpi b small { font: 600 13px var(--font); color: var(--muted); margin-left: 3px; letter-spacing: 0; }
+.kpi p { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.kpi p b { display: inline; font: 600 12px var(--font); color: var(--text-2); margin: 0; letter-spacing: 0; }
+/* The status lines as one quiet list above the table. */
+.mine-card { padding: 0; overflow: hidden; }
+.mine-status { padding: 6px 16px 10px; border-bottom: 1px solid var(--line); background: var(--raised); }
+.mine-status .hint { margin: 6px 0 0; font-size: 12.5px; }
+.mine-status .warn-box, .mine-status .loading { margin: 6px 0 0; }
+.mine-card > .hint { padding: 0 16px 14px; }
+/* The table: avatars, sans-serif meta lines, numbers that do not wrap. */
+.mtable th { padding: 12px 10px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.mtable td { padding: 12px 10px; font-size: 13px; }
+.mtable th:first-child, .mtable td:first-child { padding-left: 16px; }
+.mtable th:last-child, .mtable td:last-child { padding-right: 16px; }
+.mtable tbody tr { transition: background .15s; }
+.mtable tbody tr:hover td { background: var(--hover); }
+.mtable td.r, .mtable th.r { white-space: nowrap; }
+.mtable .hash { font: 12px var(--font); color: var(--muted); margin-top: 2px; }
+.mtable .d-id { color: var(--text); font-size: 14px; }
+.mtable .d-id:hover { color: var(--accent); }
+.mm { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mm-n { min-width: 0; }
+.mm-t { display: flex; align-items: center; gap: 6px; }
+.mm .star { flex: none; }
+.mtable .quant { font-size: 11.5px; }
+.kpi b.num { text-align: left; }
+/* Cards in the views keep their full height (the view itself scrolls). */
+.view-pane > * { flex: none; }
 </style>
 </head>
 <body>
@@ -1055,6 +1095,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
       <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
       <dt>My models: your files</dt><dd>My models asks once for LM Studio's models folder (the same folder as for Downloads). TensorTailor matches each model to its file by size and reads only the start of the file. The Arch column then shows the layers and the maximum context ("65 layers · max 256K"); point at it for the KV cache figures (KV heads, head size, how many layers keep the whole context). For models that TensorTailor added itself ("live" or "from LM Studio"), llmfit then counts the KV cache exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
+      <dt>My models: summary cards</dt><dd>Five cards at the top: <b>Models</b> (and how many files TensorTailor read from your folder), <b>On disk</b>, <b>Updates</b> (files with a newer version on Hugging Face), <b>Similar</b> (space of models made from the same base model, and how much keeping one per group would free) and <b>Measured</b> (your real speed as a share of llmfit's estimate). The details are in the lines above the table and in the rows.</dd>
       <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
       <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. TensorTailor never replaces or deletes a file.</dd>
       <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model. With GPU measurements of models in llmfit's list, other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
@@ -3280,6 +3321,29 @@ function mineBestSetting(x, cat) {
   const warn = !x.loaded || !x.loadedCtx ? "" : x.loadedCtx > Math.max(f, q) ? "more than fits in VRAM" : x.loadedCtx > f ? "fits only with K and V cache at Q8_0" : "";
   return { text, tip, warn };
 }
+// My models: five summary cards above the list.
+const KPI_ICON = {
+  models: '<svg viewBox="0 0 24 24"><path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/></svg>',
+  disk: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>',
+  updates: '<svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>',
+  similar: '<svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
+  measured: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>'
+};
+function mineKpis(totalGB) {
+  const s = state.lms, lg = state.localGguf, nModels = s.models.filter((x) => !/embed/i.test(x.type)).length;
+  const files = lg.done ? updFiles() : [], codes = files.map((f) => updStatus(f).code);
+  const nUpd = codes.filter((c) => c === "update").length, nChecked = codes.filter((c) => c !== "unknown").length;
+  const gs = grpState.done ? simGroups() : [], gTotal = gs.reduce((t, g) => t + g.total, 0), gFree = gs.reduce((t, g) => t + g.free, 0);
+  const nMeas = Object.keys(measStore).length, pf = pcFactor();
+  const card = (key, c, label, value, unit, note) => `<div class="card kpi" style="--c:${c}"><span class="kpi-l">${label}</span><span class="kpi-ic" aria-hidden="true">${KPI_ICON[key]}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ""}</b><p>${note}</p></div>`;
+  return `<div class="kpis">${[
+    card("models", "var(--accent)", "Models", nModels, "", lg.done ? `${lg.byId.size} of ${s.models.length} files read from <b>${esc(lg.folder)}</b>` : "Model files not read yet"),
+    card("disk", "var(--good)", "On disk", totalGB.toFixed(totalGB >= 100 ? 0 : 1), "GB", `${s.models.length} models in LM Studio`),
+    card("updates", nUpd ? "var(--marginal)" : "var(--perfect)", "Updates", lg.done && files.length ? nUpd : "—", "", !lg.done || !files.length ? "Read your models folder to check" : updState.busy ? "Checking on Hugging Face…" : `${nUpd ? `<b>${nUpd} available</b>` : "<b>All up to date</b>"} · ${nChecked} of ${files.length} files checked`),
+    card("similar", "var(--marginal)", "Similar", gs.length ? gTotal.toFixed(1) : "0", gs.length ? "GB" : "", gs.length ? `${gs.length} group${gs.length === 1 ? "" : "s"} · up to <b>${gb(gFree)}</b> to free` : grpState.busy ? "Looking up base models…" : "No two models share a base model"),
+    card("measured", "var(--perfect)", "Measured", pf ? Math.round(pf.f * 100) : nMeas || "—", pf ? "%" : "", pf ? `of llmfit's estimate on the GPU (median of ${pf.n})` : nMeas ? `${nMeas} measured, no GPU factor yet` : "Press <b>Measure</b> next to a loaded model")
+  ].join("")}</div>`;
+}
 function viewMine() {
   const s = state.lms;
   if (s.online && state.dl.root && !state.localGguf.done && !state.localGguf.busy && !state.localGguf.needClick && !state.localGguf.error) setTimeout(() => scanLocalGguf(false), 0);
@@ -3309,7 +3373,7 @@ function viewMine() {
     const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (loc.kvf ? "\n" + kvFieldsText(loc.kvf) + "." : "") + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
     // The same favorite star as in the Models list (stars belong to models in llmfit's list).
     const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
-    return `<tr><td><div style="display:flex;gap:6px;align-items:center">${star}<a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}${isEmb ? "" : grpTag(x)}</div>${isEmb ? "" : updLine(x)}</td>
+    return `<tr><td><div class="mm">${star}${avatar({ name: x.name, provider: x.publisher, id: x.id })}<div class="mm-n"><div class="mm-t"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}${isEmb ? "" : grpTag(x)}</div>${isEmb ? "" : updLine(x)}</div></div></td>
       <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy)}">MTP</span>` : ""}${locLine}</td>
       <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
@@ -3319,7 +3383,8 @@ function viewMine() {
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card">${localGgufLine()}${updSummaryLine()}${measSummaryLine()}${lmsLinkLine()}${kvFillLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    ${mineKpis(totalGB)}
+    <section class="card mine-card"><div class="mine-status">${localGgufLine()}${updSummaryLine()}${measSummaryLine()}${lmsLinkLine()}${kvFillLine()}</div><table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>${simGroupsCard(totalGB)}`;
 }
 
