@@ -667,7 +667,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
-      <dt><span class="chip lock">license</span></dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. The label comes from the license name only. Some of these repos are "gated" (you accept the terms on Hugging Face first, and TensorTailor then needs your HF token to read the files); many copies and fine-tunes are not gated and download without a token. The Files tab tells you when a token is needed.</dd>
+      <dt><span class="chip lock">license</span></dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. First the label is a guess from the license name. When you open a model, TensorTailor asks Hugging Face if the repo is really "gated" (you accept the terms on Hugging Face first, and TensorTailor then needs your HF token to read the files) and remembers the answer for 7 days: the label then says <b>gated</b> (token needed), or stays <b>license</b> in grey (own terms, but no token needed). Many copies and fine-tunes are not gated. A repo with an open license can be gated too.</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
     </dl>
 
@@ -1141,7 +1141,7 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="https://huggingface.co/${esc(m.id)}" target="_blank" rel="noopener" title="Open on Hugging Face" aria-label="Open ${esc(m.name)} on Hugging Face">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.gated ? `<span class="chip lock" title="${esc(CHIP_TIP.license.replace("{lic}", m.license))}">license</span>` : ""}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
     <div class="membar" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel">${memLabel(b)}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
@@ -1324,7 +1324,10 @@ function notesFor(r, d) {
   if (b.mode === "CPU+GPU") n.push(`Too big for VRAM. ${gb(b.inRam)} goes to system RAM, which is much slower than VRAM.`);
   if (b.tps > 0 && b.lo < READING_PACE) n.push(`Slower than reading pace (${READING_PACE} tok/s). Fine for jobs that may run in the background.`);
   if (m.runtime && m.runtime !== "LlamaCpp") n.push(`This model needs ${m.runtime}, not llama.cpp. LM Studio on Windows cannot run it.`);
-  if (m.gated) n.push(`License "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
+  const g = gatedOf(m.id);
+  if (g) n.push(`Gated on Hugging Face: accept the terms on the model page, then set your token (Tools → Hugging Face token) to download.`);
+  else if (g === false && m.gated) n.push(`License "${m.license}" has its own terms: read them on the model page. Not gated: the files download without a token.`);
+  else if (m.gated) n.push(`License "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
   for (const t of (d && d.detail && d.detail.fit.notes) || []) n.push("llmfit: " + t);
   return n;
 }
@@ -1401,6 +1404,45 @@ function tabOverview(r, d) {
 }
 
 /* ---------- Files tab: live from Hugging Face ---------- */
+/* ---------- Hugging Face's real "gated" field ---------- */
+// The "license" label is a guess from the license name. Hugging Face says per repo if it is really gated (false,
+// "auto" or "manual": accept the terms first, then the files need your token). TensorTailor asks once when you open a
+// model (and gets it with every live fetch) and remembers the answer for 7 days (localStorage "tt-gated").
+const GATED_KEY = "tt-gated", GATED_DAYS = 7;
+const gatedStore = (() => { try { return JSON.parse(localStorage.getItem(GATED_KEY) || "{}") || {}; } catch (e) { return {}; } })();
+const GATED_TIP = {
+  yes: "Gated on Hugging Face (checked): accept the terms on the model page first, then set your Hugging Face token (Tools → Hugging Face token) to download the files.",
+  no: "Not gated on Hugging Face (checked): the files download without a token.",
+  unknown: "Not checked yet: open the model, and TensorTailor asks Hugging Face if it is really gated."
+};
+function gatedOf(id) { const g = gatedStore[id]; return g && Date.now() - g.t < GATED_DAYS * 864e5 ? g.g : undefined; }
+function setGated(id, g) {
+  if (g === undefined || g === null) return;
+  gatedStore[id] = { g: g === false || g === "false" ? false : String(g), t: Date.now() };
+  const keys = Object.keys(gatedStore);
+  if (keys.length > 3000) keys.sort((a, b) => gatedStore[a].t - gatedStore[b].t).slice(0, keys.length - 3000).forEach((k) => delete gatedStore[k]);
+  safeSet("localStorage", GATED_KEY, JSON.stringify(gatedStore));
+}
+const gatedBusy = new Set();
+async function checkGated(id) {
+  // Rows made from LM Studio's data ("lmstudio/…") are not Hugging Face repos.
+  if (gatedOf(id) !== undefined || gatedBusy.has(id) || (state.live.meta[id] && state.live.meta[id].src === "lms")) return;
+  gatedBusy.add(id);
+  try { setGated(id, (await hfJson(`https://huggingface.co/api/models/${id}?expand[]=gated`)).gated); }
+  catch (e) { /* offline, private or rate limited: the label stays the guess from the license name */ }
+  finally { gatedBusy.delete(id); }
+  if (gatedOf(id) === undefined) return;
+  if (state.selected === id) renderDetail();
+  if (state.view === "models") renderRowsWindow();
+}
+// Does this model need a token? Hugging Face's answer when known, else the guess from the license name.
+function needsToken(m) { const g = gatedOf(m.id); return g === undefined ? m.gated : !!g; }
+function licenseChip(m) {
+  const g = gatedOf(m.id), lic = m.license ? CHIP_TIP.license.replace("{lic}", m.license) : "";
+  if (g) return `<span class="chip lock" title="${esc(GATED_TIP.yes + (lic ? "\n\n" + lic : ""))}">gated</span>`;
+  if (g === false) return m.gated ? `<span class="chip" title="${esc(GATED_TIP.no + "\n\n" + lic)}">license</span>` : "";
+  return m.gated ? `<span class="chip lock" title="${esc(lic + "\n\n" + GATED_TIP.unknown)}">license</span>` : "";
+}
 function hfHeaders() { return state.token ? { Authorization: "Bearer " + state.token } : {}; }
 async function hfJson(url) {
   const res = await fetch(url, { headers: hfHeaders() });
@@ -1787,12 +1829,13 @@ function renderDetail() {
   const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
   if (!d) loadDetail(r);
   // Gated repos answer 401 without a token: only ask when a token is set.
-  if (!state.mtp.has(m.id) && (!m.gated || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
+  if (gatedOf(m.id) === undefined) setTimeout(() => checkGated(m.id), 0);
+  if (!state.mtp.has(m.id) && (!needsToken(m) || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   // The answer first (verdict, file, one action); model facts as one quiet line; the header stays in view.
   const fav = state.watch.has(m.id), b = r.best;
-  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`, m.license, m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
+  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`, m.license ? m.license + (gatedOf(m.id) ? " (gated)" : gatedOf(m.id) === false && m.gated ? " (not gated)" : "") : gatedOf(m.id) ? "gated" : "", m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
   const lmsQ = lms && lms.quantization ? lms.quantization.toUpperCase() : "";
   const action = lms && state.lms.online && !/embed/i.test(lms.type) && b.plain !== "nofit"
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
@@ -1814,7 +1857,7 @@ function renderDetail() {
 const LIVE_KEY = "tt-live";
 // llmfit's rankable_models(): what it leaves out of every ranked list.
 const NOT_RANKED = "either llmfit cannot run the model with this PC's GPU backend (for example a speech model), or it does not trust the entry (a draft model, or a size that does not match the name). Such models are in the list, but not analysed.";
-const PAGE_EXPAND = ["downloads", "likes"]; // for the page only; llmfit ignores them
+const PAGE_EXPAND = ["downloads", "likes", "gated"]; // for the page only; llmfit ignores them
 function loadLiveStore() {
   try {
     const v = JSON.parse(safeGet("localStorage", LIVE_KEY) || "null");
@@ -1860,6 +1903,7 @@ async function inPool(items, size, fn) {
 function addLive(model, entry) {
   state.live.models = state.live.models.filter((m) => m.name !== model.name).concat([model]);
   state.live.meta[model.name] = { downloads: entry.downloads || 0, likes: entry.likes || 0, langs: model.languages || [], at: new Date().toISOString().slice(0, 10) };
+  setGated(model.name, entry.gated);
 }
 function liveReady() {
   if (!state.ready) return false;
