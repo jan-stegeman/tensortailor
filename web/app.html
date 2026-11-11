@@ -422,6 +422,114 @@ details[open] > .fold-head { margin-bottom: 10px; }
 .layout.full { grid-template-columns: minmax(0, 1fr); }
 .layout.full .side { display: none; }
 .layout.full .view-pane { grid-column: 1 / -1; }
+
+/* ==== Design v4, step D1: the foundation (tokens and base components) ====
+   From the mock-up design/mockup-2026-11-11-v4.html. The old token names keep working: they get the new values,
+   so every part of the page follows. New tokens: --text-2 (secondary text), --raised / --sunken / --hover
+   (surfaces), --glass (header), --pop (menus, dialogs), --elev (cards: a hairline ring instead of a border). */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --panel-2: #f6f7fa; --line: rgba(16, 24, 40, .09); --line-2: rgba(16, 24, 40, .15);
+  --raised: #f7f8fa; --sunken: #f1f3f6; --hover: #f4f6f9;
+  --text: #0e1116; --text-2: #3a4350; --muted: #586272; --faint: #636d7c;
+  --accent: #4f46e5; --accent-2: #4338ca; --accent-soft: rgba(79, 70, 229, .09); --accent-text: #ffffff; --accent-ring: rgba(79, 70, 229, .3);
+  --perfect: #10803f; --perfect-soft: rgba(16, 128, 63, .1); --good: #0b6fa8; --good-soft: rgba(11, 111, 168, .1);
+  --marginal: #a65306; --marginal-soft: rgba(166, 83, 6, .1); --tight: #c0261c; --tight-soft: rgba(192, 38, 28, .09);
+  --elev: 0 0 0 1px rgba(16, 24, 40, .08), 0 1px 2px rgba(16, 24, 40, .04);
+  --pop: 0 0 0 1px rgba(16, 24, 40, .12), 0 16px 40px rgba(16, 24, 40, .14);
+  --shadow: var(--elev); --glass: rgba(255, 255, 255, .8);
+  --radius: 14px;
+  --display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #090b0f; --panel: #11151c; --panel-2: #161b23; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .11);
+    --raised: #161b23; --sunken: #0d1016; --hover: #161b24;
+    --text: #eceff4; --text-2: #b4bdc9; --muted: #95a0b0; --faint: #808b9c;
+    --accent: #8a8cff; --accent-2: #6d6ff5; --accent-soft: rgba(138, 140, 255, .13); --accent-text: #0b0d14; --accent-ring: rgba(138, 140, 255, .35);
+    --perfect: #3ddc84; --perfect-soft: rgba(61, 220, 132, .12); --good: #48c4f4; --good-soft: rgba(72, 196, 244, .12);
+    --marginal: #f5b93a; --marginal-soft: rgba(245, 185, 58, .12); --tight: #f47174; --tight-soft: rgba(244, 113, 116, .12);
+    --elev: 0 0 0 1px rgba(255, 255, 255, .065), inset 0 1px 0 rgba(255, 255, 255, .03);
+    --pop: 0 0 0 1px rgba(255, 255, 255, .1), 0 16px 40px rgba(0, 0, 0, .55);
+    --shadow: var(--elev); --glass: rgba(12, 15, 20, .74);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090b0f; --panel: #11151c; --panel-2: #161b23; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .11);
+  --raised: #161b23; --sunken: #0d1016; --hover: #161b24;
+  --text: #eceff4; --text-2: #b4bdc9; --muted: #95a0b0; --faint: #808b9c;
+  --accent: #8a8cff; --accent-2: #6d6ff5; --accent-soft: rgba(138, 140, 255, .13); --accent-text: #0b0d14; --accent-ring: rgba(138, 140, 255, .35);
+  --perfect: #3ddc84; --perfect-soft: rgba(61, 220, 132, .12); --good: #48c4f4; --good-soft: rgba(72, 196, 244, .12);
+  --marginal: #f5b93a; --marginal-soft: rgba(245, 185, 58, .12); --tight: #f47174; --tight-soft: rgba(244, 113, 116, .12);
+  --elev: 0 0 0 1px rgba(255, 255, 255, .065), inset 0 1px 0 rgba(255, 255, 255, .03);
+  --pop: 0 0 0 1px rgba(255, 255, 255, .1), 0 16px 40px rgba(0, 0, 0, .55);
+  --shadow: var(--elev); --glass: rgba(12, 15, 20, .74);
+}
+body { -webkit-font-smoothing: antialiased; }
+/* Numbers line up in every column. */
+.num, .tps, .memlabel, .stat .v, .big-num, .pts, .tile .n, .ladder, .ftable, .mtable, .ptable, .cmp-table { font-variant-numeric: tabular-nums; }
+/* Headings: the display cut, a little tighter. */
+h1, h2, .d-title, .brand-name, .view-head h1, .dlg-head h2 { font-family: var(--display); letter-spacing: -.01em; }
+h2 { font-weight: 650; }
+.d-title { font-weight: 650; letter-spacing: -.02em; }
+/* Cards: a hairline ring instead of a border; no card-in-card borders. */
+.card, .table, .tile, .sug, .tray { border: 0; box-shadow: var(--elev); }
+.stat, .usable, .hw-gpu, .math { border: 0; box-shadow: inset 0 0 0 1px var(--line); background: var(--sunken); }
+/* Buttons: secondary = a raised surface with a ring; primary = a soft gradient with a top highlight. */
+.btn { border: 0; background: var(--raised); box-shadow: 0 0 0 1px var(--line-2), inset 0 1px 0 rgba(255, 255, 255, .04); font-weight: 600; font-size: 13px; transition: background .15s, box-shadow .15s, transform .08s, filter .15s; }
+.btn:hover:not(:disabled) { background: var(--hover); box-shadow: 0 0 0 1px var(--line-2), 0 2px 6px rgba(0, 0, 0, .12); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.primary { color: var(--accent-text); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, white), var(--accent) 55%, var(--accent-2)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-2) 70%, black), inset 0 1px 0 rgba(255, 255, 255, .25), 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
+.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, white), var(--accent) 55%, var(--accent-2)); filter: brightness(1.07); }
+.btn.ghost { background: transparent; box-shadow: none; color: var(--muted); }
+.btn.ghost:hover:not(:disabled) { background: var(--hover); color: var(--text); box-shadow: none; }
+/* Segmented controls (nav, engines, KV): a sunken track with a raised thumb. */
+.seg, .nav { background: var(--sunken); border: 0; box-shadow: inset 0 0 0 1px var(--line); border-radius: 10px; }
+.seg button[aria-pressed="true"], .nav button[aria-pressed="true"] { background: var(--panel); box-shadow: 0 0 0 1px var(--line-2), 0 1px 3px rgba(0, 0, 0, .18); }
+.nav .count { background: var(--line); color: var(--muted); font-weight: 700; min-width: 18px; text-align: center; }
+.nav button[aria-pressed="true"] .count { background: var(--accent-soft); color: var(--accent); }
+/* Status pills: tinted fill and a 1 px ring in their own colour. */
+.badge { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent); font-weight: 600; }
+.badge::before { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+.tag { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
+.tag.browser, .tag.imported, .tag.okay, .tag.warnish { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 26%, transparent); }
+.chip { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent); }
+.chip.upg { box-shadow: none; }
+.quant { font-weight: 600; border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); border-radius: 5px; }
+.chip-btn { border: 0; background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text-2); font-weight: 500; }
+.chip-btn:hover { background: var(--hover); }
+.chip-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-ring); font-weight: 600; }
+.chip-btn[aria-pressed="true"] .cap { color: var(--accent); }
+/* Fields. */
+select, .unit-input, .dlg-body input[type="password"], .dlg-body textarea { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-2); border-radius: 8px; }
+.search { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
+.search:focus-within, .unit-input:focus-within { outline: 0; box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); background: var(--sunken); }
+kbd { border: 0; box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 0 var(--line-2); background: var(--panel); }
+/* Tables: quiet uppercase headers and hairlines. */
+.ladder th, .ftable th, .mtable th, .ptable th, .cmp-table th { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: var(--faint); }
+.ladder td, .ftable td, .mtable td, .ptable td { border-top-color: var(--line); }
+.cols { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; background: transparent; }
+.ladder tr.pick td, .ftable tr.pick td { background: var(--accent-soft); }
+.ladder tr.pick td:first-child, .ftable tr.pick td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+/* Boxes: tinted with a ring. */
+.warn-box { background: var(--marginal-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--marginal) 26%, transparent); border-radius: 10px; }
+.ok-box { background: var(--perfect-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--perfect) 26%, transparent); border-radius: 10px; }
+.cmd, pre.block, pre.snippet, .typing { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
+/* Dialogs: rounder, a soft pop shadow, a blurred backdrop, a footer bar. */
+dialog { border: 0; border-radius: 18px; box-shadow: var(--pop); }
+dialog::backdrop { background: rgba(5, 7, 10, .5); backdrop-filter: blur(6px) saturate(1.2); }
+:root[data-theme="light"] dialog::backdrop { background: rgba(16, 24, 40, .28); }
+.dlg-head { padding: 16px 20px; border-bottom-color: var(--line); }
+.dlg-body { padding: 18px 20px; }
+.dlg-foot { padding: 14px 20px; background: var(--raised); border-top-color: var(--line); }
+/* Menus. */
+.menu { border: 0; border-radius: 14px; box-shadow: var(--pop); }
+/* Toast: a card at the bottom right. */
+.toast { left: auto; right: 20px; bottom: 20px; transform: translateY(16px); padding: 12px 16px; border-radius: 14px; background: var(--panel); color: var(--text); box-shadow: var(--pop); font-size: 13px; }
+.toast.show { transform: translateY(0); }
+/* A verdict tile that is switched off: dashed, without the card ring. */
+.tile[aria-pressed="false"] { border: 1px dashed var(--line-2); box-shadow: none; }
+/* Scrollbars a little thinner. */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 </style>
 </head>
 <body>
