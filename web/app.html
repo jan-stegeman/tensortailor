@@ -525,6 +525,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
         <label><input type="checkbox" id="fWatch"> Only my favorites ★</label>
         <label><input type="checkbox" id="fLms"> Already in LM Studio</label>
         <label><input type="checkbox" id="fOpen"> Open license (Apache, MIT)</label>
+        <label title="Hides models that are gated on Hugging Face (you would have to accept terms and set a token to download them)."><input type="checkbox" id="fFree"> No token needed</label>
         <label><input type="checkbox" id="fGpu"> Fits fully in VRAM</label>
         <label><input type="checkbox" id="fPop" checked> Popular (10,000+ downloads)</label>
       </div>
@@ -667,7 +668,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt><span class="chip upg">upgrade</span></dt><dd>Only runs well with the upgrade you switched on under "What if I upgrade?".</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware, not from an estimate.</dd>
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
-      <dt><span class="chip lock">license</span></dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. First the label is a guess from the license name. When you open a model, TensorTailor asks Hugging Face if the repo is really "gated" (you accept the terms on Hugging Face first, and TensorTailor then needs your HF token to read the files) and remembers the answer for 7 days: the label then says <b>gated</b> (token needed), or stays <b>license</b> in grey (own terms, but no token needed). Many copies and fine-tunes are not gated. A repo with an open license can be gated too.</dd>
+      <dt><span class="chip lock">license</span></dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one); without it, the label is a guess from the license name. When you open a model, TensorTailor also asks Hugging Face live if the repo is really "gated" (you accept the terms on Hugging Face first, and TensorTailor then needs your HF token to read the files) and remembers the answer for 7 days: the label then says <b>gated</b> (token needed), or stays <b>license</b> in grey (own terms, but no token needed). Many copies and fine-tunes are not gated. A repo with an open license can be gated too. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
     </dl>
 
@@ -800,6 +801,7 @@ self.onmessage = async (e) => {
 <script type="text/plain" id="engine-glue">/*__ENGINE_GLUE__*/</script>
 <script type="application/octet-stream" id="engine-wasm">__ENGINE_WASM_GZ_B64__</script>
 <script type="application/octet-stream" id="catalog-meta">__CATALOG_META_GZ_B64__</script>
+<script type="application/json" id="gated-list">__GATED_JSON__</script>
 <script type="application/octet-stream" id="notices-gz">__NOTICES_GZ_B64__</script>
 
 <script>
@@ -841,7 +843,7 @@ const state = {
   hw: Object.assign({}, DEFAULT_HW), upg: { gpu: false, ram: false },
   useCase: "all", ctxIdx: 3, kvq: "fp16", sort: "score", search: "",
   show: { well: true, tight: true, slower: true, nofit: false },
-  f: { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true },
+  f: { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, free: false, gpu: false, pop: true },
   view: "models", tab: "overview", engine: "lms",
   selected: null, compare: [], watch: new Set(), results: [], visible: [],
   token: "", lms: { online: false, checked: false, models: [] }, lmsPlans: new Map(), lmsLoad: null,
@@ -1174,6 +1176,7 @@ function passFilters(r) {
   if (f.watch && !state.watch.has(m.id)) return false;
   if (f.lms && !inLms(m)) return false;
   if (f.open && !OPEN_LICENSES.test(m.license)) return false;
+  if (f.free && needsToken(m)) return false;
   if (f.gpu && r.best.mode !== "GPU") return false;
   // Your own LM Studio models always pass "Popular": you have them already.
   if (f.pop && m.downloads < 10000 && !inLms(m)) return false;
@@ -1411,11 +1414,26 @@ function tabOverview(r, d) {
 const GATED_KEY = "tt-gated", GATED_DAYS = 7;
 const gatedStore = (() => { try { return JSON.parse(localStorage.getItem(GATED_KEY) || "{}") || {}; } catch (e) { return {}; } })();
 const GATED_TIP = {
-  yes: "Gated on Hugging Face (checked): accept the terms on the model page first, then set your Hugging Face token (Tools → Hugging Face token) to download the files.",
-  no: "Not gated on Hugging Face (checked): the files download without a token.",
+  yes: "Gated on Hugging Face ({src}): accept the terms on the model page first, then set your Hugging Face token (Tools → Hugging Face token) to download the files.",
+  no: "Not gated on Hugging Face ({src}): the files download without a token.",
   unknown: "Not checked yet: open the model, and TensorTailor asks Hugging Face if it is really gated."
 };
-function gatedOf(id) { const g = gatedStore[id]; return g && Date.now() - g.t < GATED_DAYS * 864e5 ? g.g : undefined; }
+// Hugging Face's list of gated catalog models, made at build time (tools/fetch-gated.mjs): every other model of
+// the catalog was not gated then. Rows fetched live or made from LM Studio are not in it.
+const GATED_LIST = (() => { try { const x = JSON.parse(document.getElementById("gated-list").textContent); return x && x.models ? x : null; } catch (e) { return null; } })();
+// The live answer for a model you opened (7 days), else null.
+function gatedLive(id) { const g = gatedStore[id]; return g && Date.now() - g.t < GATED_DAYS * 864e5 ? g : null; }
+function gatedOf(id) {
+  const g = gatedLive(id);
+  if (g) return g.g;
+  if (GATED_LIST && state.byName.has(id) && !state.live.meta[id]) return GATED_LIST.models[id] || false;
+  return undefined;
+}
+// Where the answer comes from, for the hover texts.
+function gatedSource(id) {
+  const g = gatedLive(id);
+  return g ? `checked ${new Date(g.t).toISOString().slice(0, 10)}` : GATED_LIST ? `Hugging Face's list of ${GATED_LIST.built}` : "";
+}
 function setGated(id, g) {
   if (g === undefined || g === null) return;
   gatedStore[id] = { g: g === false || g === "false" ? false : String(g), t: Date.now() };
@@ -1426,21 +1444,21 @@ function setGated(id, g) {
 const gatedBusy = new Set();
 async function checkGated(id) {
   // Rows made from LM Studio's data ("lmstudio/…") are not Hugging Face repos.
-  if (gatedOf(id) !== undefined || gatedBusy.has(id) || (state.live.meta[id] && state.live.meta[id].src === "lms")) return;
+  if (gatedLive(id) || gatedBusy.has(id) || (state.live.meta[id] && state.live.meta[id].src === "lms")) return;
   gatedBusy.add(id);
   try { setGated(id, (await hfJson(`https://huggingface.co/api/models/${id}?expand[]=gated`)).gated); }
   catch (e) { /* offline, private or rate limited: the label stays the guess from the license name */ }
   finally { gatedBusy.delete(id); }
-  if (gatedOf(id) === undefined) return;
+  if (!gatedLive(id)) return;
   if (state.selected === id) renderDetail();
   if (state.view === "models") renderRowsWindow();
 }
 // Does this model need a token? Hugging Face's answer when known, else the guess from the license name.
 function needsToken(m) { const g = gatedOf(m.id); return g === undefined ? m.gated : !!g; }
 function licenseChip(m) {
-  const g = gatedOf(m.id), lic = m.license ? CHIP_TIP.license.replace("{lic}", m.license) : "";
-  if (g) return `<span class="chip lock" title="${esc(GATED_TIP.yes + (lic ? "\n\n" + lic : ""))}">gated</span>`;
-  if (g === false) return m.gated ? `<span class="chip" title="${esc(GATED_TIP.no + "\n\n" + lic)}">license</span>` : "";
+  const g = gatedOf(m.id), lic = m.license ? CHIP_TIP.license.replace("{lic}", m.license) : "", src = gatedSource(m.id);
+  if (g) return `<span class="chip lock" title="${esc(GATED_TIP.yes.replace("{src}", src) + (lic ? "\n\n" + lic : ""))}">gated</span>`;
+  if (g === false) return m.gated ? `<span class="chip" title="${esc(GATED_TIP.no.replace("{src}", src) + "\n\n" + lic)}">license</span>` : "";
   return m.gated ? `<span class="chip lock" title="${esc(lic + "\n\n" + GATED_TIP.unknown)}">license</span>` : "";
 }
 function hfHeaders() { return state.token ? { Authorization: "Bearer " + state.token } : {}; }
@@ -1829,7 +1847,7 @@ function renderDetail() {
   const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
   if (!d) loadDetail(r);
   // Gated repos answer 401 without a token: only ask when a token is set.
-  if (gatedOf(m.id) === undefined) setTimeout(() => checkGated(m.id), 0);
+  if (!gatedLive(m.id)) setTimeout(() => checkGated(m.id), 0);
   if (!state.mtp.has(m.id) && (!needsToken(m) || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
@@ -3012,7 +3030,7 @@ function loadPrefs() {
   $("ctx").value = String(state.ctxIdx); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; $("ctx").setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens");
   $("kvq").value = state.kvq; $("sort").value = state.sort;
 }
-const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open license"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
+const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open license"], ["fFree", "free", "No token needed"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
 // Show the filter state in the controls on the left.
 function syncFilterUi() {
   $("fLang").value = state.f.lang; $("fSize").value = state.f.size;
@@ -3045,7 +3063,7 @@ function removeFilter(key) {
 function resetFilters() {
   state.f = { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true };
   $("fLang").value = ""; $("fSize").value = "";
-  ["fGguf", "fNew", "fWatch", "fLms", "fOpen", "fGpu"].forEach((id) => { $(id).checked = false; }); $("fLlama").checked = true; $("fPop").checked = true;
+  ["fGguf", "fNew", "fWatch", "fLms", "fOpen", "fFree", "fGpu"].forEach((id) => { $(id).checked = false; }); $("fLlama").checked = true; $("fPop").checked = true;
   document.querySelectorAll("[data-cap]").forEach((b) => b.setAttribute("aria-pressed", "false"));
 }
 function wire() {
@@ -3071,7 +3089,7 @@ function wire() {
     if (!id && searchText().length >= 2 && !state.results.some((r) => searchMatch(r, searchText()))) searchHub(e.target.value);
   });
   [["fLang", "lang"], ["fSize", "size"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.value; renderList(); }));
-  [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.checked; renderList(); }));
+  [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fFree", "free"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.checked; renderList(); }));
   document.querySelectorAll("[data-cap]").forEach((b) => b.addEventListener("click", () => { const c = b.dataset.cap; if (state.f.caps.has(c)) state.f.caps.delete(c); else state.f.caps.add(c); b.setAttribute("aria-pressed", String(state.f.caps.has(c))); renderList(); }));
   $("btnResetFilters").addEventListener("click", () => { resetFilters(); renderList(); });
   ["vram", "ram", "reserve", "ramBw", "cores"].forEach((id) => $(id).addEventListener("input", () => applyHardware("changed by you")));

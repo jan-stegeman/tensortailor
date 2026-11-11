@@ -151,6 +151,15 @@ runs:
         grep -q 'serde_json' ../dist/THIRD-PARTY-NOTICES.txt
         echo "Third-party notices: $(grep -c '^Used by:' ../dist/THIRD-PARTY-NOTICES.txt) license texts, $(wc -c < ../dist/THIRD-PARTY-NOTICES.txt) bytes" | tee -a "$GITHUB_STEP_SUMMARY"
 
+    # Hugging Face's list of gated models (about 60 pages, under a minute), only the catalog's names kept.
+    # If Hugging Face cannot be reached, the page is built without it and guesses "gated" from the license
+    # name, as before: a warning, not a failure.
+    - name: Gated list from Hugging Face
+      shell: bash
+      run: |
+        node tools/fetch-gated.mjs vendor/llmfit/llmfit-core/data/hf_models.json dist/gated.json | tee -a "$GITHUB_STEP_SUMMARY" \
+          || { echo "::warning::No gated list: the page guesses gated from the license name"; rm -f dist/gated.json; }
+
     - name: Build the single-file page
       shell: bash
       run: |

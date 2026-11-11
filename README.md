@@ -69,8 +69,9 @@ change in the page).
 - The page talks only to `huggingface.co` (when you open a model's files, fetch new models or check a link)
   and to LM Studio on your own PC (`127.0.0.1:1234`).
 - A Hugging Face token (only needed for gated models) stays in the browser tab. It is never saved in the file.
-  When you open a model, TensorTailor asks Hugging Face if it is really gated: the label then says **gated** (token
-  needed) or **license** in grey (own terms, no token needed).
+  The page carries Hugging Face's list of gated models from its build day (fresh every weekly release), and a model
+  you open is checked live: the label says **gated** (token needed) or **license** in grey (own terms, no token
+  needed). The filter **No token needed** hides the gated models.
 - Your settings, fetched models and download list stay in your browser on your PC.
 
 ## Good to know
