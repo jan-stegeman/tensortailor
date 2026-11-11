@@ -850,6 +850,20 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 #dlgHelp .dlg-body { grid-row: 2; max-height: none; overflow: auto; padding: 20px 28px; }
 .help h3 { font: 650 16px var(--display); letter-spacing: -.01em; margin-top: 24px; }
 .help-none { color: var(--muted); font-size: 13.5px; }
+
+/* ==== Refinement E1: the token key in the header (grey = no token, green = set) ==== */
+.btn.icon.key.on { color: var(--perfect); }
+/* ==== Refinement E2: the Plan tab in plain words ==== */
+.stats.plan-need { grid-template-columns: 1fr 1fr; }
+.stats.plan-need .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.upg-h { margin-top: 16px; font: 650 13.5px var(--display); }
+.upg-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+.upg-list li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-2); }
+.upg-list li:first-child { border-top: 0; }
+.upg-arrow { color: var(--faint); }
+.upg-lv { font-size: 11.5px; color: var(--faint); }
+.notes li .upg-arrow { margin: 0 2px; }
+.btn.icon.key.on::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--perfect); box-shadow: 0 0 0 2px var(--bg); }
 </style>
 </head>
 <body>
@@ -876,6 +890,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
     </nav>
   </div>
   <div class="top-actions">
+    <button class="btn ghost icon key" id="btnKey" aria-label="Hugging Face token" title="Hugging Face token: not set. Click to set it (needed for gated models)."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 7l2.5 2.5M14 9l2 2"/></svg></button>
     <button class="btn ghost icon" id="btnHelp" title="Help: what everything means (?)" aria-label="Help"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></svg></button>
     <div class="menu-wrap">
       <button class="btn ghost icon" id="btnTools" aria-haspopup="true" aria-expanded="false" aria-controls="toolsMenu" aria-label="Tools" title="Tools: model catalog, Hugging Face token, About, light or dark"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg><span class="dot" id="toolsDot"></span></button>
@@ -1110,7 +1125,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list.</dd>
-      <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
+      <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
       <dt><span class="chip">license</span> (grey)</dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
       <dt><span class="chip lock">license</span> (orange)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
@@ -1160,7 +1175,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
       <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them.</dd>
       <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
-      <dt>Plan</dt><dd>llmfit's planner: what hardware the model needs, which routes work, how many chats fit.</dd>
+      <dt>Plan</dt><dd>llmfit's planner: the minimum and recommended hardware, which routes work here (<b>GPU only</b>, <b>GPU + system RAM</b>, <b>CPU only</b>) with a verdict and speed for each, and <b>What would make it better?</b>: for example "+1.7 GB VRAM → Runs well (llmfit: Good)". Below: whether a target speed is reached, how many chats fit at the same time, and the disk space for your best models.</dd>
     </dl>
 
     <h3>Views (top) and keys</h3>
@@ -1177,7 +1192,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash; at the end the file is read back and its SHA-256 compared with Hugging Face's (<b>Check again</b> reads it once more). A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
-      <dt>Tools (top right)</dt><dd><b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token</b>: for gated models (the dot on Tools is green when a token is set). <b>About and licenses</b>. <b>Light or dark</b> (key <kbd>T</kbd>).</dd>
+      <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
+      <dt>Tools (top right)</dt><dd>The button with three lines. <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token</b>: the same window as the key button. <b>About and licenses</b>. <b>Light or dark</b> (key <kbd>T</kbd>).</dd>
       <dt>HF token</dt><dd>Read-only Hugging Face token for gated models. It stays only in this browser tab.</dd>
       <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help.</dd>
     </dl>
@@ -1824,7 +1840,7 @@ function notesFor(r, d) {
   if (b.tps > 0 && b.lo < READING_PACE) n.push(`Slower than reading pace (${READING_PACE} tok/s). Fine for jobs that may run in the background.`);
   if (m.runtime && m.runtime !== "LlamaCpp") n.push(`This model needs ${m.runtime}, not llama.cpp. LM Studio on Windows cannot run it.`);
   const g = gatedOf(m.id);
-  if (g) n.push(`Gated on Hugging Face: accept the terms on the model page, then set your token (Tools → Hugging Face token) to download.`);
+  if (g) n.push(`Gated on Hugging Face: accept the terms on the model page, then set your token (the key button at the top right, or Tools → Hugging Face token) to download.`);
   else if (g === false && m.gated) n.push(`License "${m.license}" has its own terms: read them on the model page. Not gated: the files download without a token.`);
   else if (m.gated) n.push(`License "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
   const kv = kvFillNote(m);
@@ -1912,7 +1928,7 @@ function tabOverview(r, d) {
 const GATED_KEY = "tt-gated", GATED_DAYS = 7;
 const gatedStore = (() => { try { return JSON.parse(localStorage.getItem(GATED_KEY) || "{}") || {}; } catch (e) { return {}; } })();
 const GATED_TIP = {
-  yes: "Gated on Hugging Face ({src}): accept the terms on the model page first, then set your Hugging Face token (Tools → Hugging Face token) to download the files.",
+  yes: "Gated on Hugging Face ({src}): accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files.",
   no: "Not gated on Hugging Face ({src}): the files download without a token.",
   unknown: "Not checked yet: open the model, and TensorTailor asks Hugging Face if it is really gated."
 };
@@ -2304,6 +2320,15 @@ async function loadTargetPlan(r) {
   entry.loading = false;
   if (state.selected === r.m.id && state.tab === "plan") renderDetail();
 }
+// Plan tab in plain words: route names, hardware as a tile, upgrade lines with an arrow and a verdict label.
+const ROUTE_NAME = { gpu: "GPU only", cpu_offload: "GPU + system RAM", cpu_only: "CPU only", moe_offload: "MoE offload (experts in RAM)" };
+function hwTile(h) { return h ? `<div class="v">${h.vram_gb != null ? gb(h.vram_gb) : "CPU"} <small>${h.vram_gb != null ? "VRAM" : ""}</small></div><div class="sub">${gb(h.ram_gb)} RAM · ${h.cpu_cores} cores</div>` : `<div class="v">—</div>`; }
+function upgText(desc) {
+  const m = /^(.*?)\s*->\s*([A-Za-z]+)\s*$/.exec(String(desc || ""));
+  if (!m) return esc(desc);
+  const lv = LEVEL[m[2]] || LEVEL[m[2].toLowerCase()];
+  return `<span class="upg-what">${esc(m[1])}</span><span class="upg-arrow" aria-hidden="true">→</span>${lv ? verdict(plainOf(lv, "GPU")) + `<small class="upg-lv">llmfit: ${esc(m[2])}</small>` : `<b>${esc(m[2])}</b>`}`;
+}
 function hwText(h) { return h ? `${h.vram_gb != null ? gb(h.vram_gb) + " VRAM · " : ""}${gb(h.ram_gb)} RAM · ${h.cpu_cores} cores` : "—"; }
 function tabPlan(r, d) {
   const b = r.best, plan = d && d.plan;
@@ -2318,13 +2343,13 @@ function tabPlan(r, d) {
   const disk = top.reduce((s, x) => s + x.m.params * (QUANT_BPW[String(x.best.q).toUpperCase()] || 5) / 8, 0) * 1.1 + 20;
   return `<section class="card"><div class="card-head"><h2>What does this model need?</h2><small>llmfit planner · ${esc(plan ? plan.quantization : b.q)}</small></div>
     ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : !plan ? `<div class="warn-box">${esc(d.planErr || "No plan for this model.")}</div>` : `
-      <div class="grid-2"><div><small>Minimum</small><div><b>${hwText(plan.minimum)}</b></div></div><div><small>Recommended</small><div><b>${hwText(plan.recommended)}</b></div></div></div>
-      <table class="ptable" style="margin-top:10px"><thead><tr><th>Route</th><th>Possible here</th><th class="r">tok/s</th></tr></thead><tbody>${(plan.run_paths || []).map((p) => `<tr><td>${esc(String(p.path).replace("_", " "))}</td><td>${p.feasible ? (p.fit_level ? verdict(plainOf(LEVEL[p.fit_level] || "tight", p.path === "gpu" ? "GPU" : p.path === "cpu_only" ? "CPU" : "CPU+GPU")) : "yes") : '<span class="tag">no</span>'}</td><td class="r">${p.estimated_tps ? fmtT(p.estimated_tps) : "—"}</td></tr>`).join("")}</tbody></table>
-      ${(plan.upgrade_deltas || []).length ? `<ul class="notes" style="margin-top:10px">${plan.upgrade_deltas.map((u) => `<li>${esc(u.description)}</li>`).join("")}</ul>` : `<div class="ok-box">No upgrade needed for this model.</div>`}`}
+      <div class="stats plan-need"><div class="stat"><div class="k">Minimum</div>${hwTile(plan.minimum)}</div><div class="stat"><div class="k">Recommended</div>${hwTile(plan.recommended)}</div></div>
+      <table class="ptable" style="margin-top:10px"><thead><tr><th>Route</th><th>Possible here</th><th class="r">tok/s</th></tr></thead><tbody>${(plan.run_paths || []).map((p) => `<tr><td>${esc(ROUTE_NAME[p.path] || String(p.path).replace(/_/g, " "))}</td><td>${p.feasible ? (p.fit_level ? verdict(plainOf(LEVEL[p.fit_level] || "tight", p.path === "gpu" ? "GPU" : p.path === "cpu_only" ? "CPU" : "CPU+GPU")) : "yes") : '<span class="tag">no</span>'}</td><td class="r">${p.estimated_tps ? fmtT(p.estimated_tps) : "—"}</td></tr>`).join("")}</tbody></table>
+      ${(plan.upgrade_deltas || []).length ? `<div class="upg-h">What would make it better?</div><ul class="upg-list">${plan.upgrade_deltas.map((u) => `<li>${upgText(u.description)}</li>`).join("")}</ul>` : `<div class="ok-box">No upgrade needed for this model.</div>`}`}
   </section>
   <section class="card"><div class="card-head"><h2>Can it reach my speed?</h2><span class="ctx-value">${state.plan.target} tok/s</span></div>
     <input type="range" id="planTarget" min="5" max="150" step="5" value="${state.plan.target}" aria-label="Target speed">
-    ${!tp || tp.loading ? '<div class="loading">Asking the engine…</div>' : tp.error ? `<div class="warn-box">Not on any route: ${esc(tp.error)}</div>` : `<ul class="notes">${(tp.plan.upgrade_deltas || []).length ? tp.plan.upgrade_deltas.map((u) => `<li>${esc(u.description)}</li>`).join("") : "<li>Reached with your current hardware.</li>"}</ul>`}
+    ${!tp || tp.loading ? '<div class="loading">Asking the engine…</div>' : tp.error ? `<div class="warn-box">Not on any route: ${esc(tp.error)}</div>` : `<ul class="notes">${(tp.plan.upgrade_deltas || []).length ? tp.plan.upgrade_deltas.map((u) => `<li>${upgText(u.description)}</li>`).join("") : "<li>Reached with your current hardware.</li>"}</ul>`}
   </section>
   <section class="card"><div class="card-head"><h2>How many chats at the same time?</h2><span class="ctx-value">${state.plan.users} wanted</span></div>
     <input type="range" id="planUsers" min="1" max="16" step="1" value="${state.plan.users}" aria-label="Chats at the same time">
@@ -2897,7 +2922,7 @@ async function checkUpdates(force) {
         const res = await fetch(`https://huggingface.co/api/models/${repo}/paths-info/main`, { method: "POST", body, headers: hfHeaders() });
         // Without a token Hugging Face answers 401 for a gated repo (X-Error-Code GatedRepo) and for a repo that is
         // private or not there.
-        if ((res.status === 401 || res.status === 403) && res.headers.get("X-Error-Code") === "GatedRepo") { put({ err: "The repo is gated: accept its terms on Hugging Face and set your token (Tools → Hugging Face token)." }); continue; }
+        if ((res.status === 401 || res.status === 403) && res.headers.get("X-Error-Code") === "GatedRepo") { put({ err: "The repo is gated: accept its terms on Hugging Face and set your token (the key button at the top right, or Tools → Hugging Face token)." }); continue; }
         if (res.status === 404 || res.status === 401 || res.status === 403) { put({ noRepo: true }); continue; }
         if (res.status === 429) throw new Error("Hugging Face asks to slow down (too many requests). Wait a minute, or set your token.");
         if (!res.ok) { put({ err: "Hugging Face answered " + res.status + "." }); continue; }
@@ -3908,7 +3933,7 @@ function importHardware() {
 }
 
 /* ===================== Token, theme, CSV, about ===================== */
-function renderToken() { const on = !!state.token; $("tokDot").className = "dot" + (on ? " ok" : ""); $("tokText").textContent = on ? "Hugging Face token: set" : "Hugging Face token: not set"; $("toolsDot").className = "dot" + (on ? " ok" : ""); $("toolsDot").title = on ? "Hugging Face token set" : "No Hugging Face token"; }
+function renderToken() { const on = !!state.token; $("tokDot").className = "dot" + (on ? " ok" : ""); $("tokText").textContent = on ? "Hugging Face token: set" : "Hugging Face token: not set"; $("toolsDot").className = "dot"; const k = $("btnKey"); k.classList.toggle("on", on); k.title = on ? "Hugging Face token: set. Click to change or remove it." : "Hugging Face token: not set. Click to set it (needed for gated models)."; k.setAttribute("aria-label", on ? "Hugging Face token: set" : "Hugging Face token: not set"); }
 function currentTheme() { const t = document.documentElement.dataset.theme; if (t) return t; return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
 function toggleTheme() { const next = currentTheme() === "dark" ? "light" : "dark"; document.documentElement.dataset.theme = next; safeSet("localStorage", "tt-theme", next); }
 function exportCsv() {
@@ -4212,6 +4237,7 @@ function wire() {
   $("btnCopySnippet").addEventListener("click", () => copyText(PS_LINE, "PowerShell line"));
   $("btnImportApply").addEventListener("click", importHardware);
   $("btnToken").addEventListener("click", () => { $("tokInput").value = state.token; $("dlgToken").showModal(); });
+  $("btnKey").addEventListener("click", () => { $("tokInput").value = state.token; $("dlgToken").showModal(); });
   $("btnTokSave").addEventListener("click", () => {
     const v = $("tokInput").value.trim();
     if (v && !/^hf_[A-Za-z0-9]{20,}$/.test(v)) { toast("That does not look like a Hugging Face token (it starts with hf_)."); return; }

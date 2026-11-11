@@ -77,6 +77,7 @@ change in the page).
 - The page talks only to `huggingface.co` (when you open a model's files, fetch new models or check a link)
   and to LM Studio on your own PC (`127.0.0.1:1234`).
 - A Hugging Face token (only needed for gated models) stays in the browser tab. It is never saved in the file.
+  Set it with the key button at the top right; the key turns green when a token is set.
   The page carries Hugging Face's list of gated models from its build day (fresh every weekly release), and a model
   you open is checked live: the label says **gated** (token needed) or **license** in grey (own terms, no token
   needed). The filter **No token needed** hides the gated models.
@@ -159,6 +160,7 @@ use made-up demo data.
 | `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
+| `tools/test-key.json` | The token key in the header: grey without a token, green with one, a click opens the token window |
 | `tools/test-kv-fill.json` | KV cache fields from a GGUF header for rows of llmfit's list without layer data (Files tab and My models); exact rows untouched |
 | `tools/test-measure.json` | Measure in My models with a made-up LM Studio: warm-up + measured run, never a load, the factor for this PC |
 | `tools/test-groups.json` | Similar models in My models: made-up files under real repo names, Hugging Face's base models, the file-header fallback (run with `CDP_SERVE_DIR`) |
