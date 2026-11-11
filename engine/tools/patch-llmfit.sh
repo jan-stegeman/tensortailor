@@ -13,6 +13,8 @@
 #      update::tt_map_hf_json       llmfit's own conversion of one Hub entry
 #      ModelDatabase::embedded_with_extra  embedded list + extra models, merged
 #                                   the way ModelDatabase::new() merges the cache
+#      ModelDatabase::tt_models_mut  the rows, so the engine can fill KV fields
+#                                   a row lacks from a real GGUF header
 #      models::tt_canonical_slug    llmfit's "same model" key
 #    No llmfit logic is changed or copied.
 #
@@ -121,6 +123,12 @@ impl ModelDatabase {
         }
         apply_published_moe_active(&mut models);
         ModelDatabase { models }
+    }
+
+    /// The rows themselves, so TensorTailor can fill KV cache fields that a row
+    /// lacks from a real GGUF header (see the engine's set_extra_models_and_fills_json).
+    pub fn tt_models_mut(&mut self) -> &mut Vec<LlmModel> {
+        &mut self.models
     }
 }
 

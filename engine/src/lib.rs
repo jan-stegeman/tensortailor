@@ -399,8 +399,10 @@ pub fn engine_info_json() -> String {
 /// is llmfit's own code (patched in by tools/patch-llmfit.sh).
 #[cfg(feature = "live")]
 pub mod live {
-    use super::{Arc, DB, LlmModel, ModelDatabase, database};
+    use super::{Arc, DB, LlmModel, ModelDatabase, database, json};
     use llmfit_core::UpdateOptions;
+    use llmfit_core::models::AttentionLayout;
+    use serde::Deserialize;
     use llmfit_core::models::tt_canonical_slug;
     use llmfit_core::update::{tt_map_hf_json, tt_update_urls};
     use std::collections::HashSet;
@@ -448,6 +450,82 @@ pub mod live {
         let count = db.get_all_models().len();
         *DB.write().unwrap_or_else(|e| e.into_inner()) = Some(db);
         Ok(count)
+    }
+
+    /// The KV cache fields of one model, read from a real GGUF header by the page.
+    #[derive(Debug, Deserialize)]
+    pub struct KvFill {
+        pub name: String,
+        #[serde(default)]
+        pub num_hidden_layers: Option<u32>,
+        #[serde(default)]
+        pub num_attention_heads: Option<u32>,
+        #[serde(default)]
+        pub num_key_value_heads: Option<u32>,
+        #[serde(default)]
+        pub head_dim: Option<u32>,
+        #[serde(default)]
+        pub hidden_size: Option<u32>,
+        #[serde(default)]
+        pub attention_layout: Option<AttentionLayout>,
+    }
+
+    /// Fill the KV fields one row lacks. Only rows without llmfit's precise KV inputs (layers AND head
+    /// size), and only when the file does not contradict a field the row already has (same layers,
+    /// heads, KV heads, head size, hidden size). Fields the row has are never changed. Returns true when
+    /// something was filled.
+    pub fn fill_kv_fields(m: &mut LlmModel, f: &KvFill) -> bool {
+        if m.num_hidden_layers.is_some() && m.head_dim.is_some() {
+            return false;
+        }
+        let agrees = |a: Option<u32>, b: Option<u32>| a.is_none() || b.is_none() || a == b;
+        if !agrees(m.num_hidden_layers, f.num_hidden_layers)
+            || !agrees(m.num_attention_heads, f.num_attention_heads)
+            || !agrees(m.num_key_value_heads, f.num_key_value_heads)
+            || !agrees(m.head_dim, f.head_dim)
+            || !agrees(m.hidden_size, f.hidden_size)
+        {
+            return false;
+        }
+        let mut changed = false;
+        let mut set = |slot: &mut Option<u32>, v: Option<u32>| {
+            if slot.is_none() && v.is_some() {
+                *slot = v;
+                changed = true;
+            }
+        };
+        set(&mut m.num_hidden_layers, f.num_hidden_layers);
+        set(&mut m.num_attention_heads, f.num_attention_heads);
+        set(&mut m.num_key_value_heads, f.num_key_value_heads);
+        set(&mut m.head_dim, f.head_dim);
+        set(&mut m.hidden_size, f.hidden_size);
+        if m.attention_layout.is_none() && f.attention_layout.is_some() {
+            m.attention_layout = f.attention_layout;
+            changed = true;
+        }
+        changed
+    }
+
+    /// Like `set_extra_models_json`, then fill the KV fields that rows lack from real GGUF headers (a
+    /// JSON list of `KvFill`, matched by llmfit's "same model" key). Returns
+    /// {"count": models, "filled": [names of the rows that changed]}.
+    pub fn set_extra_models_and_fills_json(models_json: &str, fills_json: &str) -> Result<String, String> {
+        let extra: Vec<LlmModel> =
+            serde_json::from_str(models_json).map_err(|e| format!("extra models: {e}"))?;
+        let fills: Vec<KvFill> = serde_json::from_str(fills_json).map_err(|e| format!("KV fills: {e}"))?;
+        let mut db = ModelDatabase::embedded_with_extra(extra);
+        let mut filled = Vec::new();
+        for f in &fills {
+            let key = tt_canonical_slug(&f.name);
+            if let Some(m) = db.tt_models_mut().iter_mut().find(|m| tt_canonical_slug(&m.name) == key) {
+                if fill_kv_fields(m, f) {
+                    filled.push(m.name.clone());
+                }
+            }
+        }
+        let count = db.get_all_models().len();
+        *DB.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(db));
+        serde_json::to_string(&json!({ "count": count, "filled": filled })).map_err(|e| e.to_string())
     }
 }
 
@@ -542,5 +620,11 @@ mod web {
         super::live::set_extra_models_json(models_json)
             .map(|n| u32::try_from(n).unwrap_or(u32::MAX))
             .map_err(|e| JsError::new(&e))
+    }
+
+    #[cfg(feature = "live")]
+    #[wasm_bindgen(js_name = setExtraModelsAndFills)]
+    pub fn set_extra_models_and_fills(models_json: &str, fills_json: &str) -> Result<String, JsError> {
+        super::live::set_extra_models_and_fills_json(models_json, fills_json).map_err(|e| JsError::new(&e))
     }
 }

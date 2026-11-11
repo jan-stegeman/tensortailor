@@ -143,6 +143,18 @@ if (process.argv[3]) {
     check("update URLs", same(JSON.parse(engine.updateUrls()), want.urls), ` (${want.urls.length} URLs)`);
     const again = JSON.parse(engine.unknownIds(JSON.stringify(fixtures.map((f) => f.entry.id))));
     check("added models are known afterwards", again.length === 0 || again.every((id) => !models.some((m) => m.name === id)), ` (${again.length} still unknown)`);
+    // KV fields from a GGUF header for rows of llmfit's own list (the cases chosen by mapcheck.rs).
+    if (want.fill) {
+      const res = JSON.parse(engine.setExtraModelsAndFills(JSON.stringify(models), JSON.stringify(want.fill.fills)));
+      check("KV fills: same rows filled", same(res, want.fill.result), ` (${JSON.stringify(res.filled)}, ${res.count} models)`);
+      const ffits = JSON.parse(engine.fitKeys(JSON.stringify(profiles[0].hardware)));
+      let fdiff = 0;
+      if (ffits.length !== want.fill.fits.length) fdiff = Math.abs(ffits.length - want.fill.fits.length) || 1;
+      else for (let i = 0; i < ffits.length; i++) if (!same(ffits[i], want.fill.fits[i])) { if (fdiff < 5) console.log(`  diff #${i}: wasm=${JSON.stringify(ffits[i])} native=${JSON.stringify(want.fill.fits[i])}`); fdiff++; }
+      check("fits with KV fills", fdiff === 0, ` (${ffits.length} models, ${fdiff} different)`);
+      const name = want.fill.result.filled[0], before = fits.find((f) => f[0] === name), after = ffits.find((f) => f[0] === name);
+      check("the filled row changed", !!before && !!after && !same(before, after), ` (${name}: ${JSON.stringify(before)} -> ${JSON.stringify(after)})`);
+    }
   } catch (e) {
     console.log("FAIL live functions:", e && e.stack ? e.stack : e);
     problems++;
