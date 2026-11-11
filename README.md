@@ -23,7 +23,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
   setting (the same advice as tab Run). Give it LM Studio's models folder once, and it reads the header of each model file: layers, maximum
   context and MTP, like LM Studio itself shows them, and the size of the KV cache (the memory for the context). LM Studio models that llmfit's list does not have are added
   by themselves (read live from Hugging Face, or made from LM Studio's own data), so the filter **Already in LM
-  Studio** in Models shows all of them.
+  Studio** in Models shows all of them. It also asks Hugging Face once a day whether each model file changed there
+  (**update available**, with a link to what changed); **Check SHA-256** compares your file exactly. Nothing is
+  replaced or deleted.
 - **Keep favorites.** Click the star ☆ next to a model (or press `W`). **Only my favorites** shows just those,
   and My models shows the same stars.
 - **Compare.** Tick 2 to 4 models and press **Compare**, or let them fight in **Battle**.
@@ -145,6 +147,7 @@ use made-up demo data.
 | `tools/test-sha256.mjs` | Checks the page's SHA-256 against Node's crypto and measures its speed |
 | `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
+| `tools/test-updates.json` | Update check in My models: a real 1.2 MB GGUF and made-up files in test storage, Hugging Face's paths-info, SHA-256 (run with `CDP_SERVE_DIR`) |
 | `tools/readme-screenshots.json` | The steps that make the README pictures (with demo data) |
 | `docs/screenshots/` | The README pictures, light and dark |
 | `.github/actions/build/` | The build steps, shared by both workflows |

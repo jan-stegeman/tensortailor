@@ -740,6 +740,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
       <dt>My models: your files</dt><dd>My models asks once for LM Studio's models folder (the same folder as for Downloads). TensorTailor matches each model to its file by size and reads only the start of the file. The Arch column then shows the layers and the maximum context ("65 layers · max 256K"); point at it for the KV cache figures (KV heads, head size, how many layers keep the whole context). For models that TensorTailor added itself ("live" or "from LM Studio"), llmfit then counts the KV cache exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
       <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
+      <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256)". Files you got with Downloads already have their SHA-256. TensorTailor never replaces or deletes a file.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash; at the end the file is read back and its SHA-256 compared with Hugging Face's (<b>Check again</b> reads it once more). A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
@@ -2348,11 +2349,13 @@ async function scanLocalGguf(interactive) {
       const f = matchLocalFile(x, files);
       if (!f) continue;
       const path = (f.dir ? f.dir + "/" : "") + f.name;
+      // Size, date and the File itself: for the update check (and its SHA-256 on request).
+      const disk = { size: f.size, mtime: f.file.lastModified, file: f.file, mmproj: matchProjector(x, f, files) };
       try {
         const h = await ggufHeader(f.file);
         const arch = h.kv["general.architecture"] || "";
-        s.byId.set(x.id, { path, arch, blocks: h.kv[arch + ".block_count"] || null, ctx: h.kv[arch + ".context_length"] || null, layers: Number(h.kv[arch + ".nextn_predict_layers"] || 0), kvf: ggufKvFields(h.kv) });
-      } catch (e) { s.byId.set(x.id, { path, error: e.message }); }
+        s.byId.set(x.id, { path, ...disk, arch, blocks: h.kv[arch + ".block_count"] || null, ctx: h.kv[arch + ".context_length"] || null, layers: Number(h.kv[arch + ".nextn_predict_layers"] || 0), kvf: ggufKvFields(h.kv) });
+      } catch (e) { s.byId.set(x.id, { path, ...disk, error: e.message }); }
     }
     s.done = true;
   } catch (e) {
@@ -2363,6 +2366,162 @@ async function scanLocalGguf(interactive) {
   }
   // With the file paths known (or no folder at all), add the LM Studio models that the list does not have.
   if (s.done || !state.dl.root) linkLmsModels(interactive);
+  if (s.done) checkUpdates(false);
+}
+// The vision projector (mmproj) next to the model file, when LM Studio's size is model + projector.
+function matchProjector(x, f, files) {
+  if (!x.sizeBytes) return null;
+  const slack = Math.min(1024 * 1024, x.sizeBytes * 1e-4);
+  const p = files.filter((p) => p.dir === f.dir && IS_MMPROJ.test(p.name) && Math.abs(x.sizeBytes - f.size - p.size) <= slack)
+    .sort((a, b) => Math.abs(x.sizeBytes - f.size - a.size) - Math.abs(x.sizeBytes - f.size - b.size))[0];
+  return p ? { path: (p.dir ? p.dir + "/" : "") + p.name, size: p.size, mtime: p.file.lastModified, file: p.file } : null;
+}
+/* ---------- My models: is there a newer version on Hugging Face? ---------- */
+// LM Studio (and Downloads) keep a file in <publisher>/<repo>/, so the folder names its Hugging Face repo.
+// Hugging Face's paths-info gives size, SHA-256 and the date of the last change of just these files (one request
+// per repo, remembered 24 hours). Another size = update. Same size: the date says "up to date" or "maybe changed";
+// the exact check (SHA-256 of your whole file, read from disk) runs only on your click and is remembered.
+const UPD_KEY = "tt-updates", UPD_HOURS = 24, LSHA_KEY = "tt-local-sha";
+const loadJsonStore = (key) => { try { return JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch (e) { return {}; } };
+const updStore = loadJsonStore(UPD_KEY), lshaStore = loadJsonStore(LSHA_KEY);
+const updState = { busy: false, error: "", hashing: null, done: 0, ctl: null };
+// Your model files that can be checked: { x, path, repo, inRepo, size, mtime, file, role }.
+function updFilesOf(x) {
+  const loc = state.localGguf.byId.get(x.id);
+  if (!loc || !loc.size) return [];
+  return [[loc, "model"], [loc.mmproj, "projector"]].filter(([f]) => f).map(([f, role]) => {
+    const parts = f.path.split("/");
+    return parts.length >= 3 ? { x, path: f.path, repo: parts[0] + "/" + parts[1], inRepo: parts.slice(2).join("/"), size: f.size, mtime: f.mtime, file: f.file, role } : null;
+  }).filter(Boolean);
+}
+function updFiles() { return state.lms.models.filter((x) => !/embed/i.test(x.type)).flatMap(updFilesOf); }
+// The SHA-256 of your file when it is known: checked here before, or by Downloads at the end of a download.
+function localSha(f) {
+  const s = lshaStore[f.path];
+  if (s && s.size === f.size && s.mtime === f.mtime) return s.sha;
+  const j = state.dl.jobs.find((j) => j.repo === f.repo && j.path === f.inRepo && j.status === "done" && j.gotSha && j.bytes === f.size);
+  return j ? j.gotSha : null;
+}
+function updEntry(f) { const e = updStore[f.path]; return e && e.size === f.size && e.mtime === f.mtime ? e : null; }
+const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
+// One file's state: code = update | maybe | ok | same | gone | norepo | error | unknown.
+function updStatus(f) {
+  const e = updEntry(f);
+  if (!e) return { code: "unknown" };
+  if (e.err) return { code: "error", tip: e.err };
+  if (e.noRepo) return { code: "norepo", tip: `There is no public repo ${f.repo} on Hugging Face (or it is private), so TensorTailor cannot compare this file.` };
+  if (!e.hf) return { code: "gone", tip: `${f.inRepo} is not in ${f.repo} on Hugging Face any more (removed or renamed). Your file still works; look at the repo for its newer files.` };
+  const hf = e.hf, change = hf.date ? `Hugging Face changed it on ${dayOf(hf.date)}${hf.title ? ` ("${hf.title}")` : ""}` : "Hugging Face has another version";
+  if (hf.size !== f.size) return { code: "update", tip: `${change}. Its size is now ${gb(hf.size / 1e9)}, yours is ${gb(f.size / 1e9)}.` };
+  const sha = localSha(f);
+  if (sha && hf.sha) return sha === hf.sha ? { code: "same", tip: `Your file's SHA-256 is the same as on Hugging Face (${hf.sha.slice(0, 12)}…). Last change there: ${dayOf(hf.date)}.` }
+    : { code: "update", tip: `${change}. Same size, but the SHA-256 differs from yours.` };
+  if (!hf.date || Date.parse(hf.date) > f.mtime) return { code: "maybe", tip: `${change}${hf.date ? `, after the date of your file (${dayOf(f.mtime)})` : ""}. The size is the same; Check SHA-256 tells for sure.` };
+  return { code: "ok", tip: `Same size as on Hugging Face, and not changed there since your file's date (last change ${dayOf(hf.date)}, your file ${dayOf(f.mtime)}).` };
+}
+async function checkUpdates(force) {
+  if (updState.busy) return;
+  const byRepo = new Map();
+  for (const f of updFiles()) {
+    const e = updEntry(f);
+    if (!force && e && Date.now() - e.t < UPD_HOURS * 36e5) continue;
+    if (!byRepo.has(f.repo)) byRepo.set(f.repo, []);
+    byRepo.get(f.repo).push(f);
+  }
+  if (!byRepo.size) { if (force && state.view === "mine") renderView(); return; }
+  updState.busy = true; updState.error = "";
+  if (state.view === "mine") renderView();
+  try {
+    for (const [repo, files] of byRepo) {
+      const put = (o) => { for (const f of files) updStore[f.path] = { t: Date.now(), size: f.size, mtime: f.mtime, ...(typeof o === "function" ? o(f) : o) }; };
+      try {
+        const body = new URLSearchParams();
+        for (const f of files) body.append("paths", f.inRepo);
+        body.append("expand", "true");
+        const res = await fetch(`https://huggingface.co/api/models/${repo}/paths-info/main`, { method: "POST", body, headers: hfHeaders() });
+        // Without a token Hugging Face answers 401 for a gated repo (X-Error-Code GatedRepo) and for a repo that is
+        // private or not there.
+        if ((res.status === 401 || res.status === 403) && res.headers.get("X-Error-Code") === "GatedRepo") { put({ err: "The repo is gated: accept its terms on Hugging Face and set your token (Tools → Hugging Face token)." }); continue; }
+        if (res.status === 404 || res.status === 401 || res.status === 403) { put({ noRepo: true }); continue; }
+        if (res.status === 429) throw new Error("Hugging Face asks to slow down (too many requests). Wait a minute, or set your token.");
+        if (!res.ok) { put({ err: "Hugging Face answered " + res.status + "." }); continue; }
+        const info = new Map((await res.json()).filter((t) => t.type === "file").map((t) => [t.path, t]));
+        put((f) => {
+          const t = info.get(f.inRepo);
+          return { hf: t ? { size: t.lfs ? t.lfs.size : t.size, sha: t.lfs ? t.lfs.oid : null, date: t.lastCommit ? t.lastCommit.date : null, title: t.lastCommit ? String(t.lastCommit.title || "").slice(0, 120) : "" } : null };
+        });
+      } catch (e) {
+        if (/slow down/.test(e.message)) throw e;
+        put({ err: "No answer from Hugging Face (offline?): " + e.message });
+      }
+    }
+    updState.at = Date.now();
+  } catch (e) { updState.error = e.message; }
+  finally {
+    updState.busy = false;
+    safeSet("localStorage", UPD_KEY, JSON.stringify(updStore));
+    if (state.view === "mine") renderView();
+  }
+}
+// Exact check: read your whole file from disk and compare its SHA-256 with Hugging Face's.
+async function updHash(path) {
+  if (updState.hashing) { toast("One file at a time: wait until the running check is finished."); return; }
+  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
+  const f = updFiles().find((y) => y.path === path);
+  if (!f) return;
+  updState.hashing = path; updState.done = 0; updState.ctl = new AbortController();
+  let last = 0;
+  renderView();
+  try {
+    const sha = await hashFile(f.file, (done) => { updState.done = done; if (Date.now() - last > 700 && state.view === "mine") { last = Date.now(); renderView(); } }, updState.ctl.signal);
+    lshaStore[f.path] = { size: f.size, mtime: f.mtime, sha, t: Date.now() };
+    const keys = Object.keys(lshaStore);
+    if (keys.length > 500) keys.sort((a, b) => lshaStore[a].t - lshaStore[b].t).slice(0, keys.length - 500).forEach((k) => delete lshaStore[k]);
+    safeSet("localStorage", LSHA_KEY, JSON.stringify(lshaStore));
+    const st = updStatus(f);
+    toast(st.code === "same" ? "SHA-256 is the same as on Hugging Face: your file is up to date." : st.code === "update" ? "SHA-256 differs from Hugging Face: a newer version is available." : "SHA-256 read: " + sha.slice(0, 16) + "…");
+  } catch (e) {
+    if (e.name !== "AbortError") toast(/NotReadable|NotFound/.test(e.name || e.message) ? "The file changed or moved since it was read: press Read again above the list." : "Could not read the file: " + e.message);
+  } finally { updState.hashing = null; updState.ctl = null; renderView(); }
+}
+// The update line under a model's name in My models.
+function updLine(x) {
+  const files = updFilesOf(x);
+  if (!files.length) return "";
+  const sts = files.map((f) => ({ f, st: updStatus(f) }));
+  const tip = sts.map(({ f, st }) => `${f.role === "model" ? "Model file" : "Vision projector"} ${f.inRepo}: ${st.tip || (updState.busy ? "checking…" : "not checked yet")}`).join("\n");
+  const hashing = files.find((f) => f.path === updState.hashing);
+  if (hashing) return `<div class="hash" title="${esc(tip)}">Reading ${esc(hashing.inRepo)} for its SHA-256… ${Math.floor(100 * updState.done / Math.max(hashing.size, 1))} % <button class="btn small" data-updstop="1">Stop</button></div>`;
+  const has = (c) => sts.filter((s) => s.st.code === c);
+  const main = files[0], what = `https://huggingface.co/${main.repo}/commits/main/${main.inRepo.split("/").map(encodeURIComponent).join("/")}`;
+  const shaBtn = (list) => list.length ? ` <button class="btn small" data-updsha="${esc(list[0].f.path)}" title="${esc("Read " + list[0].f.inRepo + " (" + gb(list[0].f.size / 1e9) + ") from disk and compare its SHA-256 with Hugging Face's. Takes about a minute per 10 GB.")}">Check SHA-256</button>` : "";
+  if (has("update").length) return `<div class="hash" title="${esc(tip)}"><span class="tag warnish">update available</span> <a href="${esc(what)}" target="_blank" rel="noopener">What changed ↗</a></div>`;
+  if (has("maybe").length) return `<div class="hash" title="${esc(tip)}"><span class="tag">maybe changed</span>${shaBtn(has("maybe"))}</div>`;
+  if (has("error").length) return `<div class="hash" title="${esc(tip)}">update check: could not check</div>`;
+  if (has("norepo").length === sts.length) return `<div class="hash" title="${esc(tip)}">update check: not on Hugging Face</div>`;
+  if (has("unknown").length) return updState.busy ? `<div class="hash">checking for updates…</div>` : "";
+  const gone = has("gone").length ? ` · ${has("gone").map((s) => s.f.role === "model" ? "file" : "projector").join(" and ")} not on Hugging Face any more` : "";
+  if (!has("ok").length && !has("same").length) return `<div class="hash" title="${esc(tip)}">update check: ${sts.length > 1 ? "file and projector" : "file"} not on Hugging Face any more</div>`;
+  const exact = !has("ok").length;
+  return `<div class="hash" title="${esc(tip)}"><span style="color:var(--perfect)">✓ up to date</span> (${exact ? "SHA-256" : "size and date"})${gone}${exact ? "" : shaBtn(has("ok"))}</div>`;
+}
+// The summary line above the table.
+function updSummaryLine() {
+  if (!state.localGguf.done) return "";
+  const files = updFiles();
+  if (!files.length) return "";
+  if (updState.busy) return `<div class="loading">Asking Hugging Face whether your model files changed…</div>`;
+  const n = { update: 0, maybe: 0, ok: 0, gone: 0, norepo: 0, error: 0, unknown: 0 };
+  let oldest = Infinity;
+  for (const f of files) {
+    const st = updStatus(f), e = updEntry(f);
+    if (e) oldest = Math.min(oldest, e.t);
+    n[st.code === "same" ? "ok" : st.code]++;
+  }
+  const parts = [n.update ? `<b>${n.update} update${n.update === 1 ? "" : "s"} available</b>` : "no updates", n.maybe ? `${n.maybe} maybe changed (same size)` : "", n.ok ? `${n.ok} up to date` : "",
+    n.gone ? `${n.gone} not in their repo any more` : "", n.norepo ? `${n.norepo} in a folder that is not a public Hugging Face repo` : "", n.error ? `${n.error} could not be checked (hover the row)` : "", n.unknown ? `${n.unknown} not checked yet` : ""].filter(Boolean);
+  const when = oldest < Infinity ? ` (checked ${new Date(oldest).toTimeString().slice(0, 5)}${dayOf(oldest) !== dayOf(Date.now()) ? " on " + dayOf(oldest) : ""})` : "";
+  return `<p class="hint">Updates on Hugging Face for ${files.length} model files${when}: ${parts.join(" · ")}. TensorTailor never replaces a file by itself. <button class="btn small" id="btnUpdCheck">Check again</button></p>${updState.error ? `<div class="warn-box">${esc(updState.error)}</div>` : ""}`;
 }
 /* ---------- LM Studio models that llmfit's list does not have ---------- */
 // So "Already in LM Studio" in Models shows every LM Studio model: (1) the model's folder name is its Hugging Face
@@ -2490,7 +2649,7 @@ function localGgufLine() {
   if (s.busy) return `<div class="loading">Reading the GGUF headers of your model files${s.folder ? " in " + esc(s.folder) : ""}…</div>`;
   if (s.error) return `<div class="warn-box">Could not read your model files: ${esc(s.error)}</div><p class="hint">${btn("Try again")}</p>`;
   if (s.done) return `<p class="hint">Read from your files in <b>${esc(s.folder)}</b>: ${s.byId.size} of ${n} models matched (${s.files} .gguf files). Layers, maximum context and MTP come from each file's header. ${btn("Read again")}</p>`;
-  if (!state.dl.root) return `<p class="hint">LM Studio does not say which file a model uses. To read MTP, layers and maximum context from your own files, choose LM Studio's models folder (the same folder as for Downloads). TensorTailor only reads the start of each file. ${btn("Choose the models folder")}</p>`;
+  if (!state.dl.root) return `<p class="hint">LM Studio does not say which file a model uses. To read MTP, layers and maximum context from your own files, and to check them for updates on Hugging Face, choose LM Studio's models folder (the same folder as for Downloads). TensorTailor only reads the start of each file. ${btn("Choose the models folder")}</p>`;
   return `<p class="hint">To read MTP, layers and maximum context from your own files in <b>${esc(state.dl.root.name)}</b>, the browser needs your OK once. TensorTailor only reads the start of each file. ${btn("Read the model files")}</p>`;
 }
 
@@ -2544,7 +2703,7 @@ function viewMine() {
     const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (loc.kvf ? "\n" + kvFieldsText(loc.kvf) + "." : "") + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
     // The same favorite star as in the Models list (stars belong to models in llmfit's list).
     const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
-    return `<tr><td><div style="display:flex;gap:6px;align-items:center">${star}<a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}</div></td>
+    return `<tr><td><div style="display:flex;gap:6px;align-items:center">${star}<a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}</div>${isEmb ? "" : updLine(x)}</td>
       <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy)}">MTP</span>` : ""}${locLine}</td>
       <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
@@ -2554,7 +2713,7 @@ function viewMine() {
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card">${localGgufLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <section class="card">${localGgufLine()}${updSummaryLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>`;
 }
 
@@ -3179,6 +3338,9 @@ function wire() {
     if (t.id === "btnLmsLoadGo") { runLmsLoad(); return; }
     if (t.id === "btnNotices") { showAboutText("notices"); return; }
     if (t.id === "btnLocalGguf") { scanLocalGguf(true); return; }
+    if (t.id === "btnUpdCheck") { checkUpdates(true); return; }
+    const us = t.closest("[data-updsha]"); if (us) { updHash(us.dataset.updsha); return; }
+    if (t.closest("[data-updstop]")) { if (updState.ctl) updState.ctl.abort(); return; }
     if (t.id === "btnLicTexts") { showAboutText("licenses"); return; }
     if (t.id === "btnBattlePng") { battlePng(); return; }
   });
