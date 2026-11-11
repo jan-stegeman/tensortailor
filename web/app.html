@@ -727,6 +727,7 @@ details[open] > .fold-head { margin-bottom: 10px; }
     <dl>
       <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. <b>☆ Favorite</b> stars the model. Below the name: the labels, and one line with the facts (parameters, maximum context, license with "(gated)" or "(not gated)", release date, downloads). This part stays in view while you scroll.</dd>
       <dt>Overview</dt><dd>Verdict, memory, speed, and "Which file fits?" for every quantization. When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" lists llmfit's reasons.</dd>
+      <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face with their SHA-256. <b>Download</b> saves a file into your folder and checks it.</dd>
       <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them.</dd>
       <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
@@ -1376,6 +1377,8 @@ function notesFor(r, d) {
   if (g) n.push(`Gated on Hugging Face: accept the terms on the model page, then set your token (Tools → Hugging Face token) to download.`);
   else if (g === false && m.gated) n.push(`License "${m.license}" has its own terms: read them on the model page. Not gated: the files download without a token.`);
   else if (m.gated) n.push(`License "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
+  const kv = kvFillNote(m);
+  if (kv) n.push(kv);
   for (const t of (d && d.detail && d.detail.fit.notes) || []) n.push("llmfit: " + t);
   return n;
 }
@@ -1934,7 +1937,7 @@ function liveMetaToPage() {
 }
 // Give the engine the fetched models, then read the list again.
 async function applyLive() {
-  await call("setExtraModels", JSON.stringify(state.live.models));
+  await setExtraAndFills();
   state.catalog = await call("catalog");
   state.byName.clear();
   for (const c of state.catalog) state.byName.set(c.name, c);
@@ -2213,6 +2216,8 @@ async function loadGgufHeader(m, repo, path) {
     const x = state.mtp.get(m.id) || {};
     x.gguf = { file: path.split("/").pop(), layers };
     state.mtp.set(m.id, x);
+    // A row of llmfit's list without layer data gets the KV cache fields of this real file.
+    if (entry.kvf && addKvFill(m.id, entry.kvf, repo + "/" + path)) setTimeout(applyKvFills, 0);
   } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
   renderDetail();
 }
@@ -2367,7 +2372,7 @@ async function scanLocalGguf(interactive) {
     if (state.view === "mine") renderView();
   }
   // With the file paths known (or no folder at all), add the LM Studio models that the list does not have.
-  if (s.done || !state.dl.root) linkLmsModels(interactive);
+  if (s.done || !state.dl.root) Promise.resolve(linkLmsModels(interactive)).then(() => { if (s.done) kvFillsFromFiles(); });
   if (s.done) { checkUpdates(false); findGroups(true); }
 }
 // The vision projector (mmproj) next to the model file, when LM Studio's size is model + projector.
@@ -2640,6 +2645,77 @@ function simGroupsCard(totalGB) {
       <p class="hint">Keeping only one of them would free up to <b>${gb(g.free)}</b>.</p>`;
   };
   return `<section class="card">${head}${err}<p class="hint" style="margin-top:0">${gs.length} group${gs.length === 1 ? "" : "s"} of models made from the same base model (fine-tunes, uncensored versions or other quants). Together ${gb(gs.reduce((t, g) => t + g.total, 0))}; keeping one per group would free up to ${gb(gs.reduce((t, g) => t + g.free, 0))}.</p>${gs.map(block).join("")}${foot}</section>`;
+}
+/* ---------- KV cache fields from GGUF headers for rows of llmfit's own list ---------- */
+// llmfit counts the KV cache (the memory for the context) exactly only when it knows a model's layers and head
+// size; about 4,900 rows of its list do not, so it uses a rough rule there. When TensorTailor has read a real GGUF
+// header of such a model (your file in My models, or a file in the Files tab), the engine fills the KV fields the
+// row lacks (setExtraModelsAndFills): never a field the row has, never when the file contradicts the row.
+// Remembered in localStorage "tt-kv-fills" (max 500); "none" = the engine did not need it (the row was exact).
+const KVFILL_KEY = "tt-kv-fills";
+const kvFills = loadJsonStore(KVFILL_KEY);
+let kvFillEngine = true;   // false when the engine is older than setExtraModelsAndFills
+function kvFillsJson() { return JSON.stringify(Object.entries(kvFills).filter(([, v]) => !v.none).map(([name, v]) => ({ name, ...v.f }))); }
+// Give the engine the fetched models and the KV fields. An older engine gets the fetched models only.
+async function setExtraAndFills() {
+  const fills = kvFillsJson();
+  if (kvFillEngine && fills !== "[]") {
+    try {
+      const r = await call("setExtraModelsAndFills", JSON.stringify(state.live.models), fills);
+      state.kvFilled = new Set(r.filled || []);
+      let changed = false;
+      for (const [name, v] of Object.entries(kvFills)) if (!v.none && !state.kvFilled.has(name)) { v.none = true; changed = true; }
+      if (changed) safeSet("localStorage", KVFILL_KEY, JSON.stringify(kvFills));
+      return;
+    } catch (e) {
+      if (!/not a function/i.test(String((e && e.message) || e))) throw e;
+      kvFillEngine = false;
+    }
+  }
+  state.kvFilled = new Set();
+  await call("setExtraModels", JSON.stringify(state.live.models));
+}
+// Remember a header's KV fields for a row of llmfit's own list. True when something new is to be applied.
+function addKvFill(name, kvf, src) {
+  if (!name || !kvf || !state.byName.has(name) || state.live.meta[name]) return false;  // added rows get them directly
+  const old = kvFills[name];
+  if (old && JSON.stringify(old.f) === JSON.stringify(kvf)) return false;
+  kvFills[name] = { f: kvf, src, t: Date.now() };
+  const keys = Object.keys(kvFills);
+  if (keys.length > 500) keys.sort((a, b) => kvFills[a].t - kvFills[b].t).slice(0, keys.length - 500).forEach((k) => delete kvFills[k]);
+  safeSet("localStorage", KVFILL_KEY, JSON.stringify(kvFills));
+  return kvFillEngine;
+}
+let kvFillBusy = false;
+// Waits (up to a minute) while the page is adding LM Studio models; a second call during a run has nothing
+// left to do, because every run sends all remembered fields.
+async function applyKvFills() {
+  for (let i = 0; i < 120 && (kvFillBusy || state.lmsLinkBusy); i++) await new Promise((res) => setTimeout(res, 500));
+  if (kvFillBusy) return;
+  kvFillBusy = true;
+  try { await applyLive(); } catch (e) { toast("Could not use the file's KV cache fields: " + e.message); }
+  finally { kvFillBusy = false; }
+  if (state.view === "mine") renderView();
+}
+// Your model files (My models): the matched row of llmfit's list gets the KV fields of your file's header.
+function kvFillsFromFiles() {
+  let any = false;
+  for (const x of state.lms.models) {
+    const loc = state.localGguf.byId.get(x.id), cat = loc && loc.kvf ? catalogFor(x) : null;
+    if (cat && addKvFill(cat.m.id, loc.kvf, "your file " + loc.path)) any = true;
+  }
+  if (any) applyKvFills();
+}
+// My models: your models whose row in llmfit's list now counts the KV cache from your file.
+function kvFillLine() {
+  if (!state.kvFilled || !state.kvFilled.size) return "";
+  const names = state.lms.models.filter((x) => { const c = catalogFor(x); return c && state.kvFilled.has(c.m.id); }).map((x) => x.name);
+  return names.length ? `<p class="hint">KV cache of llmfit's own rows now counted from your files' headers (llmfit's list has no layer data for them): ${names.map(esc).join(", ")}.</p>` : "";
+}
+function kvFillNote(m) {
+  if (!state.kvFilled || !state.kvFilled.has(m.id)) return "";
+  const v = kvFills[m.id];
+  return `KV cache counted from the GGUF header of ${v ? v.src : "a real file"} (${kvFieldsText(v ? v.f : {}).replace(/^KV cache from the file: /, "")}): llmfit's list has no layer data for this model, so it would use a rough rule.`;
 }
 /* ---------- Estimate next to measurement ---------- */
 // "Measure" asks LM Studio (POST /api/v1/chat, store: false) to write a short text with a model that is ALREADY
@@ -2915,7 +2991,7 @@ function viewMine() {
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card">${localGgufLine()}${updSummaryLine()}${measSummaryLine()}${lmsLinkLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <section class="card">${localGgufLine()}${updSummaryLine()}${measSummaryLine()}${lmsLinkLine()}${kvFillLine()}<table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
       <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>${simGroupsCard(totalGB)}`;
 }
 
@@ -3634,9 +3710,13 @@ function wire() {
     banner(`Reading ${Number(state.info.catalog_models || 0).toLocaleString("en")} models…`, "busy");
     if (state.info.live) {
       loadLiveStore();
-      if (state.live.models.length) {
-        try { await call("setExtraModels", JSON.stringify(state.live.models)); }
-        catch (e) { state.live = { models: [], meta: {}, at: "" }; saveLiveStore(); }
+      if (state.live.models.length || kvFillsJson() !== "[]") {
+        try { await setExtraAndFills(); }
+        catch (e) {
+          // Without the KV fields first; then without the fetched models.
+          try { state.kvFilled = new Set(); await call("setExtraModels", JSON.stringify(state.live.models)); }
+          catch (e2) { state.live = { models: [], meta: {}, at: "" }; saveLiveStore(); }
+        }
       }
     }
     state.catalog = await call("catalog");

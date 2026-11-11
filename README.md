@@ -102,7 +102,10 @@ change in the page).
   the clock in the recency bonus, and llmfit's update code split so the page can fetch from Hugging Face itself
   and then use llmfit's own conversion (`engine/tools/patch-llmfit.sh`). One data change: llmfit's cache of
   benchmark results from localmaxxing.com is left out (`engine/tools/strip-benchmark-cache.sh`), because their
-  terms give no license for the data; llmfit's own community results (MIT) stay in.
+  terms give no license for the data; llmfit's own community results (MIT) stay in. And one small addition:
+  for the about 4,900 models in llmfit's list without layer data, the engine fills in the KV cache values from a
+  real GGUF header that the page has read (`setExtraModelsAndFills`: never a value llmfit has, never when the
+  file disagrees), so the memory for the context is exact instead of a rough rule.
 - **Model list:** every Monday `.github/workflows/catalog.yml` runs llmfit's own scraper (same llmfit version as
   the engine) and stores a fresh catalog as the pre-release `catalog`, after llmfit's own checks. The Tuesday
   release uses it; if it is missing, old or failed, the release uses llmfit's own catalog. The release notes say
@@ -156,6 +159,7 @@ use made-up demo data.
 | `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
+| `tools/test-kv-fill.json` | KV cache fields from a GGUF header for rows of llmfit's list without layer data (Files tab and My models); exact rows untouched |
 | `tools/test-measure.json` | Measure in My models with a made-up LM Studio: warm-up + measured run, never a load, the factor for this PC |
 | `tools/test-groups.json` | Similar models in My models: made-up files under real repo names, Hugging Face's base models, the file-header fallback (run with `CDP_SERVE_DIR`) |
 | `tools/test-updates.json` | Update check in My models: a real 1.2 MB GGUF and made-up files in test storage, Hugging Face's paths-info, SHA-256 (run with `CDP_SERVE_DIR`) |
