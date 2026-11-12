@@ -973,6 +973,10 @@ details.by-hand .hint { margin-top: 6px; }
 .view-pane { container: view / inline-size; }
 .mtable .d-id { overflow-wrap: normal; word-break: normal; }
 .mine-card { overflow-x: auto; }
+/* Numbered steps in an empty state (My models without LM Studio). */
+.es-steps { text-align: left; margin: 0 auto 18px; padding-left: 22px; max-width: 400px; font-size: 13.5px; line-height: 1.8; color: var(--text-2); }
+/* The Measure button on its own line under the speed (it touched "32–43 tok/s"). */
+.mtable [data-measure] { display: block; margin: 6px 0 0 auto; }
 @container view (max-width: 1150px) { .mine-card .mtable th:nth-child(2), .mine-card .mtable td:nth-child(2) { display: none; } }
 </style>
 </head>
@@ -1205,7 +1209,7 @@ details.by-hand .hint { margin-top: 6px; }
     </dl>
     <h3>Above the list</h3>
     <dl>
-      <dt>Top picks for this PC</dt><dd>Three suggestions that follow your filters: <b>Best overall</b>, <b>Highest quality</b> and <b>Fastest</b>, each with its verdict, file and speed. <b>View details</b> opens the model; <b>Add to battle</b> puts it in Battle. Closed, they are one slim strip with the three names (click a name to open it); the arrow at its right, or the sparkle button next to Sort, shows them as cards; <b>Hide</b> folds the cards back into the strip.</dd>
+      <dt>Top picks for this PC</dt><dd>Three suggestions that follow your filters: <b>Best overall</b>, <b>Highest quality</b> and <b>Fastest</b>, each with its verdict, file and speed. <b>View details</b> opens the model; <b>Add to battle</b> puts it in Battle. Closed (the start), they are one slim strip with the three names (click a name to open it); the arrow at its right, or the sparkle button next to Sort, shows them as cards; <b>Hide</b> folds the cards back into the strip.</dd>
       <dt>The four tiles</dt><dd>The segments at the left of the toolbar count each verdict. Click one to show or hide those models; a hidden one is grey and says "hidden".</dd>
       <dt>Count line</dt><dd>At the right of the filter chips: how many models are shown, how many the tiles hide, how many llmfit analysed, and how long that took.</dd>
       <dt>Filter chips</dt><dd>Every active filter is a chip: click its × to remove it. <b>Clear all</b> shows every analysed model; <b>Defaults</b> gives the start values.</dd>
@@ -1592,8 +1596,10 @@ function modelView(name, row, F) {
   const c = state.byName.get(name) || { name };
   const meta = state.meta.get(name) || { downloads: 0, likes: 0, langs: [] };
   const params = c.parameters_raw ? c.parameters_raw / 1e9 : parseFloat(c.parameter_count) * (/M$/i.test(c.parameter_count || "") ? 0.001 : 1) || 0;
+  // A row made from LM Studio's data without a repo ("lmstudio/<key>") shows LM Studio's own name, as in My models.
+  const lmsX = /^lmstudio\//i.test(name) && state.live.meta[name] && state.live.meta[name].src === "lms" ? state.lms.models.find((x) => state.lmsLinks[x.id] === name) : null;
   m = {
-    id: name, name: shortName(name), provider: c.provider || name.split("/")[0], params,
+    id: name, name: lmsX && lmsX.name ? lmsX.name : shortName(name), provider: c.provider || name.split("/")[0], params,
     active: c.active_parameters ? c.active_parameters / 1e9 : null, moe: !!c.is_moe,
     ctx: c.context_length || 0, uses: [ucKey(row[F.use_case])], license: c.license || "unknown",
     gated: GATED_LICENSES.test(c.license || ""), langs: meta.langs, caps: capsOf(c),
@@ -1928,6 +1934,8 @@ function renderSuggest() {
   const bestOverall = ok.filter((r) => r.best.lo >= 12).sort((a, b) => b.best.score - a.best.score)[0];
   const smartest = ok.filter((r) => r.best.lo >= READING_PACE).sort((a, b) => b.best.parts.quality - a.best.parts.quality || b.best.score - a.best.score)[0];
   const fastest = ok.filter((r) => r.best.parts.quality >= 60).sort((a, b) => b.best.tps - a.best.tps)[0];
+  // Nothing to suggest (for example a search without results): no empty cards above the empty list.
+  if (!bestOverall && !smartest && !fastest) { el.hidden = true; return; }
   // Closed: one slim strip with the three names (click one to open it). Open: three cards.
   if (!state.picksOpen) {
     const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedRange(r.best) + " tok/s\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(r.m.name)}</b></button>` : "";
@@ -2488,7 +2496,7 @@ function tabPlan(r, d) {
     ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : !plan ? `<div class="warn-box">${esc(d.planErr || "No plan for this model.")}</div>` : `
       <div class="stats plan-need"><div class="stat"><div class="k">Minimum</div>${hwTile(plan.minimum)}</div><div class="stat"><div class="k">Recommended</div>${hwTile(plan.recommended)}</div></div>
       <table class="ptable" style="margin-top:10px"><thead><tr><th>Route</th><th>Possible here</th><th class="r">tok/s</th></tr></thead><tbody>${(plan.run_paths || []).map((p) => `<tr><td>${esc(ROUTE_NAME[p.path] || String(p.path).replace(/_/g, " "))}</td><td>${p.feasible ? (p.fit_level ? verdict(plainOf(LEVEL[p.fit_level] || "tight", p.path === "gpu" ? "GPU" : p.path === "cpu_only" ? "CPU" : "CPU+GPU")) : "yes") : '<span class="tag">no</span>'}</td><td class="r">${p.estimated_tps ? fmtT(p.estimated_tps) : "—"}</td></tr>`).join("")}</tbody></table>
-      ${(plan.upgrade_deltas || []).length ? `<div class="upg-h">What would make it better?</div><ul class="upg-list">${plan.upgrade_deltas.map((u) => `<li>${upgText(u.description)}</li>`).join("")}</ul>` : `<div class="ok-box">No upgrade needed for this model.</div>`}`}
+      ${(() => { const ups = (plan.upgrade_deltas || []).filter((u) => !(u.add_gb != null && u.add_gb < 0.05) && !(u.add_cores != null && u.add_cores <= 0)); return ups.length ? `<div class="upg-h">What would make it better?</div><ul class="upg-list">${ups.map((u) => `<li>${upgText(u.description)}</li>`).join("")}</ul>` : `<div class="ok-box">No upgrade needed for this model.</div>`; })()}`}
   </section>
   <section class="card"><div class="card-head"><h2>Can it reach my speed?</h2><span class="ctx-value">${state.plan.target} tok/s</span></div>
     <input type="range" id="planTarget" min="5" max="150" step="5" value="${state.plan.target}" aria-label="Target speed">
@@ -2501,7 +2509,7 @@ function tabPlan(r, d) {
   </section>
   <section class="card"><div class="card-head"><h2>Disk space for my best models</h2><span class="ctx-value">keep ${keep}</span></div>
     <input type="range" id="planKeep" min="1" max="10" step="1" value="${keep}" aria-label="Number of models to keep">
-    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${gb(disk)}</div><small>needed (files + 10% + 20 GB for downloads, rough)</small></div><div><div class="big-num">${state.hw.freeDisk != null ? gb(state.hw.freeDisk) : "?"}</div><small>free on D: ${state.hw.freeDisk == null ? "(import to see)" : ""}</small></div></div>
+    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${gb(disk)}</div><small>needed (files + 10% + 20 GB for downloads, rough)</small></div><div><div class="big-num">${state.hw.freeDisk != null ? gb(state.hw.freeDisk) : "—"}</div><small>${state.hw.freeDisk != null ? "free on D:" : "free on D: not known. <b>Import…</b> (Your hardware) reads it from your PC."}</small></div></div>
     <p class="hint">The ${keep} best with the current filters: ${top.map((x) => esc(x.m.name) + " " + esc(x.best.q)).join(", ")}.</p>
   </section>`;
 }
@@ -2519,7 +2527,7 @@ function renderDetail() {
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   // The answer first (verdict, file, one action); model facts as one quiet line; the header stays in view.
   const fav = state.watch.has(m.id), b = r.best;
-  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`, m.license ? m.license + (gatedOf(m.id) ? " (gated)" : gatedOf(m.id) === false && m.gated ? " (not gated)" : "") : gatedOf(m.id) ? "gated" : "", m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
+  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`, m.license && m.license !== "unknown" ? m.license +(gatedOf(m.id) ? " (gated)" : gatedOf(m.id) === false && m.gated ? " (not gated)" : "") : gatedOf(m.id) ? "gated" : "", m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
   const lmsQ = lms && lms.quantization ? lms.quantization.toUpperCase() : "";
   const action = lms && state.lms.online && !/embed/i.test(lms.type) && b.plain !== "nofit"
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
@@ -3582,14 +3590,14 @@ const KPI_ICON = {
   measured: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>'
 };
 function mineKpis(totalGB) {
-  const s = state.lms, lg = state.localGguf, nModels = s.models.filter((x) => !/embed/i.test(x.type)).length;
+  const s = state.lms, lg = state.localGguf, nModels = s.models.filter((x) => !/embed/i.test(x.type)).length, nEmb = s.models.length - nModels;
   const files = lg.done ? updFiles() : [], codes = files.map((f) => updStatus(f).code);
   const nUpd = codes.filter((c) => c === "update").length, nChecked = codes.filter((c) => c !== "unknown").length;
   const gs = grpState.done ? simGroups() : [], gTotal = gs.reduce((t, g) => t + g.total, 0), gFree = gs.reduce((t, g) => t + g.free, 0);
   const nMeas = Object.keys(measStore).length, pf = pcFactor();
   const card = (key, c, label, value, unit, note) => `<div class="card kpi" style="--c:${c}"><span class="kpi-l">${label}</span><span class="kpi-ic" aria-hidden="true">${KPI_ICON[key]}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ""}</b><p>${note}</p></div>`;
   return `<div class="kpis">${[
-    card("models", "var(--accent)", "Models", nModels, "", lg.done ? `${lg.byId.size} of ${s.models.length} files read from <b>${esc(lg.folder)}</b>` : "Model files not read yet"),
+    card("models", "var(--accent)", "Models", nModels, "", (nEmb ? `+ ${nEmb} embedding model${nEmb === 1 ? "" : "s"} · ` : "") + (lg.done ?`${lg.byId.size} of ${s.models.length} files read from <b>${esc(lg.folder)}</b>` : "Model files not read yet")),
     card("disk", "var(--good)", "On disk", totalGB.toFixed(totalGB >= 100 ? 0 : 1), "GB", `${s.models.length} models in LM Studio`),
     card("updates", nUpd ? "var(--marginal)" : "var(--perfect)", "Updates", lg.done && files.length ? nUpd : "—", "", !lg.done || !files.length ? "Read your models folder to check" : updState.busy ? "Checking on Hugging Face…" : `${nUpd ? `<b>${nUpd} available</b>` : "<b>All up to date</b>"} · ${nChecked} of ${files.length} files checked`),
     card("similar", "var(--marginal)", "Similar", gs.length ? gTotal.toFixed(1) : "0", gs.length ? "GB" : "", gs.length ? `${gs.length} group${gs.length === 1 ? "" : "s"} · up to <b>${gb(gFree)}</b> to free` : grpState.busy ? "Looking up base models…" : "No two models share a base model"),
@@ -3601,8 +3609,12 @@ function viewMine() {
   if (s.online && state.dl.root && !state.localGguf.done && !state.localGguf.busy && !state.localGguf.needClick && !state.localGguf.error) setTimeout(() => scanLocalGguf(false), 0);
   // Without the folder's file paths, the groups start from the matched models of llmfit's list.
   else if (s.online && state.ready && !grpState.done && !grpState.busy && !state.localGguf.busy) setTimeout(() => findGroups(false), 0);
-  if (!s.online) return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot warn"></span>${s.checked ? "LM Studio's server is not reachable at 127.0.0.1:1234." : "Looking for LM Studio…"}</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
-    <section class="card"><p class="hint" style="margin-top:0">Start LM Studio, open the <b>Developer</b> tab, switch the server <b>on</b>, and press <b>Refresh</b>. TensorTailor then lists your models, their size and how well they run here.</p></section>`;
+  // LM Studio off: a real empty state with numbered steps and one big button (it was one line and an empty page).
+  if (!s.online) return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot warn"></span>${s.checked ? "LM Studio's server is not reachable at 127.0.0.1:1234." : "Looking for LM Studio…"}</span></div>
+    <section class="card">${s.checked ? emptyState(ES_ICON.plug, "Connect LM Studio", "TensorTailor reads your models from LM Studio's server on this PC (127.0.0.1:1234). Nothing leaves your PC.",
+      `<button class="btn primary" id="btnLmsRefresh">Try again</button>`,
+      `<ol class="es-steps"><li>Start <b>LM Studio</b>.</li><li>Open the <b>Developer</b> tab.</li><li>Switch the server <b>on</b> (Status: Running).</li><li>Press <b>Try again</b>. Still nothing? Switch on <b>Enable CORS</b> in the server settings.</li></ol>`)
+      : `<div class="loading">Looking for LM Studio…</div>`}</section>`;
   const totalGB = s.models.reduce((t, x) => t + (x.sizeGB || 0), 0);
   const rows = s.models.map((x) => {
     const isEmb = /embed/i.test(x.type);
@@ -3634,14 +3646,14 @@ function viewMine() {
       <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : fileMtp ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy + "\nIn LM Studio's load settings, turn on speculative decoding with MTP (or use Load in LM Studio in the Run tab).")}">MTP in file</span>` : fileMtp === null && x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model, or read your model files (above the list), to know for sure.")}">MTP (name)</span>` : ""}${warn}</td>
-      <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
+      <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? (lmsOnly(cat.m.id) ? "made from LM Studio's data" : "llmfit: " + esc(cat.m.id)) : "from your file (rough)"}</div>` : "—"}</td>
       <td class="r"${rangeTip ? ` title="${esc(rangeTip)}"` : ""}>${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "") + measCell(x)}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
     ${mineKpis(totalGB)}
     <section class="card mine-card"><div class="mine-status">${localGgufLine()}${updSummaryLine()}${measSummaryLine()}${lmsLinkLine()}${kvFillLine()}</div><table class="mtable"><thead><tr><th>Model in LM Studio</th><th title="Architecture (model design), as LM Studio reports it">Arch</th><th class="r" title="Number of parameters, as LM Studio reports it">Params</th><th>Quant</th><th class="r">On disk</th><th>State</th><th>Verdict here</th><th class="r">Speed</th><th>Best setting</th><th></th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>${simGroupsCard(totalGB)}`;
+      <p class="hint">"llmfit: …" = matched to a model in llmfit's list (the match is by name; check it). "made from LM Studio's data" = a row TensorTailor made from LM Studio and the file header. "from your file (rough)" = not matched, so the verdict comes from the file size LM Studio reports. "Best setting" for a matched model comes from llmfit's planner, the same advice as the LM Studio card in the Run tab (with your quant, capped at LM Studio's maximum context).</p></section>${simGroupsCard(totalGB)}`;
 }
 
 /* ===================== Battle ===================== */
@@ -3656,12 +3668,13 @@ function battlePoints(r) {
 const ROUND_COL = { quality: "var(--accent)", speed: "var(--good)", memory: "var(--marginal)", context: "var(--perfect)" };
 const ORDINAL = ["1st", "2nd", "3rd", "4th"];
 // A friendly empty state: an icon tile, a title, a sentence and actions.
-function emptyState(icon, title, text, actions) {
-  return `<div class="empty-state"><span class="es-art" aria-hidden="true">${icon}</span><h2>${title}</h2><p>${text}</p>${actions ? `<div class="es-acts">${actions}</div>` : ""}</div>`;
+function emptyState(icon, title, text, actions, extra) {
+  return `<div class="empty-state"><span class="es-art" aria-hidden="true">${icon}</span><h2>${title}</h2><p>${text}</p>${extra || ""}${actions ? `<div class="es-acts">${actions}</div>` : ""}</div>`;
 }
 const ES_ICON = {
   battle: '<svg viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>',
   search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  plug: '<svg viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0zM12 17v5"/></svg>',
   down: '<svg viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg>'
 };
 function viewBattle() {
@@ -4437,7 +4450,8 @@ function wire() {
   try { const l = JSON.parse(safeGet("localStorage", "tt-lms-links") || "{}"); if (l && typeof l === "object" && !Array.isArray(l)) state.lmsLinks = l; } catch (e) { /* ignore */ }
   loadPrefs();
   // Top picks: open on a first visit, then as the user left them.
-  state.picksOpen = safeGet("localStorage", "tt-picks") !== "0";
+  // Closed by default (one slim strip), so a new visitor sees more model rows; the choice is remembered.
+  state.picksOpen = safeGet("localStorage", "tt-picks") === "1";
   $("btnSuggest").setAttribute("aria-pressed", String(state.picksOpen));
   try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
   // First visit (no saved hardware yet): show the hardware fields open.
