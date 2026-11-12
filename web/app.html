@@ -1154,10 +1154,10 @@ details.by-hand .hint { margin-top: 6px; }
 <dialog id="dlgImport" aria-labelledby="dlgImport-title">
   <div class="dlg-head"><h2 id="dlgImport-title">Import your hardware</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body">
-    <p>1. Copy this line. 2. Paste it in PowerShell and press Enter. It copies your hardware, the VRAM in use right now and your free disk space as text. 3. Paste that text in the box below.</p>
+    <p>1. Copy this line. 2. Paste it in PowerShell and press Enter. It copies your hardware, the VRAM in use right now and the free space on the drive with LM Studio's models folder as text. 3. Paste that text in the box below.</p>
     <pre class="snippet" id="psSnippet"></pre>
     <div><button class="btn small" id="btnCopySnippet">Copy the PowerShell line</button></div>
-    <textarea id="importText" placeholder='{"ram_gb":128,"gpu_name":"NVIDIA GeForce RTX 3090","vram_gb":24,"vram_used_gb":1.1,"gpu_count":1,"cpu_cores":64,"free_drive":"D:","free_gb":1800}' aria-label="Hardware text"></textarea>
+    <textarea id="importText" placeholder='{"ram_gb":128,"gpu_name":"NVIDIA GeForce RTX 3090","vram_gb":24,"vram_used_gb":1.1,"gpu_count":1,"cpu_cores":64,"models_folder":"C:\\Users\\you\\.lmstudio\\models","free_drive":"C:","free_gb":800}' aria-label="Hardware text"></textarea>
   </div>
   <div class="dlg-foot"><button class="btn primary" id="btnImportApply">Use this hardware</button></div>
 </dialog>
@@ -1261,7 +1261,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Kept for Windows</dt><dd>VRAM that Windows and your screens use. Not available for models.</dd>
       <dt>RAM speed</dt><dd>How fast system RAM is (GB/s). Sets the speed of the part that runs from RAM.</dd>
       <dt>CPU cores</dt><dd>Used for the CPU part of a model.</dd>
-      <dt>Detect · Import…</dt><dd>Fill these in from the browser, or from a PowerShell line that reads your real hardware.</dd>
+      <dt>Detect · Import…</dt><dd><b>Detect in browser</b> fills in the GPU name the browser shows and its VRAM from a table; the browser cannot tell RAM or CPU cores, so those stay as they are. <b>Import…</b> gives a PowerShell line that reads your real hardware: GPU and VRAM (also without nvidia-smi), RAM, CPU cores, the VRAM in use now (for "Kept for Windows") and the free space on the drive with LM Studio's models folder.</dd>
       <dt>What if I upgrade?</dt><dd>Shows which models would run well with one more GPU or 128 GB more RAM (label "upgrade").</dd>
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
@@ -3791,7 +3791,7 @@ function battlePng() {
   const g = c.getContext("2d"), cs = getComputedStyle(document.documentElement), col = (v) => cs.getPropertyValue(v).trim() || "#888";
   g.fillStyle = col("--panel"); g.fillRect(0, 0, c.width, c.height);
   g.fillStyle = col("--text"); g.font = "bold 30px Segoe UI, sans-serif"; g.fillText("TensorTailor battle", 40, 60);
-  g.font = "16px Segoe UI, sans-serif"; g.fillStyle = col("--muted"); g.fillText(`${state.hw.gpuName} · ${state.hw.vram * state.hw.gpus} GB VRAM · ${state.hw.ram} GB RAM · ${fmtCtx(CTX_STEPS[state.ctxIdx])} context · llmfit ${state.info.llmfit_ref || ""}`, 40, 90);
+  g.font = "16px Segoe UI, sans-serif"; g.fillStyle = col("--muted"); g.fillText(`${state.hw.gpus ? `${state.hw.gpuName} · ${state.hw.vram * state.hw.gpus} GB VRAM` : "CPU only"} · ${state.hw.ram} GB RAM · ${fmtCtx(CTX_STEPS[state.ctxIdx])} context · llmfit ${state.info.llmfit_ref || ""}`, 40, 90);
   rs.sort((a, b) => (b.p ? b.p.total : -1) - (a.p ? a.p.total : -1)).forEach((f, i) => {
     const y = 130 + i * 70;
     g.fillStyle = i === 0 && f.p ? col("--perfect") : col("--text"); g.font = "bold 22px Segoe UI, sans-serif"; g.fillText(`${i + 1}. ${f.r.m.name}`.slice(0, 42), 40, y + 24);
@@ -4214,6 +4214,8 @@ function applyHardware(src) {
   const h = state.hw;
   h.vram = Math.max(0, Number($("vram").value) || 0); h.gpus = Number($("gpus").value); h.ram = Math.max(4, Number($("ram").value) || 4);
   h.reserve = clamp(Number($("reserve").value) || 0, 0, 8); h.ramBw = clamp(Number($("ramBw").value) || 50, 5, 1000); h.cores = Math.max(1, Number($("cores").value) || 1);
+  // The fields show the values that are used (an import can give "Kept for Windows" 10.25; the limit is 8).
+  $("vram").value = h.vram; $("ram").value = h.ram; $("reserve").value = h.reserve; $("ramBw").value = h.ramBw; $("cores").value = h.cores;
   if (src) { const t = $("hwSource"); t.textContent = src; t.className = "tag" + (src === "from browser" ? " browser" : src === "imported" ? " imported" : ""); }
   saveHw(); renderUsable(); recomputeSoon();
 }
@@ -4222,18 +4224,21 @@ function detectInBrowser() {
   let renderer = "";
   try { const gl = document.createElement("canvas").getContext("webgl"); const ext = gl && gl.getExtension("WEBGL_debug_renderer_info"); renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ""; } catch (e) { renderer = ""; }
   const m = /((?:NVIDIA |AMD |Intel\(R\) )?(?:GeForce|Radeon|Arc|Quadro|RTX|Tesla)[^,(]*)/.exec(renderer || "");
+  // The browser's thread count says little about the CPU: Chrome on Windows shows at most one processor
+  // group (64 on a 128-thread CPU), and cores vs threads is not known. So cores and the CPU name stay.
   const threads = navigator.hardwareConcurrency || 0;
-  if (!m && !threads) { toast("The browser did not share hardware details."); return; }
-  state.hw.cpuName = ""; $("cpuName").textContent = "";
-  if (threads > 0) $("cores").value = Math.max(1, Math.round(threads / 2));
-  if (m) {
-    const gpu = m[1].replace(/\s+Direct3D.*$/, "").trim(), known = lookupGpu(gpu);
-    setGpuName(gpu);
-    toast(known ? `Found ${gpu} and ${threads} CPU threads. Check RAM, VRAM and cores yourself.` : `Found ${gpu}, but its VRAM is not in the table. Enter VRAM and RAM yourself, or use Import….`);
-  } else toast(`Found ${threads} CPU threads (~${Math.max(1, Math.round(threads / 2))} cores). The browser did not show the GPU name.`);
+  if (!m) { toast(`The browser did not show the GPU name${threads ? ` (it only shows ${threads} CPU threads)` : ""}. Nothing changed; use Import… for exact values.`); return; }
+  const gpu = m[1].replace(/\s+Direct3D.*$/, "").trim(), known = lookupGpu(gpu);
+  setGpuName(gpu);
+  if (Number($("gpus").value) === 0) $("gpus").value = "1";
+  toast(known ? `Found ${gpu}: ${known[1]} GB VRAM from the table. Check RAM and CPU cores yourself, or use Import… for exact values.` : `Found ${gpu}, but its VRAM is not in the table. Enter VRAM yourself, or use Import….`);
   applyHardware("from browser");
 }
-const PS_LINE = `$n = @($(if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits 2>$null }) | Where-Object { $_ -match ',' }); $w = @(if (-not $n.Count) { Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.AdapterRAM -gt 0 } }); $c = Get-CimInstance Win32_Processor | Select-Object -First 1; $drv = if (Test-Path 'D:\\') { 'D' } else { ($env:SystemDrive -replace ':','') }; $ps = Get-PSDrive $drv -ErrorAction SilentlyContinue; @{ ram_gb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB); gpu_name = if ($n.Count) { ($n[0] -split ',')[0].Trim() } elseif ($w.Count) { $w[0].Name.Trim() } else { 'CPU only' }; vram_gb = if ($n.Count) { [math]::Round([double]($n[0] -split ',')[1] / 1024) } elseif ($w.Count) { [math]::Round($w[0].AdapterRAM / 1GB) } else { 0 }; vram_used_gb = if ($n.Count) { [math]::Round([double]($n[0] -split ',')[2] / 1024, 1) } else { 1 }; gpu_count = if ($n.Count) { $n.Count } elseif ($w.Count) { 1 } else { 0 }; cpu_name = $c.Name.Trim(); cpu_cores = $c.NumberOfCores; free_drive = ($drv + ':'); free_gb = if ($ps) { [math]::Round($ps.Free / 1GB) } else { $null } } | ConvertTo-Json -Compress | Set-Clipboard`;
+// The PowerShell line of "Import…". Without nvidia-smi the VRAM comes from the display driver's registry key
+// (HardwareInformation.qwMemorySize, 64-bit; WMI's AdapterRAM stops at 4 GB); a GPU under 2 GB (integrated)
+// counts as none. The free space is that of the drive with LM Studio's models folder (its settings.json, else
+// the default folder), in GB of 1,000,000,000 bytes like the download sizes.
+const PS_LINE = `$n = @($(if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits 2>$null }) | Where-Object { $_ -match ',' }); $r = @(if (-not $n.Count) { Get-ItemProperty 'HKLM:\\SYSTEM\\ControlSet001\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0*' -ErrorAction SilentlyContinue | Where-Object { [double]$_.'HardwareInformation.qwMemorySize' -ge 2GB } | Sort-Object { [double]$_.'HardwareInformation.qwMemorySize' } -Descending }); $c = Get-CimInstance Win32_Processor | Select-Object -First 1; $mf = $null; try { $mf = (Get-Content (Join-Path $env:USERPROFILE '.lmstudio\\settings.json') -Raw -ErrorAction Stop | ConvertFrom-Json).downloadsFolder } catch {}; if (-not $mf) { $mf = Join-Path $env:USERPROFILE '.lmstudio\\models' }; $drv = $env:SystemDrive -replace ':',''; if ($mf -match '^([A-Za-z]):') { $drv = $Matches[1] }; $ps = Get-PSDrive $drv -ErrorAction SilentlyContinue; @{ ram_gb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB); gpu_name = if ($n.Count) { ($n[0] -split ',')[0].Trim() } elseif ($r.Count) { $r[0].DriverDesc } else { 'CPU only' }; vram_gb = if ($n.Count) { [math]::Round([double]($n[0] -split ',')[1] / 1024) } elseif ($r.Count) { [math]::Round([double]$r[0].'HardwareInformation.qwMemorySize' / 1GB) } else { 0 }; vram_used_gb = if ($n.Count) { [math]::Round([double]($n[0] -split ',')[2] / 1024, 1) } else { 1 }; gpu_count = if ($n.Count) { $n.Count } elseif ($r.Count) { 1 } else { 0 }; cpu_name = $c.Name.Trim(); cpu_cores = $c.NumberOfCores; models_folder = $mf; free_drive = ($drv + ':'); free_gb = if ($ps) { [math]::Round($ps.Free / 1e9) } else { $null } } | ConvertTo-Json -Compress | Set-Clipboard`;
 function importHardware() {
   let d; try { d = JSON.parse($("importText").value); } catch (e) { toast("That text is not valid. Paste the text that PowerShell copied."); return; }
   if (d.gpu_name) setGpuName(String(d.gpu_name));
@@ -4243,9 +4248,10 @@ function importHardware() {
   if (d.vram_used_gb != null) $("reserve").value = Math.max(0.5, Math.round(Number(d.vram_used_gb) * 4) / 4);
   if (d.cpu_cores != null) $("cores").value = Number(d.cpu_cores);
   if (d.cpu_name) { state.hw.cpuName = String(d.cpu_name); $("cpuName").textContent = state.hw.cpuName; }
-  const free = d.free_gb ?? d.free_d_gb;
-  if (free != null) state.hw.freeDisk = Number(free);
-  if (d.free_drive) state.hw.freeDrive = String(d.free_drive);
+  // Free space of the drive with LM Studio's models folder; an import without it clears the old number.
+  const free = Number(d.free_gb ?? d.free_d_gb);
+  state.hw.freeDisk = (d.free_gb ?? d.free_d_gb) != null && isFinite(free) ? free : null;
+  state.hw.freeDrive = d.free_drive ? String(d.free_drive) : d.free_d_gb != null ? "D:" : state.hw.freeDrive;
   $("dlgImport").close(); applyHardware("imported"); toast("Hardware imported. 'Kept for Windows' now uses the VRAM that is in use right now.");
 }
 
