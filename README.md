@@ -18,7 +18,10 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 - **Pick the right file.** Tab **Files** shows the real GGUF files on Hugging Face, with size and SHA-256.
   The green label **best for this PC** marks the file that suits your PC best.
 - **Download safely.** Press **Download** next to a file. The file comes in parts, so after a crash you can
-  resume. At the end TensorTailor reads the file back from disk and checks its SHA-256.
+  resume. The SHA-256 of the parts is checked before the file gets its name, so a damaged download never shows up
+  in LM Studio; at the end TensorTailor reads the file back from disk and checks it again. If it differs,
+  **Download again** deletes the damaged file (after you confirm) and downloads it anew. Another file with the same
+  name is never overwritten.
 - **Load it in LM Studio.** Tab **Run** shows the LM Studio load settings for your PC. **Load in LM Studio with
   these settings** loads the model for you. You see what will be sent first.
 - **Check your own models.** **My models** lists the models in LM Studio, how well they run here, the speed of
@@ -46,8 +49,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 2. Optional: check the download. In PowerShell, run `Get-FileHash .\tensortailor.html` and compare the result
    with `tensortailor.html.sha256` of the same release.
 3. Open `tensortailor.html` in Edge or Chrome (double-click it, or drag it into the browser).
-4. In **Your hardware** (left), press **Detect in browser**. Then type your VRAM and system RAM if they are
-   not right. **Import…** copies the exact values from your PC with one PowerShell line.
+4. In **Your hardware** (left), press **Detect in browser**: it fills in your GPU and its VRAM. The browser cannot
+   tell your system RAM and CPU cores, so type those if they are not right. Or use **Import…**: one PowerShell line
+   copies the exact values from your PC (also the free space on the drive with LM Studio's models folder).
 5. Choose what the model is for (**What is it for?**, for example *Coding*). The list sorts itself.
 6. Click a model. The panel on the right shows the details, the files, how to run it and a plan.
 7. For LM Studio: start LM Studio and switch its server on (**Developer** tab → server on). TensorTailor then
@@ -77,8 +81,10 @@ change in the page).
 ## Privacy
 
 - No tracking, no account, nothing to install.
-- The page talks only to `huggingface.co` (when you open a model's files, fetch new models or check a link)
-  and to LM Studio on your own PC (`127.0.0.1:1234`).
+- The page talks only to Hugging Face and to LM Studio on your own PC (`127.0.0.1:1234`). Hugging Face
+  (`huggingface.co`, and its download servers for files): when you open a model (gated check, file list, GGUF
+  header, `config.json`), check a link, fetch new models or download a file, and by itself in My models (the base
+  models for Similar, the daily update check).
 - A Hugging Face token (only needed for gated models) stays in the browser tab. It is never saved in the file.
   Set it with the key button at the top right; the key turns green when a token is set.
   The page carries Hugging Face's list of gated models from its build day (fresh every weekly release), and a model
@@ -114,7 +120,9 @@ change in the page).
   the engine) and stores a fresh catalog as the pre-release `catalog`, after llmfit's own checks. The Tuesday
   release uses it; if it is missing, old or failed, the release uses llmfit's own catalog. The release notes say
   which one. Rows that llmfit itself cannot read (for example a context of 100 billion tokens) are taken out and
-  listed in the run summary.
+  listed in the run summary. The engine merges re-uploads of the same model into one row and keeps the newest
+  date of them all, so `web/build.mjs` also stores each repo's own release date (and the number of catalog rows)
+  from the catalog file; the page shows that date ("released", NEW).
 - **Weekly release:** `.github/workflows/weekly.yml` follows new llmfit releases by itself: it switches the
   engine to the new llmfit tag, builds it, checks that the answers are the same as native llmfit, and only then
   commits and publishes. When a check fails, nothing is pushed or released.
@@ -160,7 +168,8 @@ use made-up demo data.
 | `tools/fetch-gated.mjs` | Hugging Face's list of gated models, for the "gated" labels (run by the build action) |
 | `tools/cdp_test.mjs` | Tests the built page in headless Chrome or Edge (DevTools protocol) and takes screenshots |
 | `tools/test-sha256.mjs` | Checks the page's SHA-256 against Node's crypto and measures its speed |
-| `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, remove (run with `CDP_SERVE_DIR`) |
+| `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, Download again, parts check, no overwrite, remove (run with `CDP_SERVE_DIR`) |
+| `tools/test-review2.json` | The fixes of the second review: GGUF header values as data, release dates, memory labels at every width, config.json requests, hardware import, Run commands, KV choice, file matching, Measure |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
 | `tools/test-key.json` | The token key in the header: grey without a token, green with one, a click opens the token window |
