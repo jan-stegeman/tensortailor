@@ -48,7 +48,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 1. Open [Releases](https://github.com/jan-stegeman/tensortailor/releases) and download `tensortailor.html`.
 2. Optional: check the download. In PowerShell, run `Get-FileHash .\tensortailor.html` and compare the result
    with `tensortailor.html.sha256` of the same release.
-3. Open `tensortailor.html` in Edge or Chrome (double-click it, or drag it into the browser).
+3. Open `tensortailor.html` in Edge or Chrome (double-click it, or drag it into the browser). Its version is at the
+   top left, under the name (for example `v2026.11.17`; a second release on one day is `v2026.11.17-2`). Compare it
+   with the newest release on the Releases page to know that you have the latest.
 4. In **Your hardware** (left), press **Detect in browser**: it fills in your GPU and its VRAM. The browser cannot
    tell your system RAM and CPU cores, so type those if they are not right. Or use **Import…**: one PowerShell line
    copies the exact values from your PC (also the free space on the drive with LM Studio's models folder).

@@ -165,7 +165,7 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border-bottom-width: 2px; border
 .search:focus-within { border-color: var(--accent); background: var(--panel); }
 .search input { flex: 1; border: 0; background: transparent; outline: none; min-width: 0; }
 .search svg { color: var(--faint); flex: none; }
-@media (max-width: 1420px) { .top { grid-template-columns: auto minmax(0, 1fr) auto; } .brand-sub, .upd-lbl { display: none; } }
+@media (max-width: 1420px) { .top { grid-template-columns: auto minmax(0, 1fr) auto; } .brand-sub .ll, .upd-lbl { display: none; } }
 .nav { display: flex; gap: 2px; padding: 3px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; flex: none; }
 .nav button { height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 600; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
 .nav button[aria-pressed="true"] { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
@@ -1302,6 +1302,7 @@ details.by-hand .hint { margin-top: 6px; }
 
     <h3>Views (top) and keys</h3>
     <dl>
+      <dt>Version (top left)</dt><dd>Under the name TensorTailor: the version of this page, then llmfit's version. A release from GitHub says its release tag, for example <b>v2026.11.17</b> (a second release on one day: v2026.11.17-2); a newer release has a later date. Compare it with the newest one on the repo's <b>Releases</b> page. A page built on a PC says <b>dev build</b> and its commit. About (Tools menu) shows the version, the build date and the commit.</dd>
       <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
       <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. The speed is for <b>your</b> file: llmfit counts its own best file (often another quant), so its range is scaled to the size of your file (point at the speed for both). On a narrow screen the Arch column is left out (MTP still shows under State). <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
       <dt>My models: your files</dt><dd>My models asks once for LM Studio's models folder (the same folder as for Downloads). TensorTailor matches each model to its file by size and reads only the start of the file. The Arch column then shows the layers and the maximum context ("65 layers · max 256K"); point at it for the KV cache figures (KV heads, head size, how many layers keep the whole context). For models that TensorTailor added itself ("live" or "from LM Studio"), llmfit then counts the KV cache exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
@@ -4429,11 +4430,14 @@ function openHelp(section) {
   body.scrollTop = target ? target.offsetTop - body.offsetTop - 8 : 0;
   body.dispatchEvent(new Event("scroll"));
 }
+// The release version of this page (weekly.yml), or "dev build <commit>" for any other build.
+function pageVersion() { const b = state.build || {}; return b.version || `dev build ${b.commit || "local"}`; }
 function renderAbout() {
   const b = state.build, i = state.info;
   $("aboutBody").innerHTML = `<p><b>TensorTailor</b> finds the AI models that fit your PC. It runs fully in this page; nothing is installed.</p>
     <dl class="lic"><dt>Engine</dt><dd>llmfit ${esc(i.llmfit_ref || b.llmfit || "")} by Alex Jones, compiled to WebAssembly. MIT License, Copyright (c) 2026 Alex Jones. Changes for the browser only: the clock (web_time) in the recency bonus, and llmfit's update code split so the page can fetch from Hugging Face itself and then use llmfit's own conversion.</dd>
     <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from ${b.catalog_rows ? `a catalog file of ${Number(b.catalog_rows).toLocaleString("en")} rows (llmfit's scraper, data from the Hugging Face API; llmfit merges re-uploads of the same model into one row)` : "llmfit's catalog (data from the Hugging Face API)"}${state.live.models.some((m) => !lmsMade(m.name)) ? `, plus ${state.live.models.filter((m) => !lmsMade(m.name)).length} fetched live` : ""}${state.live.models.some((m) => lmsMade(m.name)) ? `, plus ${state.live.models.filter((m) => lmsMade(m.name)).length} made from LM Studio's data` : ""}.</dd>
+    <dt>Version</dt><dd><b>${esc(pageVersion())}</b>${b.version ? " (the release tag on GitHub; a newer release has a later date)" : " (not a release: built on a PC or by a test run)"}</dd>
     <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
     <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
     <dt>Rust libraries</dt><dd>The engine also contains Rust crates (MIT, Apache-2.0 and similar licenses). ${b.notices ? `<button class="btn small" id="btnNotices">Show the licenses</button>` : "This local build has no list inside; see THIRD-PARTY-NOTICES.txt with each release."}</dd>
@@ -4758,7 +4762,10 @@ function wire() {
     state.catalog = await call("catalog");
     for (const c of state.catalog) { state.byName.set(c.name, c); }
     liveMetaToPage();
-    $("brandSub").textContent = `llmfit ${state.info.llmfit_ref} · runs offline`;
+    // Top left: the version of this page (the release tag, or "dev build <commit>"), then llmfit's version.
+    // On a narrow screen only the version stays (the llmfit part is in About and in the tooltip).
+    $("brandSub").innerHTML = `<span class="ver">${esc(pageVersion())}</span><span class="ll"> · llmfit ${esc(state.info.llmfit_ref)}</span>`;
+    $("brandSub").title = `TensorTailor ${pageVersion()}, built ${state.build.built || "?"} from commit ${state.build.commit || "?"}. Runs offline in this page. The newest version is on the Releases page of the GitHub repo.`;
     $("catDot").className = "dot ok";
     renderCatalogText();
     state.ready = true;

@@ -12,6 +12,12 @@ inputs:
       from the same patched copy, so both sides embed the same catalog.
     required: false
     default: ""
+  version:
+    description: >
+      The release version the page shows (weekly.yml: the release tag, e.g. v2026.11.17).
+      Empty = a build that is no release (engine.yml): the page says "dev build <commit>".
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -177,6 +183,8 @@ runs:
 
     - name: Build the single-file page
       shell: bash
+      env:
+        TT_VERSION: ${{ inputs.version }}
       run: |
         export TT_COMMIT="$(git rev-parse HEAD)"
         node web/build.mjs engine/pkg-nomod dist/tensortailor.html vendor/llmfit/llmfit-core/data/hf_models.json

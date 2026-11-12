@@ -84,6 +84,8 @@ const buildInfo = {
   llmfit: llmfitRef,
   // TT_COMMIT: set by the build action (the weekly run may add a commit after GITHUB_SHA).
   commit: (process.env.TT_COMMIT || process.env.GITHUB_SHA || gitHead() || "local").slice(0, 7),
+  // The release version (weekly.yml passes the release tag); empty for every other build ("dev build").
+  version: /^v\d{4}\.\d{2}\.\d{2}(-\d+)?$/.test(process.env.TT_VERSION || "") ? process.env.TT_VERSION : "",
   wasm_sha256: createHash("sha256").update(wasm).digest("hex"),
   wasm_mb: +(wasm.length / 1e6).toFixed(1),
   wasm_gz_mb: +(gz.length / 1e6).toFixed(2),

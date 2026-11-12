@@ -122,10 +122,26 @@ jobs:
           { echo "file=$FILE"; echo "sha=$SHA"; echo "why=$WHY"; } >> "$GITHUB_OUTPUT"
           echo "Model list: $WHY" | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The version is chosen before the build, so the page can show it (top left, About). It is the release tag:
+      # vYYYY.MM.DD, or vYYYY.MM.DD-2, -3 … when that day already has a release.
+      - name: Choose the version
+        id: ver
+        run: |
+          set -euo pipefail
+          DAY=$(date -u +%Y.%m.%d)
+          TAG="v$DAY"
+          n=2
+          while git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || gh release view "$TAG" >/dev/null 2>&1; do
+            TAG="v$DAY-$n"; n=$((n + 1))
+          done
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Version: $TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Build, compare with native llmfit, make the page
         uses: ./.github/actions/build
         with:
           catalog_file: ${{ steps.cat.outputs.file }}
+          version: ${{ steps.ver.outputs.tag }}
 
       - name: Check that the build did not change the lock file
         run: |
@@ -201,14 +217,13 @@ jobs:
         env:
           CATALOG_WHY: ${{ steps.cat.outputs.why }}
           CATALOG_SHA: ${{ steps.cat.outputs.sha }}
+          TAG: ${{ steps.ver.outputs.tag }}
         run: |
           set -euo pipefail
-          DAY=$(date -u +%Y.%m.%d)
-          TAG="v$DAY"
-          n=2
-          while git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || gh release view "$TAG" >/dev/null 2>&1; do
-            TAG="v$DAY-$n"; n=$((n + 1))
-          done
+          # The page already carries this version: never publish it under another tag.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG appeared during this run; the page says $TAG, so nothing is published."; exit 1
+          fi
           LLMFIT=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
           (cd dist && sha256sum tensortailor.html > tensortailor.html.sha256)
           SHA=$(cut -d' ' -f1 dist/tensortailor.html.sha256)
@@ -216,6 +231,7 @@ jobs:
           cat > release-notes.md <<EOF
           One offline HTML file (about $SIZE MB). Download **tensortailor.html** and open it in Edge or Chrome.
 
+          - Version: $TAG (shown at the top left of the page and in About).
           - Engine: llmfit [$LLMFIT](https://github.com/AlexsJones/llmfit/releases/tag/$LLMFIT) by Alex Jones (MIT), compiled to WebAssembly.
             This build gave exactly the same answers as native llmfit.
           - Model list: $CATALOG_WHY.${CATALOG_SHA:+ Catalog SHA-256: \`$CATALOG_SHA\`}
@@ -226,6 +242,6 @@ jobs:
           EOF
           gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 dist/THIRD-PARTY-NOTICES.txt \
             --target "$(git rev-parse HEAD)" \
-            --title "TensorTailor $DAY (llmfit $LLMFIT)" \
+            --title "TensorTailor ${TAG#v} (llmfit $LLMFIT)" \
             --notes-file release-notes.md
           echo "Published release $TAG" | tee -a "$GITHUB_STEP_SUMMARY"
