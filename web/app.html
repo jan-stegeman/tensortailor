@@ -2331,7 +2331,7 @@ function lmsSettingsCard(r, repo, file) {
   const rec = allGpu ? (useQ8 ? bestQ8 : bestF16) : e.rows[0];
   const rows = [
     row(LMS_SET_TIP.ctx, "Context Length", ctxRec.toLocaleString("en"), allGpu ? `Fits with room: about ${gb(useQ8 ? rec.q8 : rec.f16)} of ${gb(usable)} usable VRAM (llmfit estimate).${longer ? ` Longer works too: ${longer.ctx.toLocaleString("en")} with K and V cache at Q8_0 (about ${gb(longer.q8)}).` : ""}` : "The model does not fit fully in VRAM even with a short context: keep the context small."),
-    row(LMS_SET_TIP.gpu, "GPU Offload", allGpu ? (layers ? `${layers} (all layers)` : "max (all layers)") : "as many as fit", allGpu ? "The whole model fits on the GPU: fastest." : "Lower it until LM Studio's estimate at the top stays below your VRAM; the rest runs on the CPU, slower."),
+    row(LMS_SET_TIP.gpu, "GPU Offload", allGpu ? (layers ? `${esc(layers)} (all layers)` : "max (all layers)") : "as many as fit", allGpu ? "The whole model fits on the GPU: fastest." : "Lower it until LM Studio's estimate at the top stays below your VRAM; the rest runs on the CPU, slower."),
     row(LMS_SET_TIP.fa, "Flash Attention", "On", "Faster and saves memory; needed for K/V cache quantization."),
     row(LMS_SET_TIP.kv, "K Cache / V Cache Quantization", useQ8 || !allGpu ? "Q8_0 (both)" : "Off (F16)", !allGpu ? "Saves VRAM, so more layers fit on the GPU." : useQ8 ? "Needed to fit this context in VRAM." : longer ? `Not needed up to ${ctxRec.toLocaleString("en")}; turn both on (Q8_0) only for a longer context.` : "Not needed: the context fits at normal size."),
     row(LMS_SET_TIP.par, "Max Concurrent Predictions", "leave as it is", "Only matters when several chats or agents ask at the same time."),
@@ -2870,6 +2870,14 @@ async function ggufHeader(src, maxBytes = 64 * 1024 * 1024) {
   }
   return { version, tensors, kv, bytesRead: buf.length };
 }
+// Header values come from a file (on Hugging Face or on disk), so they are data, never HTML: keep a number
+// only when it is a real number, and an architecture name only when it looks like one.
+const ggufNum = (v) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+const ggufArch = (v) => (typeof v === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(v) ? v : "");
+function ggufFacts(kv) {
+  const arch = ggufArch(kv["general.architecture"]);
+  return { arch, blocks: arch ? ggufNum(kv[arch + ".block_count"]) : null, ctx: arch ? ggufNum(kv[arch + ".context_length"]) : null, layers: arch ? ggufNum(kv[arch + ".nextn_predict_layers"]) || 0 : 0 };
+}
 async function loadGgufHeader(m, repo, path) {
   const key = repo + "/" + path;
   if (state.gguf.has(key)) return;
@@ -2877,9 +2885,8 @@ async function loadGgufHeader(m, repo, path) {
   state.gguf.set(key, entry); renderDetail();
   try {
     const h = await ggufHeader(dlUrl(repo, path));
-    const arch = h.kv["general.architecture"] || "";
-    const layers = Number(h.kv[arch + ".nextn_predict_layers"] || 0);
-    Object.assign(entry, { loading: false, arch, layers, blocks: h.kv[arch + ".block_count"], ctx: h.kv[arch + ".context_length"], bytes: h.bytesRead, keys: Object.keys(h.kv).length, kvf: ggufKvFields(h.kv) });
+    const { arch, blocks, ctx, layers } = ggufFacts(h.kv);
+    Object.assign(entry, { loading: false, arch, layers, blocks, ctx, bytes: h.bytesRead, keys: Object.keys(h.kv).length, kvf: ggufKvFields(h.kv) });
     const x = state.mtp.get(m.id) || {};
     x.gguf = { file: path.split("/").pop(), layers };
     state.mtp.set(m.id, x);
@@ -2893,7 +2900,7 @@ function ggufLine(repo, path) {
   if (!g) return "";
   if (g.loading) return `<div class="loading">Reading the GGUF header of ${esc(path.split("/").pop())}…</div>`;
   if (g.error) return `<p class="hint">GGUF header of ${esc(path.split("/").pop())} not read: ${esc(g.error)}.</p>`;
-  return `<p class="hint" title="Read from the file on Hugging Face (${(g.bytes / 1048576).toFixed(0)} MB of the header, ${g.keys} keys)">GGUF header of <b>${esc(path.split("/").pop())}</b>: architecture ${esc(g.arch)} · ${g.blocks ?? "?"} blocks · context ${g.ctx ? Number(g.ctx).toLocaleString("en") : "?"} · ${g.layers > 0 ? `<span class="tag okay" title="${esc(MTP_WHAT)}">MTP: ${g.layers} layer${g.layers > 1 ? "s" : ""}</span>` : "no MTP layers"}</p>`;
+  return `<p class="hint" title="Read from the file on Hugging Face (${(g.bytes / 1048576).toFixed(0)} MB of the header, ${g.keys} keys)">GGUF header of <b>${esc(path.split("/").pop())}</b>: architecture ${esc(g.arch || "?")} · ${esc(g.blocks ?? "?")} blocks · context ${g.ctx ? esc(Number(g.ctx).toLocaleString("en")) : "?"} · ${g.layers > 0 ? `<span class="tag okay" title="${esc(MTP_WHAT)}">MTP: ${g.layers} layer${g.layers > 1 ? "s" : ""}</span>` : "no MTP layers"}</p>`;
 }
 
 /* ===================== My models (LM Studio) ===================== */
@@ -3028,8 +3035,8 @@ async function scanLocalGguf(interactive) {
       const disk = { size: f.size, mtime: f.file.lastModified, file: f.file, mmproj: matchProjector(x, f, files) };
       try {
         const h = await ggufHeader(f.file);
-        const arch = h.kv["general.architecture"] || "";
-        s.byId.set(x.id, { path, ...disk, arch, blocks: h.kv[arch + ".block_count"] || null, ctx: h.kv[arch + ".context_length"] || null, layers: Number(h.kv[arch + ".nextn_predict_layers"] || 0), kvf: ggufKvFields(h.kv) });
+        const { arch, blocks, ctx, layers } = ggufFacts(h.kv);
+        s.byId.set(x.id, { path, ...disk, arch, blocks: blocks || null, ctx: ctx || null, layers, kvf: ggufKvFields(h.kv) });
       } catch (e) { s.byId.set(x.id, { path, ...disk, error: e.message }); }
     }
     s.done = true;
@@ -3695,7 +3702,7 @@ function viewMine() {
     const fileMtp = loc && !loc.error ? loc.layers > 0 : null;
     const mtpArch = x.mtp === true || fileMtp === true || (fileMtp === null && x.mtpName);
     const mtpWhy = x.mtp === true ? "LM Studio uses MTP for this loaded model." : fileMtp ? `The model file has ${loc.layers} MTP layer(s) (GGUF header of ${loc.path}).` : "The name says MTP.";
-    const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (loc.kvf ? "\n" + kvFieldsText(loc.kvf) + "." : "") + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
+    const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (loc.kvf ? "\n" + kvFieldsText(loc.kvf) + "." : "") + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? esc(loc.blocks) + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + esc(fmtCtx(loc.ctx)) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
     // The same favorite star as in the Models list (stars belong to models in llmfit's list).
     const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
     const ownQ = lmsOwnQuant(x);
