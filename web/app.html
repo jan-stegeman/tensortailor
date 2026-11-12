@@ -1266,7 +1266,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>What if I upgrade?</dt><dd>Shows which models would run well with one more GPU or 128 GB more RAM (label "upgrade").</dd>
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
-      <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. It changes the detail panel and the plan.</dd>
+      <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. The list always counts with F16. In the detail panel, Memory, the math line and the bar use your choice, and the Plan tab counts with it; the verdict and the speed stay those of the list (F16), and one line under the math says so. When the smaller cache would let the model fit fully in VRAM (or fit at all), the numbers stay F16 and that line says what your choice gives.</dd>
       <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
       <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). The line under the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search). <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
     </dl>
@@ -2011,17 +2011,37 @@ function notesFor(r, d) {
   for (const t of (d && d.detail && d.detail.fit.notes) || []) n.push("llmfit: " + t);
   return n;
 }
-// The list runs at F16; when Q8_0 or Q4_0 is chosen, subtract the planner's KV cache savings from Memory and the pool bar.
-function kvAdjusted(b, d) {
-  if (b.mode === "MoE offload" || state.kvq === "fp16") return b;
-  const plan = d && d.plan, alts = (plan && plan.kv_alternatives) || [];
+// The list runs at KV F16. With Q8_0 or Q4_0 chosen, the KV cache shrinks by the planner's numbers: Memory, the
+// math line and the pool bar show that as long as the way the model runs stays the same. When the smaller cache
+// would change it (from GPU + system RAM to fully in VRAM, or from "won't fit" to fitting), the numbers stay those
+// of the list and kvNote() says what the KV choice gives: the verdict and the speed are llmfit's, for F16.
+function kvSaving(d) {
+  if (state.kvq === "fp16") return 0;
+  const alts = (d && d.plan && d.plan.kv_alternatives) || [];
   const fp16 = alts.find((a) => a.kv_quant === "fp16"), alt = alts.find((a) => a.kv_quant === state.kvq);
-  const save = fp16 && alt ? Math.max(0, fp16.kv_cache_gb - alt.kv_cache_gb) : 0;
+  return fp16 && alt ? Math.max(0, fp16.kv_cache_gb - alt.kv_cache_gb) : 0;
+}
+function kvAdjusted(b, d) {
+  const save = kvSaving(d);
   if (!(save > 0)) return b;
   const need = Math.max(0.1, b.need - save);
-  if (b.vram > 0 && need <= b.vram) return Object.assign({}, b, { need, mode: "GPU", inGpu: need, inRam: 0 });
-  if (b.vram > 0) return Object.assign({}, b, { need, inGpu: Math.min(need, b.vram), inRam: Math.max(0, need - b.vram) });
-  return Object.assign({}, b, { need });
+  if (b.mode === "GPU") return Object.assign({}, b, { need, inGpu: need });
+  // MoE offload: the KV cache sits in VRAM with the active experts; the experts in RAM stay the same.
+  if (b.mode === "MoE offload") return Object.assign({}, b, { need, inGpu: Math.max(0.1, b.inGpu - save) });
+  if (b.level === "tight") return b;
+  if (b.mode === "CPU" || !(b.vram > 0)) return Object.assign({}, b, { need });
+  const inGpu = Math.min(need, b.inGpu), inRam = need - inGpu;
+  return inRam > 0.05 ? Object.assign({}, b, { need, inGpu, inRam }) : b;
+}
+// One line when the KV choice would change how the model runs (see kvAdjusted).
+function kvNote(b, d) {
+  const save = kvSaving(d);
+  if (!(save > 0)) return "";
+  const need = Math.max(0.1, b.need - save), q = state.kvq.toUpperCase(), tail = ` The verdict, the speed and the numbers above are for KV F16, like the list; the Plan tab counts with ${q}.`;
+  if (kvAdjusted(b, d) !== b) return `Memory with KV cache ${q} (${gb(save)} less). The verdict and the speed are for KV F16, like the list.`;
+  if (b.level === "tight") return need <= (b.pool || 0) ? `With KV cache ${q} it needs about ${gb(need)}, which fits in the ${gb(b.pool)} memory pool.${tail}` : `With KV cache ${q} it still needs about ${gb(need)}: more than the ${gb(b.pool)} memory pool.`;
+  if (b.vram > 0 && need <= b.vram) return `With KV cache ${q} it fits fully in VRAM: about ${gb(need)} of ${gb(b.vram)}.${tail}`;
+  return "";
 }
 function poolBar(b, d) {
   if (b.mode === "MoE offload") {
@@ -2088,6 +2108,7 @@ function tabOverview(r, d) {
       <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Context</div><div class="v">${r.ctxFit > 0 && r.ctxFit < 1024 ? `${r.ctxFit} <small>tok</small>` : fmtCtx(r.ctxFit)}</div></div>
     </div>
     <div class="math">${mathLine(bk)}</div>
+    ${kvNote(b, d) ? `<p class="hint kv-note">${esc(kvNote(b, d))}</p>` : ""}
     ${poolBar(bk, d)}
     ${basis ? `<p class="hint">Speed basis: ${esc(basis.method.replace(/_/g, " "))}${basis.gpu_bandwidth_gbps ? ` · GPU ${basis.gpu_bandwidth_gbps} GB/s` : ""}${basis.ddr_bandwidth_gbps ? ` · RAM ${basis.ddr_bandwidth_gbps} GB/s` : ""} · efficiency ${basis.efficiency} · at ${fmtCtx(basis.assumed_context)} context.</p>` : ""}
     <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button class="btn small" id="btnPreview" ${b.tps <= 0 ? "disabled" : ""}>Preview speed</button><small>Shows how fast text appears at ${b.tps > 0 ? fmtT((b.lo + b.hi) / 2) : "—"} tok/s.</small></div>
@@ -2549,11 +2570,14 @@ function upgText(desc) {
 }
 function hwText(h) { return h ? `${h.vram_gb != null ? gb(h.vram_gb) + " VRAM · " : ""}${gb(h.ram_gb)} RAM · ${h.cpu_cores} cores` : "—"; }
 function tabPlan(r, d) {
-  const b = r.best, bk = kvAdjusted(b, d), plan = d && d.plan;
+  const b = r.best, plan = d && d.plan;
   const alt = plan ? (plan.kv_alternatives || []).find((a) => a.kv_quant === state.kvq) || (plan.kv_alternatives || [])[0] : null;
   const kvSession = alt ? alt.kv_cache_gb : 0;
-  const free = bk.vram - Math.max(0, bk.need - kvSession);
-  const sessions = bk.mode === "GPU" && kvSession > 0 ? Math.max(0, Math.floor(free / kvSession)) : 0;
+  // With the chosen KV cache: does one chat fit fully in VRAM, and how many more fit next to it?
+  const needKv = Math.max(0.1, b.need - kvSaving(d));
+  const inVram = b.vram > 0 && b.mode !== "MoE offload" && b.level !== "tight" && needKv <= b.vram;
+  const free = b.vram - Math.max(0, needKv - kvSession);
+  const sessions = inVram && kvSession > 0 ? Math.max(0, Math.floor(free / kvSession)) : 0;
   const kvHint = state.kvq === "fp16" ? "or use KV cache Q8_0" : state.kvq === "q8_0" ? "or use KV cache Q4_0" : "or choose a smaller quant";
   const drv = state.hw.freeDrive || "D:";
   const keep = state.plan.keep;
@@ -2572,7 +2596,7 @@ function tabPlan(r, d) {
   <section class="card"><div class="card-head"><h2>How many chats at the same time?</h2><span class="ctx-value">${state.plan.users} wanted</span></div>
     <input type="range" id="planUsers" min="1" max="16" step="1" value="${state.plan.users}" aria-label="Chats at the same time">
     <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${plan ? sessions : "—"}</div><small>chats of ${fmtCtx(r.ctx)} fit in VRAM</small></div><div><div class="big-num">${plan ? gb(kvSession) : "—"}</div><small>KV cache per chat (${state.kvq.toUpperCase()})</small></div></div>
-    ${plan ? `<div class="${sessions >= state.plan.users ? "ok-box" : "warn-box"}">${bk.mode !== "GPU" ? "Parallel chats need the model fully in VRAM." : sessions >= state.plan.users ? `${state.plan.users} agents can share this model at ${fmtCtx(r.ctx)} context.` : `For ${state.plan.users} chats: lower the context, ${kvHint}.`}</div>` : ""}
+    ${plan ? `<div class="${sessions >= state.plan.users ? "ok-box" : "warn-box"}">${!inVram ? "Parallel chats need the model fully in VRAM." : sessions >= state.plan.users ? `${state.plan.users} agents can share this model at ${fmtCtx(r.ctx)} context.` : `For ${state.plan.users} chats: lower the context, ${kvHint}.`}</div>` : ""}
   </section>
   <section class="card"><div class="card-head"><h2>Disk space for my best models</h2><span class="ctx-value">keep ${keep}</span></div>
     <input type="range" id="planKeep" min="1" max="10" step="1" value="${keep}" aria-label="Number of models to keep">
