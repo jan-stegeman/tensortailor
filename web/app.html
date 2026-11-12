@@ -1476,7 +1476,7 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&":
 const gb = (v) => (v == null || !isFinite(v) ? "—" : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " GB");
 const fmtParams = (p) => (!p ? "?" : p < 0.001 ? "<1M" : p < 1 ? Math.round(p * 1000) + "M" : (p >= 100 ? p.toFixed(0) : p.toFixed(1).replace(/\.0$/, "")) + "B");
 const fmtSize = (s) => (s == null || !isFinite(s) ? "—" : s < 1 ? Math.max(1, Math.round(s * 1000)) + " MB" : gb(s));
-const fmtCtx = (c) => (!c ? "—" : c >= 1024 ? Math.round(c / 1024) + "K" : String(c));
+const fmtCtx = (c) => (!c ? "—" : c >= 1048576 ? (c / 1048576).toFixed(1).replace(/\.0$/, "") + "M" : c >= 1024 ? Math.round(c / 1024) + "K" : String(c));
 const fmtCtxUnit = (c) => (!c ? "—" : c >= 1024 ? fmtCtx(c) : c + " tok");
 const fmtT = (t) => (t < 10 ? t.toFixed(1) : t.toFixed(0));
 const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -1760,7 +1760,8 @@ const isNew = (m) => { if (!m.added) return false; const d = Date.parse(m.added)
 // short name. A fine-tune ("someone-qwen3-8b-finetune") does not match its base.
 function lmsMatches(lmsKey, m) {
   const a = norm(m.name), b = norm(lmsKey), c = norm(shortName(lmsKey));
-  return a.length > 5 && (c === a || b === norm(m.id) || b.endsWith(a));
+  // The exact id always counts (also short names such as phi-4); a short name alone is too loose for the rest.
+  return b === norm(m.id) || (a.length > 5 && (c === a || b.endsWith(a)));
 }
 // Also check the maker: a name match from another publisher only counts when the
 // short names are exactly equal (so "org-a/..." does not pair with "org-b/...").
@@ -2160,12 +2161,15 @@ function setGated(id, g) {
   safeSet("localStorage", GATED_KEY, JSON.stringify(gatedStore));
 }
 const gatedBusy = new Set();
+// A failed check (offline, 404, 429) is not asked again for 10 minutes: renderDetail calls checkGated on
+// every redraw (each keystroke or slider move), and a 429 gets worse with each new request.
+const gatedFail = new Map();
 async function checkGated(id) {
   // Rows made from LM Studio's data named "lmstudio/…" are not Hugging Face repos.
-  if (gatedLive(id) || gatedBusy.has(id) || lmsOnly(id)) return;
+  if (gatedLive(id) || gatedBusy.has(id) || lmsOnly(id) || Date.now() - (gatedFail.get(id) || 0) < 600000) return;
   gatedBusy.add(id);
-  try { setGated(id, (await hfJson(`https://huggingface.co/api/models/${id}?expand[]=gated`)).gated); }
-  catch (e) { /* offline, private or rate limited: the label stays the guess from the license name */ }
+  try { setGated(id, (await hfJson(`https://huggingface.co/api/models/${id}?expand[]=gated`)).gated); gatedFail.delete(id); }
+  catch (e) { gatedFail.set(id, Date.now()); /* offline, private or rate limited: the label stays the guess from the license name */ }
   finally { gatedBusy.delete(id); }
   if (!gatedLive(id)) return;
   if (state.selected === id) renderDetail();
@@ -2613,14 +2617,16 @@ function renderDetail() {
   if (!d) loadDetail(r);
   // Gated repos answer 401 without a token: only ask when a token is set.
   if (!gatedLive(m.id)) setTimeout(() => checkGated(m.id), 0);
-  if (!state.mtp.has(m.id) && (!needsToken(m) || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
+  const mx = state.mtp.get(m.id);
+  if (!(mx && (mx.loading || "config" in mx)) && (!needsToken(m) || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   // The answer first (verdict, file, one action); model facts as one quiet line; the header stays in view.
   const fav = state.watch.has(m.id), b = r.best;
   // The header keeps two key facts (size and context); license, release date and downloads are on the Overview tab.
   const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`].filter(Boolean);
-  const lmsQ = lms && lms.quantization ? lms.quantization.toUpperCase() : "";
+  // Your file's quant: from the matched file name when LM Studio gives none (seen: an empty name for Q4_K_P).
+  const lmsQ = lms ? lmsOwnQuant(lms) || String(lms.quantization || "").toUpperCase() : "";
   const action = lms && state.lms.online && !/embed/i.test(lms.type) && b.plain !== "nofit"
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
     : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
@@ -2769,8 +2775,7 @@ async function fetchNewModels() {
     saveLiveStore();
     log("Adding them to the list…");
     await applyLive();
-    if (r.later) warn.push(`${r.later} model${r.later === 1 ? "" : "s"} could not be read now (Hugging Face was busy or not reachable); the next fetch tries again.`);
-    state.liveResult = { checked: entries.length, known: r.known, added: r.added, skipped: r.skipped, warn };
+    state.liveResult = { checked: entries.length, known: r.known, added: r.added, skipped: r.skipped, later: r.later, warn };
     toast(r.added.length ? `${r.added.length} new models added.` : "No new models this time.");
   } catch (e) {
     state.liveResult = { error: e.message, warn };
@@ -2794,11 +2799,11 @@ function renderCatalogDlg() {
   const shown = names.filter((n) => ranked.has(n)), left = names.filter((n) => !ranked.has(n)), fetched = names.length;
   $("catBody").innerHTML = `<p>The list comes from llmfit ${ref}. llmfit's own updater (<code>llmfit update</code>) adds the newest trending and most downloaded models from Hugging Face. <b>Fetch new models</b> does the same in this page, with llmfit's own code.</p>
     <dl class="lic"><dt>From llmfit ${ref}</dt><dd>${Number(state.info.catalog_models || 0).toLocaleString("en")} models</dd>
-    <dt>Fetched live</dt><dd>${fetched ? `${fetched} models` + (L.at ? ` · last fetch ${esc(L.at)}` : " (from checked links)") : "none yet"}</dd>
-    ${fromLms.length ? `<dt>From LM Studio</dt><dd>${fromLms.length} models (made from LM Studio's data and the file header)</dd>` : ""}</dl>
+    <dt>Fetched live</dt><dd>${fetched ? `${fetched} model${fetched === 1 ? "" : "s"}` + (L.at ? ` · last fetch ${esc(L.at)}` : " (from checked links and your LM Studio models)") : "none yet"}</dd>
+    ${fromLms.length ? `<dt>From LM Studio</dt><dd>${fromLms.length} model${fromLms.length === 1 ? "" : "s"} (made from LM Studio's data and the file header)</dd>` : ""}</dl>
     ${state.liveLog ? `<p class="status-line"><span class="dot warn"></span>${esc(state.liveLog)}</p>` : ""}
     ${r && r.error ? `<div class="warn-box">Stopped: ${esc(r.error)}</div>` : ""}
-    ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.added.length ? ` (${r.added.filter((n) => ranked.has(n)).length} analysed for this PC)` : ""}${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}.</p>` : ""}
+    ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.added.length ? ` (${r.added.filter((n) => ranked.has(n)).length} analysed for this PC)` : ""}${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}${r.later ? `, ${r.later} not read now (Hugging Face was busy or not reachable; the next fetch tries again)` : ""}.</p>` : ""}
     ${r && r.warn && r.warn.length ? `<p class="hint">Some lists did not load: ${esc(r.warn[0])}</p>` : ""}
     ${shown.length ? `<p style="margin-bottom:0">Fetched models analysed for this PC (${shown.length}, newest first). Click one to open it:</p><ul class="live-list">${shown.map((n) => `<li><button data-show="${esc(n)}">${esc(n)}</button></li>`).join("")}</ul>` : ""}
     ${fromLms.length ? `<p style="margin-bottom:0">Made from LM Studio's data (label <b>from LM Studio</b>, ${fromLms.length}). Click one to open it:</p><ul class="live-list">${fromLms.map((n) => `<li><button data-show="${esc(n)}">${esc(n.replace(/^lmstudio\//, ""))}</button></li>`).join("")}</ul>` : ""}
@@ -2858,8 +2863,10 @@ async function checkHfLink(id) {
 const MTP_NAME = /(^|[-_./])mtp([-_./]|$)/i;
 const MTP_WHAT = "MTP (multi-token prediction): the model has extra layers that guess the next few tokens at once. A runtime that supports it (in LM Studio: speculative decoding, MTP) can answer faster with the same quality.";
 async function loadMtpConfig(id) {
-  if (state.mtp.has(id)) return;
-  state.mtp.set(id, { loading: true });
+  // The entry may exist with only the GGUF header's facts (loadGgufHeader): then config.json is still read.
+  const cur = state.mtp.get(id);
+  if (cur && (cur.loading || "config" in cur)) return;
+  state.mtp.set(id, Object.assign(cur || {}, { loading: true }));
   // Pure GGUF repos (e.g. bartowski/*-GGUF) only hold .gguf files, not a transformers config.json.
   const text = lmsOnly(id) || /[-_.]gguf$/i.test(id) ? null : await hfConfigText(id).catch(() => null);
   let layers = null;
@@ -4616,6 +4623,10 @@ function wire() {
     const v = $("tokInput").value.trim();
     if (v && !/^hf_[A-Za-z0-9]{20,}$/.test(v)) { toast("That does not look like a Hugging Face token (it starts with hf_)."); return; }
     state.token = v; safeSet("sessionStorage", "tt-token", v || null); renderToken(); $("dlgToken").close(); state.files.clear();
+    // What failed without a token (gated repos) is asked again: GGUF headers, config.json and the gated check.
+    for (const [k, g] of state.gguf) if (g.error) state.gguf.delete(k);
+    for (const x of state.mtp.values()) if (!x.loading && x.config == null) delete x.config;
+    gatedFail.clear();
     toast(v ? "Token set for this tab only." : "No token set."); renderDetail();
   });
   $("btnTokClear").addEventListener("click", () => { state.token = ""; $("tokInput").value = ""; safeSet("sessionStorage", "tt-token", null); renderToken(); $("dlgToken").close(); toast("Token removed."); });
