@@ -12,7 +12,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 ## What you can do with it
 
 - **See what fits.** Every model gets a verdict for your PC: *Runs well*, *Runs, but tight*, *Runs, but
-  slower* or *Won't fit*, with the expected speed in tokens per second and the memory it needs.
+  slower* or *Won't fit*, with the expected speed in tokens per second and the memory it needs. Repos with
+  already-compressed weights in another format (EXL3, bnb-4bit, AWQ, GPTQ, MLX …) get the label *size uncertain*:
+  LM Studio cannot load them as they are, and llmfit counts them too small.
 - **Pick the right file.** Tab **Files** shows the real GGUF files on Hugging Face, with size and SHA-256.
   A star (⭐) marks the file that suits your PC best.
 - **Download safely.** Press **Download** next to a file. The file comes in parts, so after a crash you can

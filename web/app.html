@@ -1152,6 +1152,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list. Its name is the Hugging Face repo of its folder when there is one; else it starts with <code>lmstudio/</code>: then no Hugging Face page is known, its ↗ link searches Hugging Face for the name, and it is counted apart from the live models (Tools → Catalog).</dd>
+      <dt><span class="chip lock">size uncertain</span></dt><dd>The name shows already-compressed weights that are not GGUF (EXL2/EXL3, bnb, AWQ, GPTQ, MLX, vllm, "9bit" …), or says far more parameters than llmfit counts (for example 27B in the name, 10.3B counted). llmfit then counted the compressed weights, so its memory and speed are too optimistic. These rows come after the others with the same verdict and are never a top pick; the Overview tab says why. Look for a GGUF copy of the original model instead.</dd>
       <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
       <dt><span class="chip">license</span> (grey)</dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
       <dt><span class="chip lock">license</span> (orange)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
@@ -1182,7 +1183,7 @@ details.by-hand .hint { margin-top: 6px; }
     <dl>
       <dt>Language · Size</dt><dd>Only models for a language, or of a size (number of parameters).</dd>
       <dt>Vision · Tool use · Reasoning</dt><dd>Only models with that skill (see the icons above). You can switch on more than one.</dd>
-      <dt>Runs in LM Studio (llama.cpp)</dt><dd>Only models that LM Studio can run. On by default.</dd>
+      <dt>Runs in LM Studio (llama.cpp)</dt><dd>Only models that LM Studio can run. On by default. It also hides repos whose name shows already-compressed weights in another format (EXL3, bnb-4bit, AWQ, GPTQ, MLX, vllm …): LM Studio cannot load those as they are (label <b>size uncertain</b>).</dd>
       <dt>Known GGUF download</dt><dd>Only models with a known GGUF copy on Hugging Face (the file type LM Studio uses).</dd>
       <dt>Released in the last 60 days</dt><dd>Only new models (label NEW).</dd>
       <dt>Only my favorites ★</dt><dd>Only the models you starred.</dd>
@@ -1485,6 +1486,22 @@ function capIcons(caps) {
   const fromName = caps.includes("reason-name") ? " (from the model name)" : "";
   return `<span class="caps">${["vision", "tools", "reason"].filter((k) => caps.includes(k)).map((k) => capIcon(k, k === "reason" ? fromName : "")).join("")}</span>`;
 }
+// Repos with already-compressed weights that are not GGUF (EXL2/EXL3, bitsandbytes, AWQ, GPTQ, MLX, vLLM builds, "9bit"),
+// or whose name says far more parameters than llmfit counts. llmfit's list marks most of them "gguf" and counts the
+// stored (packed) weights, so memory and speed come out too optimistic, and LM Studio cannot load them as they are.
+const PACKED_NAME = /(^|[-_.])(exl[23]|bnb|awq|gptq|mlx|vllm|nvfp4|hqq|autoround|\d{1,2}-?bits?|w[48]a(?:8|16))(?=[-_.]|$)/i;
+function packedOf(name, params) {
+  const short = String(name).split("/").pop();
+  if (/gguf/i.test(short)) return null;
+  const tok = PACKED_NAME.exec(short), nb = /(?:^|[-_.])(\d+(?:\.\d+)?)[bB](?=[-_.]|$)/.exec(short);
+  const said = nb ? parseFloat(nb[1]) : 0, low = said >= 3 && params > 0.05 && params / said < 0.6;
+  if (!tok && !low) return null;
+  const parts = [];
+  if (tok) parts.push(`The name says "${tok[2]}": this repo holds already-compressed weights in a format that is not GGUF, so LM Studio cannot load it as it is. Look for a GGUF copy of the original model.`);
+  if (low) parts.push(`The name says ${said}B, but llmfit counts ${fmtParams(params)}: it probably counted the compressed weights, not the full model.`);
+  parts.push("So the memory and speed here are probably too optimistic. TensorTailor puts it lower in the list and leaves it out of the top picks.");
+  return { fmt: !!tok, text: parts.join(" ") };
+}
 const modelCache = new Map();
 function modelView(name, row, F) {
   let m = modelCache.get(name);
@@ -1500,7 +1517,9 @@ function modelView(name, row, F) {
     added: c.release_date || "", downloads: meta.downloads, likes: meta.likes, format: c.format || "",
     gguf: (c.gguf_sources || []).map((s) => ({ repo: s.repo, provider: s.provider })), runtime: row[F.runtime],
     live: state.live.meta[name] ? state.live.meta[name].at || "yes" : "",
-    fromLms: !!(state.live.meta[name] && state.live.meta[name].src === "lms")
+    fromLms: !!(state.live.meta[name] && state.live.meta[name].src === "lms"),
+    // Rows made from your own LM Studio file are GGUF files with a known size: never "size uncertain".
+    packed: state.live.meta[name] && state.live.meta[name].src === "lms" ? null : packedOf(name, params)
   };
   modelCache.set(name, m);
   return m;
@@ -1668,7 +1687,7 @@ function rowHTML(r) {
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
     <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabel(b)}</span>${b.vram > 0 ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
@@ -1698,7 +1717,7 @@ function passFilters(r) {
   if (!searchMatch(r, s)) return false;
   if (s && state.searchAll) return true; // "Show all": the filters are off for this search
   if (state.useCase !== "all" && !m.uses.includes(state.useCase)) return false;
-  if (f.llama && m.runtime !== "LlamaCpp") return false;
+  if (f.llama && (m.runtime !== "LlamaCpp" || (m.packed && m.packed.fmt))) return false;
   if (f.gguf && !ggufSources(m).length) return false;
   if (f.lang && !m.langs.includes(f.lang)) return false;
   if (f.size && sizeBucket(m.params) !== f.size) return false;
@@ -1722,7 +1741,8 @@ function sortResults(list) {
     added: (a, b) => String(b.m.added).localeCompare(String(a.m.added)), pop: (a, b) => b.m.downloads - a.m.downloads,
     name: (a, b) => a.m.name.localeCompare(b.m.name)
   }[state.sort];
-  return list.sort((a, b) => (order[a.best.plain] - order[b.best.plain]) || by(a, b));
+  // "size uncertain" rows (packedOf) come after the others of the same verdict group: their numbers are too optimistic.
+  return list.sort((a, b) => (order[a.best.plain] - order[b.best.plain]) || (!!a.m.packed - !!b.m.packed) || by(a, b));
 }
 function renderTiles(base) {
   const counts = { well: 0, tight: 0, slower: 0, nofit: 0 }, extra = { well: 0, tight: 0, slower: 0, nofit: 0 };
@@ -1821,7 +1841,7 @@ function renderList() {
 function renderSuggest() {
   const el = $("suggest");
   if (!state.ready) { el.hidden = true; return; }
-  const ok = state.results.filter((r) => passFilters(r) && r.best.plain !== "nofit" && !r.m.uses.includes("embedding"));
+  const ok = state.results.filter((r) => passFilters(r) && r.best.plain !== "nofit" && !r.m.uses.includes("embedding") && !r.m.packed);
   const bestOverall = ok.filter((r) => r.best.lo >= 12).sort((a, b) => b.best.score - a.best.score)[0];
   const smartest = ok.filter((r) => r.best.lo >= READING_PACE).sort((a, b) => b.best.parts.quality - a.best.parts.quality || b.best.score - a.best.score)[0];
   const fastest = ok.filter((r) => r.best.parts.quality >= 60).sort((a, b) => b.best.tps - a.best.tps)[0];
@@ -1930,6 +1950,7 @@ function tabOverview(r, d) {
   const b = r.best, basis = d && d.detail ? d.detail.fit.estimate_basis : null;
   const ladder = d && d.ladder;
   return `<section class="card">
+    ${r.m.packed ? `<div class="warn-box" style="margin:0 0 10px"><b>Size uncertain.</b> ${esc(r.m.packed.text)}</div>` : ""}
     <div class="ov-meta" title="Runs on, llmfit's own level, and whether the speed is estimated or measured"><span>${esc(b.mode)}</span><span>llmfit: ${esc(LLMFIT_LABEL[b.level])}</span><span class="${String(b.conf).startsWith("measured") ? "ok" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
     <div class="stats">
       <div class="stat" title="Speed in tokens per second"><div class="k">Speed</div><div class="v">${speedRange(b)}${b.tps > 0 ? " <small>tok/s</small>" : ""}</div>${measLine(r)}</div>
