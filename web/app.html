@@ -1306,8 +1306,8 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
       <dt>My models: summary cards</dt><dd>Five cards at the top: <b>Models</b> (and how many files TensorTailor read from your folder), <b>On disk</b>, <b>Updates</b> (files with a newer version on Hugging Face), <b>Similar</b> (space of models made from the same base model, and how much keeping one per group would free) and <b>Measured</b> (your real speed as a share of llmfit's estimate). The details are in the lines above the table and in the rows.</dd>
       <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
-      <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. The update check never replaces or deletes a file.</dd>
-      <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model. With GPU measurements of models in llmfit's list, other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
+      <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>; a check that got no answer is tried again after 10 minutes). The card says "All up to date" only when every file was checked and is the same; else "No update found". <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. The update check never replaces or deletes a file.</dd>
+      <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model: before each request it asks LM Studio again whether the model is still loaded, and stops if not. With GPU measurements of models in llmfit's list (MTP off: speculative decoding is faster than any estimate), other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the list marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the file is read back and checked again (<b>Check again</b> reads it once more). <b>SHA-256 differs</b>: <b>Download again</b> asks you, deletes the damaged file and downloads it anew. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
@@ -2663,6 +2663,16 @@ async function applyLive() {
   state.catalog = await call("catalog");
   state.byName.clear();
   for (const c of state.catalog) state.byName.set(c.name, c);
+  // The engine merges a fetched row into a row of its list with the same key (slug); such a row is no longer
+  // "live": drop it from the store and free its LM Studio link, so the counts and labels stay right.
+  const merged = state.live.models.map((y) => y.name).filter((n) => !state.byName.has(n));
+  if (merged.length) {
+    const gone = new Set(merged);
+    state.live.models = state.live.models.filter((y) => !gone.has(y.name));
+    for (const n of merged) delete state.live.meta[n];
+    for (const [k, n] of Object.entries(state.lmsLinks)) if (gone.has(n)) delete state.lmsLinks[k];
+    saveLiveStore(); safeSet("localStorage", "tt-lms-links", JSON.stringify(state.lmsLinks));
+  }
   liveMetaToPage();
   modelCache.clear();
   renderCatalogText();
@@ -3079,21 +3089,28 @@ async function localGgufFiles(root, maxDepth = 3) {
   return out;
 }
 // For models from LM Studio's own catalog, size_bytes can differ a little from the file (seen: 21 KB and
-// 180 KB on 13-18 GB files), so a difference up to 1 MiB and at most 0.01 % counts; the smallest wins.
-function matchLocalFile(x, files) {
+// 180 KB on 13-18 GB files), so a difference up to 1 MiB and at most 0.01 % counts.
+// Among the files of about the right size, the one whose name and folder fit the model wins; the size difference
+// only breaks a tie (two 32B Q4_K_M files can differ by a few hundred bytes). A file another model already took
+// is skipped ("used"). A split GGUF (-00001-of-0000N) counts with all its parts.
+function matchLocalFile(x, files, used) {
   const want = x.sizeBytes;
   if (!want) return null;
   const LOCAL_SIZE_SLACK = Math.min(1024 * 1024, want * 1e-4);
   const cands = [];
   for (const f of files) {
-    if (IS_MMPROJ.test(f.name)) continue;
-    const totals = [f.size].concat(files.filter((p) => p.dir === f.dir && IS_MMPROJ.test(p.name)).map((p) => f.size + p.size));
+    if (IS_MMPROJ.test(f.name) || (used && used.has(f))) continue;
+    const sm = splitGguf(f.name);
+    if (sm && Number(sm[2]) > 1) continue;
+    const size = sm ? files.filter((p) => p.dir === f.dir && (() => { const pm = splitGguf(p.name); return pm && pm[1] === sm[1] && pm[3] === sm[3]; })()).reduce((t, p) => t + p.size, 0) : f.size;
+    const totals = [size].concat(files.filter((p) => p.dir === f.dir && IS_MMPROJ.test(p.name)).map((p) => size + p.size));
     const diff = Math.min(...totals.map((t) => Math.abs(want - t)));
     if (diff <= LOCAL_SIZE_SLACK) cands.push({ f, diff });
   }
-  const pub = String(x.publisher || "").toLowerCase(), q = String(x.quantization || "").toLowerCase();
-  const score = (c) => c.diff + (pub && c.f.dir.toLowerCase().includes(pub) ? 0 : 0.5) + (q && c.f.name.toLowerCase().includes(q) ? 0 : 0.25);
-  cands.sort((a, b) => score(a) - score(b));
+  const pub = String(x.publisher || "").toLowerCase(), q = String(x.quantization || "").toLowerCase(), key = norm(shortName(x.id));
+  const nameHit = (f) => key.length > 3 && norm(f.name).includes(key);
+  const score = (c) => (nameHit(c.f) ? 0 : 4) + (pub && c.f.dir.toLowerCase().includes(pub) ? 0 : 2) + (q && c.f.name.toLowerCase().includes(q) ? 0 : 1);
+  cands.sort((a, b) => score(a) - score(b) || a.diff - b.diff);
   return cands.length ? cands[0].f : null;
 }
 async function scanLocalGguf(interactive) {
@@ -3105,9 +3122,11 @@ async function scanLocalGguf(interactive) {
     if (!(await dlFolder(interactive, interactive && !state.dl.root))) { s.needClick = true; return; }
     const files = await localGgufFiles(state.dl.root);
     s.folder = state.dl.root.name || "the chosen folder"; s.files = files.length; s.byId = new Map();
+    const used = new Set();
     for (const x of state.lms.models) {
-      const f = matchLocalFile(x, files);
+      const f = matchLocalFile(x, files, used);
       if (!f) continue;
+      used.add(f);
       const path = (f.dir ? f.dir + "/" : "") + f.name;
       // Size, date and the File itself: for the update check (and its SHA-256 on request).
       const disk = { size: f.size, mtime: f.file.lastModified, file: f.file, mmproj: matchProjector(x, f, files) };
@@ -3185,7 +3204,8 @@ async function checkUpdates(force) {
   const byRepo = new Map();
   for (const f of updFiles()) {
     const e = updEntry(f);
-    if (!force && e && Date.now() - e.t < UPD_HOURS * 36e5) continue;
+    // A good answer counts for UPD_HOURS; an error (offline, a server fault) is asked again after 10 minutes.
+    if (!force && e && Date.now() - e.t < (e.err ? 600000 : UPD_HOURS * 36e5)) continue;
     if (!byRepo.has(f.repo)) byRepo.set(f.repo, []);
     byRepo.get(f.repo).push(f);
   }
@@ -3501,12 +3521,20 @@ async function measureSpeed(id) {
   measState.busy = id; measState.error = null; measState.step = "Asking LM Studio which models are loaded…";
   renderView(); renderDetail();
   try {
-    await checkLms();
-    const x = state.lms.models.find((y) => y.id === id);
-    if (!x || !x.loaded || !x.instances.length) throw new Error("The model is not loaded in LM Studio. Load it first (Run tab → Load in LM Studio), then measure.");
+    // Measure never loads a model: it asks LM Studio which models are loaded before each request, because a
+    // chat request for a model that is not loaded makes LM Studio load it with its defaults.
+    const stillLoaded = async () => {
+      await checkLms();
+      if (!state.lms.online) throw new Error("LM Studio's server is not reachable at 127.0.0.1:1234. Start it (Developer tab → server on), then measure.");
+      const y = state.lms.models.find((z) => z.id === id);
+      return y && y.loaded && y.instances.length ? y : null;
+    };
+    const x = await stillLoaded();
+    if (!x) throw new Error("The model is not loaded in LM Studio. Load it first (Run tab → Load in LM Studio), then measure.");
     const inst = x.instances[0], est = measEstimate(x);
     measState.step = "Warming up…"; renderView();
     await lmsPost("/api/v1/chat", { model: inst, input: "Say OK.", max_output_tokens: 8, temperature: 0, store: false });
+    if (!(await stillLoaded())) throw new Error("The model was unloaded during the warm-up, so nothing was measured (and nothing was loaded).");
     measState.step = "Measuring: writing about 256 tokens…"; renderView();
     const res = await lmsPost("/api/v1/chat", { model: inst, input: MEAS_PROMPT, max_output_tokens: 256, temperature: 0, store: false });
     const s = res.stats || {}, tps = Number(s.tokens_per_second), out = Number(s.total_output_tokens || 0);
@@ -3517,9 +3545,10 @@ async function measureSpeed(id) {
   } catch (e) { measState.error = { id, msg: e.message }; }
   finally { measState.busy = null; renderView(); renderDetail(); }
 }
-// The factor for this PC from the measurements (GPU only, at least 32 tokens written), or null.
+// The factor for this PC from the measurements (GPU only, at least 32 tokens written, MTP off: speculative
+// decoding makes a model faster than llmfit's estimate for any model), or null.
 function pcFactor() {
-  const rs = Object.values(measStore).filter((m) => m.est && m.est.src === "llmfit" && m.est.mode === "GPU" && m.out >= 32 && m.est.hi > 0)
+  const rs = Object.values(measStore).filter((m) => m.est && m.est.src === "llmfit" && m.est.mode === "GPU" && m.out >= 32 && m.est.hi > 0 && !m.mtp)
     .map((m) => m.tps / ((m.est.lo + m.est.hi) / 2)).sort((a, b) => a - b);
   if (!rs.length) return null;
   const h = rs.length >> 1;
@@ -3570,7 +3599,8 @@ function lmsModelEntry(x, loc, repo) {
   const bpp = LMS_BPP[q] || 0.58;
   const P = x.params || (x.sizeBytes ? x.sizeBytes / 1e9 / bpp : 0);
   if (!P) return null;
-  const inBase = (n) => state.catalog.some((c) => c.name.toLowerCase() === n.toLowerCase()) && !state.live.models.some((y) => y.name.toLowerCase() === n.toLowerCase());
+  // A name whose llmfit key (slug) a row of llmfit's list already has would be merged into that row by the engine.
+  const inBase = (n) => state.catalog.some((c) => canonSlug(c.name) === canonSlug(n) && !state.live.models.some((y) => y.name === c.name));
   let name = repo || "lmstudio/" + x.id.replace(/^.*\//, "");
   if (inBase(name)) name = "lmstudio/" + x.id.replace(/^.*\//, "");
   if (inBase(name)) return null;
@@ -3603,6 +3633,11 @@ function enrichLmsRows() {
   }
   return changed;
 }
+// llmfit's own key for "the same model" (models.rs canonical_slug): the short name, lowercase, without - _ and .
+// The engine merges catalog and fetched rows with the same key into one row.
+const canonSlug = (n) => String(n).split("/").pop().toLowerCase().replace(/[-_.]/g, "");
+// An LM Studio model counts as linked only while its row still exists (a pruned or merged row frees the link).
+function lmsHasLink(x) { const n = state.lmsLinks[x.id]; return !!n && (state.byName.has(n) || state.live.models.some((y) => y.name === n)); }
 function lmsOrphanNames() {
   if (!state.lms.online || !state.lms.models.length) return [];
   const keep = new Set(state.lms.models.map((x) => state.lmsLinks[x.id]).filter(Boolean));
@@ -3610,14 +3645,14 @@ function lmsOrphanNames() {
 }
 function ensureLmsLinks() {
   if (!state.ready || !state.lms.online || state.lmsLinkBusy || state.localGguf.busy) return;
-  if (!state.lms.models.some((x) => !/embed/i.test(x.type) && !catalogFor(x) && !state.lmsLinks[x.id]) && !lmsOrphanNames().length) return;
+  if (!state.lms.models.some((x) => !/embed/i.test(x.type) && !catalogFor(x) && !lmsHasLink(x)) && !lmsOrphanNames().length) return;
   if (state.dl.root && !state.localGguf.done && !state.localGguf.needClick) scanLocalGguf(false);
   else if (!state.dl.root || state.localGguf.done) linkLmsModels(false);
 }
 async function linkLmsModels(relink) {
   if (state.lmsLinkBusy || !state.ready || !state.lms.online) return;
   const isLmsRow = (n) => !!(state.live.meta[n] && state.live.meta[n].src === "lms");
-  const todo = state.lms.models.filter((x) => !/embed/i.test(x.type) && (relink && isLmsRow(state.lmsLinks[x.id]) ? true : !catalogFor(x) && !state.lmsLinks[x.id]));
+  const todo = state.lms.models.filter((x) => !/embed/i.test(x.type) && (relink && isLmsRow(state.lmsLinks[x.id]) ? true : !catalogFor(x) && !lmsHasLink(x)));
   const headers = state.lms.models.some((x) => (state.localGguf.byId.get(x.id) || {}).kvf);
   if (!todo.length && !headers && !lmsOrphanNames().length) return;
   state.lmsLinkBusy = true;
@@ -3634,7 +3669,8 @@ async function linkLmsModels(relink) {
         try {
           const e = await hfJson(`https://huggingface.co/api/models/${repo}?${fields}`);
           const known = !(await call("unknownIds", JSON.stringify([e.id]))).length;
-          const c = known ? state.catalog.find((y) => y.name.toLowerCase() === e.id.toLowerCase()) : null;
+          // "Known" is llmfit's slug match, so look the row up the same way (the exact name may differ).
+          const c = known ? state.catalog.find((y) => y.name.toLowerCase() === e.id.toLowerCase()) || state.catalog.find((y) => canonSlug(y.name) === canonSlug(e.id)) : null;
           if (c && !isLmsRow(c.name) && lmsParamsOk(c, x)) { name = c.name; info.linked.push(x.name); }
           else if (!c || isLmsRow(c.name)) {
             const m = await call("mapHf", JSON.stringify(e), await hfConfigText(e));
@@ -3657,6 +3693,8 @@ async function linkLmsModels(relink) {
     if (orphans.size) {
       state.live.models = state.live.models.filter((y) => !orphans.has(y.name));
       for (const n of orphans) delete state.live.meta[n];
+      // Links to those rows go too, so a model you remove and download again gets its row back.
+      for (const [k, n] of Object.entries(state.lmsLinks)) if (orphans.has(n)) delete state.lmsLinks[k];
       changed = true;
     }
     info.kv = enrichLmsRows();
@@ -3739,7 +3777,7 @@ function mineKpis(totalGB) {
   return `<div class="kpis">${[
     card("models", "var(--accent)", "Models", nModels, "", (nEmb ? `+ ${nEmb} embedding model${nEmb === 1 ? "" : "s"} · ` : "") + (lg.done ? `${nMatched} of ${nModels} files read from <b>${esc(lg.folder)}</b>` : "Model files not read yet")),
     card("disk", "var(--good)", "On disk", totalGB.toFixed(totalGB >= 100 ? 0 : 1), "GB", `${s.models.length} models in LM Studio`),
-    card("updates", nUpd ? "var(--marginal)" : "var(--perfect)", "Updates", lg.done && files.length ? nUpd : "—", "", !lg.done || !files.length ? "Read your models folder to check" : updState.busy ? "Checking on Hugging Face…" : `${nUpd ? `<b>${nUpd} available</b>` : "<b>All up to date</b>"} · ${nChecked} of ${files.length} files checked`),
+    card("updates", nUpd ? "var(--marginal)" : "var(--perfect)", "Updates", lg.done && files.length ? nUpd : "—", "", !lg.done || !files.length ? "Read your models folder to check" : updState.busy ? "Checking on Hugging Face…" : `${nUpd ? `<b>${nUpd} available</b>` : codes.every((c) => c === "ok" || c === "same") ? "<b>All up to date</b>" : "<b>No update found</b>"} · ${nChecked} of ${files.length} files checked`),
     card("similar", "var(--marginal)", "Similar", gs.length ? gTotal.toFixed(1) : "0", gs.length ? "GB" : "", gs.length ? `${gs.length} group${gs.length === 1 ? "" : "s"} · up to <b>${gb(gFree)}</b> to free` : grpState.busy ? "Looking up base models…" : "No two models share a base model"),
     card("measured", "var(--perfect)", "Measured", pf ? Math.round(pf.f * 100) : nMeas || "—", pf ? "%" : "", pf ? `of llmfit's estimate on the GPU (median of ${pf.n})` : nMeas ? `${nMeas} measured, no GPU factor yet` : "Press <b>Measure</b> next to a loaded model")
   ].join("")}</div>`;
