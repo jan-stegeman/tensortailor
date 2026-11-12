@@ -25,9 +25,11 @@ const [pkg = "engine/pkg-nomod", out = "dist/tensortailor.html", hfModels = "ven
 // The release date is the one of this exact repo: llmfit's engine merges re-uploads with the same short
 // name into one row and keeps the NEWEST date of them all (models.rs, dedupe_hf_entries), so an old model
 // would look new.
-let meta = [];
+let meta = [], catalogRows = 0;
 if (existsSync(hfModels)) {
-  for (const e of JSON.parse(readFileSync(hfModels, "utf8"))) {
+  const rows = JSON.parse(readFileSync(hfModels, "utf8"));
+  catalogRows = rows.length; // About: "N models from a catalog file of M rows" (the engine merges re-uploads)
+  for (const e of rows) {
     const langs = Array.isArray(e.languages) ? e.languages.join(",") : "";
     const date = /^\d{4}-\d{2}-\d{2}$/.test(e.release_date || "") ? e.release_date : "";
     if (e.hf_downloads || e.hf_likes || langs || date) meta.push([e.name, e.hf_downloads || 0, e.hf_likes || 0, langs, date]);
@@ -86,6 +88,7 @@ const buildInfo = {
   wasm_mb: +(wasm.length / 1e6).toFixed(1),
   wasm_gz_mb: +(gz.length / 1e6).toFixed(2),
   meta_models: meta.length,
+  catalog_rows: catalogRows,
   notices: notices.length > 0,
   gated: gated ? { built: gated.built, models: Object.keys(gated.models).length } : null
 };
