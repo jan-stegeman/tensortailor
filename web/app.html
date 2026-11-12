@@ -714,7 +714,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .row .seg-w { background: var(--data); border-radius: 4px; }
 .row .membar.hot .seg-w { background: linear-gradient(90deg, var(--data) 75%, var(--marginal)); }
 .memlabel { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--faint); min-width: 0; }
-.memlabel span:first-child { color: var(--text-2); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memlabel > span:first-child { color: var(--text-2); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .memlabel .pct { flex: none; }
 .tps { font-size: 14px; }
 .tps small { display: inline; margin-left: 3px; color: var(--faint); font-size: 11px; }
@@ -964,6 +964,8 @@ details.by-hand .hint { margin-top: 6px; }
   .cols > :nth-child(4), .row > :nth-child(4) { display: none; }
   .sk-row { grid-template-columns: 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
   .sk-row > :nth-child(3) { display: none; }
+  /* The memory label keeps its numbers: "16.3 GB" (the % and the bar give the share), "8.6 GB + 106 GB". */
+  .memlabel .wide { display: none; }
 }
 /* The detail panel is a container too: when it is narrow, the labels above its numbers may wrap instead of "CONTE…", and Memory gets extra room so "22.3 GB" never cuts off. */
 .detail { container: detail / inline-size; }
@@ -1187,7 +1189,7 @@ details.by-hand .hint { margin-top: 6px; }
     <dl>
       <dt><i class="sw" style="background:var(--data)"></i>Grey bar</dt><dd>The part that sits in VRAM: model file, KV cache and engine together. Fast. The number at the right of the line below it is how much of your usable VRAM that is.</dd>
       <dt><i class="sw" style="background:var(--marginal)"></i>Amber end</dt><dd>Less than 12 % of the usable VRAM stays free: it runs, but a longer context or other programs can push it over.</dd>
-      <dt><i class="sw seg-ram"></i>Orange stripes</dt><dd>The model does not fit in VRAM. The rest goes to system RAM, which is about 10 times slower, so the model runs slower. The stripes are a warning sign, not to scale: the numbers below the bar give the real sizes, for example "3.2 GB VRAM + 75.0 GB RAM".</dd>
+      <dt><i class="sw seg-ram"></i>Orange stripes</dt><dd>The model does not fit in VRAM. The rest goes to system RAM, which is about 10 times slower, so the model runs slower. The stripes are a warning sign, not to scale: the numbers below the bar give the real sizes, for example "3.2 GB VRAM + 75.0 GB RAM". When the list is narrow (a small screen or a wide detail panel), the words drop out and the numbers stay: "3.2 GB + 75.0 GB", and "16.3 GB" instead of "16.3 GB of 23.0 GB" (the % at the right gives the share).</dd>
       <dt>Empty part</dt><dd>VRAM that stays free.</dd>
     </dl>
     <p>The big bar in the detail panel (tab Overview) splits it further:</p>
@@ -1726,10 +1728,17 @@ const VERDICT_TIP = {
   slower: "Runs, but slower: part of the model runs from system RAM, or there is no GPU.",
   nofit: "Won't fit: VRAM and RAM together are too small."
 };
+// The memory label as plain text (tooltips, the Run tab) and as list HTML, whose words in .wide drop out when
+// the list is narrow, so the numbers stay readable instead of "16.3 GB of 2…".
 function memLabel(b) {
   if (b.vram === 0) return `${gb(b.need)} in RAM`;
-  if (b.inRam > 0.05) return `${b.inGpu.toFixed(1)} + ${gb(b.inRam)} RAM`;
+  if (b.inRam > 0.05) return `${gb(b.inGpu)} VRAM + ${gb(b.inRam)} RAM`;
   return `${gb(b.need)} of ${gb(b.vram)}`;
+}
+function memLabelHtml(b) {
+  if (b.vram === 0) return `${gb(b.need)} in RAM`;
+  if (b.inRam > 0.05) return `${gb(b.inGpu)}<span class="wide"> VRAM</span> + ${gb(b.inRam)}<span class="wide"> RAM</span>`;
+  return `${gb(b.need)}<span class="wide"> of ${gb(b.vram)}</span>`;
 }
 // Score: a small neutral ring and the number (the verdict next to it carries the colour).
 function ring(score) {
@@ -1787,7 +1796,7 @@ function rowHTML(r) {
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
       <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
-    <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabel(b)}</span>${b.vram > 0 ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
+    <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
     <div title="${esc(VERDICT_TIP[b.plain] + "\nRuns on: " + b.mode + ".")}">${verdict(b.plain)}${b.mode !== "GPU" ? `<div class="mode">${b.mode}</div>` : ""}</div>
     <div title="${esc(`Score ${Math.round(b.score || 0)} of 100: llmfit's match for this PC.\nQuality ${Math.round(b.parts.quality)} · speed ${Math.round(b.parts.speed)} · fit ${Math.round(b.parts.fit)} · context ${Math.round(b.parts.context)} (each 0–100).`)}">${ring(b.score)}</div></div>`;
