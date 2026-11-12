@@ -23,7 +23,8 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
   setting (the same advice as tab Run). Give it LM Studio's models folder once, and it reads the header of each model file: layers, maximum
   context and MTP, like LM Studio itself shows them, and the size of the KV cache (the memory for the context). LM Studio models that llmfit's list does not have are added
   by themselves (read live from Hugging Face, or made from LM Studio's own data), so the filter **Already in LM
-  Studio** in Models shows all of them. It also asks Hugging Face once a day whether each model file changed there
+  Studio** in Models shows all of them. For a model made from LM Studio's data no Hugging Face page is known, so its
+  ↗ link searches Hugging Face for the name. It also asks Hugging Face once a day whether each model file changed there
   (**update available**, with a link to what changed); **Check SHA-256** compares your file exactly. Below the list,
   **Similar models and disk space** groups models made from the same base model (for example three versions of one
   27B model, 53 GB) and shows how much space keeping one of them would free. Nothing is replaced or deleted.
