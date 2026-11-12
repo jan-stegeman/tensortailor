@@ -1151,7 +1151,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. In LM Studio, speculative decoding with MTP can then answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). For the MTP labels in My models, see "My models" below.</dd>
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
-      <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list. No Hugging Face page is known for it, so its ↗ link searches Hugging Face for the name, and it is counted apart from the live models (Tools → Catalog).</dd>
+      <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list. Its name is the Hugging Face repo of its folder when there is one; else it starts with <code>lmstudio/</code>: then no Hugging Face page is known, its ↗ link searches Hugging Face for the name, and it is counted apart from the live models (Tools → Catalog).</dd>
       <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
       <dt><span class="chip">license</span> (grey)</dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
       <dt><span class="chip lock">license</span> (orange)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
@@ -1208,14 +1208,14 @@ details.by-hand .hint { margin-top: 6px; }
     <h3>Views (top) and keys</h3>
     <dl>
       <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
-      <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
+      <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. The speed is for <b>your</b> file: llmfit counts its own best file (often another quant), so its range is scaled to the size of your file (point at the speed for both). <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
       <dt>My models: your files</dt><dd>My models asks once for LM Studio's models folder (the same folder as for Downloads). TensorTailor matches each model to its file by size and reads only the start of the file. The Arch column then shows the layers and the maximum context ("65 layers · max 256K"); point at it for the KV cache figures (KV heads, head size, how many layers keep the whole context). For models that TensorTailor added itself ("live" or "from LM Studio"), llmfit then counts the KV cache exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
       <dt>My models: summary cards</dt><dd>Five cards at the top: <b>Models</b> (and how many files TensorTailor read from your folder), <b>On disk</b>, <b>Updates</b> (files with a newer version on Hugging Face), <b>Similar</b> (space of models made from the same base model, and how much keeping one per group would free) and <b>Measured</b> (your real speed as a share of llmfit's estimate). The details are in the lines above the table and in the rows.</dd>
       <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
       <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. TensorTailor never replaces or deletes a file.</dd>
       <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model. With GPU measurements of models in llmfit's list, other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
-      <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the list marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
+      <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the list marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash; at the end the file is read back and its SHA-256 compared with Hugging Face's (<b>Check again</b> reads it once more). A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
@@ -1667,7 +1667,7 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
-    <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${m.fromLms ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${m.fromLms ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${m.fromLms ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
+    <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
       <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
     <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabel(b)}</span>${b.vram > 0 ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
@@ -1677,9 +1677,11 @@ function rowHTML(r) {
 }
 const sizeBucket = (p) => (p <= 8 ? "s" : p <= 35 ? "m" : p <= 100 ? "l" : "xl");
 // GGUF sources from llmfit; a model whose own repo is a GGUF repo is its own source.
-// Rows made from LM Studio's data ("lmstudio/<key>", label "from LM Studio") have no Hugging Face repo: no
-// links to one and no requests for one; the link searches Hugging Face for the name instead.
-function lmsOnly(id) { const t = state.live.meta[id]; return !!(t && t.src === "lms"); }
+// Rows made from LM Studio's data (label "from LM Studio") are named after the model's folder when that is a
+// Hugging Face repo (llmfit could not read it, for example a wrong parameter count); those are real repos. Only
+// "lmstudio/<key>" rows have no repo: no links to one and no requests for one; the link searches Hugging Face.
+function lmsMade(id) { const t = state.live.meta[id]; return !!(t && t.src === "lms"); }
+function lmsOnly(id) { return lmsMade(id) && /^lmstudio\//i.test(id); }
 function hfHref(id) { return lmsOnly(id) ? "https://huggingface.co/models?search=" + encodeURIComponent(String(id).replace(/^lmstudio\//, "")) : "https://huggingface.co/" + id; }
 function ggufSources(m) { return m.gguf.length ? m.gguf : /gguf/i.test(m.id) ? [{ repo: m.id, provider: m.provider }] : []; }
 function chosenRepo(m) {
@@ -1988,8 +1990,8 @@ function setGated(id, g) {
 }
 const gatedBusy = new Set();
 async function checkGated(id) {
-  // Rows made from LM Studio's data ("lmstudio/…") are not Hugging Face repos.
-  if (gatedLive(id) || gatedBusy.has(id) || (state.live.meta[id] && state.live.meta[id].src === "lms")) return;
+  // Rows made from LM Studio's data named "lmstudio/…" are not Hugging Face repos.
+  if (gatedLive(id) || gatedBusy.has(id) || lmsOnly(id)) return;
   gatedBusy.add(id);
   try { setGated(id, (await hfJson(`https://huggingface.co/api/models/${id}?expand[]=gated`)).gated); }
   catch (e) { /* offline, private or rate limited: the label stays the guess from the license name */ }
@@ -2419,7 +2421,7 @@ function renderDetail() {
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
     : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
   $("detail").innerHTML = `<section class="card dhead">
-    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${m.fromLms ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face"}">${m.fromLms ? "No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
+    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face"}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
     <div class="d-facts">${capIcons(m.caps)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
     <div class="d-answer v-${b.plain}">${verdict(b.plain)}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
@@ -2457,7 +2459,7 @@ async function applyLive() {
   await recompute();
 }
 function renderCatalogText() {
-  const n = state.live.models.filter((m) => !lmsOnly(m.name)).length, k = state.live.models.length - n;
+  const n = state.live.models.filter((m) => !lmsMade(m.name)).length, k =state.live.models.length - n;
   $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models` + (n || k ? ` (${[n ? `${n} live` : "", k ? `${k} from LM Studio` : ""].filter(Boolean).join(", ")})` : "");
   $("q").placeholder = "Search models, or paste a Hugging Face link"; $("q").title = `Search ${state.catalog.length.toLocaleString("en")} models by name or publisher, or paste a Hugging Face link and press Enter to check it live`;
 }
@@ -2566,12 +2568,12 @@ async function clearLive() {
 function renderCatalogDlg() {
   const L = state.live, r = state.liveResult, ref = esc(state.info.llmfit_ref || "");
   const ranked = new Set(state.results.map((x) => x.m.id));
-  const all = L.models.map((m) => m.name).reverse(), fromLms = all.filter(lmsOnly), names = all.filter((n) => !lmsOnly(n));
+  const all = L.models.map((m) => m.name).reverse(), fromLms = all.filter(lmsMade), names = all.filter((n) => !lmsMade(n));
   const shown = names.filter((n) => ranked.has(n)), left = names.filter((n) => !ranked.has(n)), fetched = names.length;
   $("catBody").innerHTML = `<p>The list comes from llmfit ${ref}. llmfit's own updater (<code>llmfit update</code>) adds the newest trending and most downloaded models from Hugging Face. <b>Fetch new models</b> does the same in this page, with llmfit's own code.</p>
     <dl class="lic"><dt>From llmfit ${ref}</dt><dd>${Number(state.info.catalog_models || 0).toLocaleString("en")} models</dd>
     <dt>Fetched live</dt><dd>${fetched ? `${fetched} models` + (L.at ? ` · last fetch ${esc(L.at)}` : " (from checked links)") : "none yet"}</dd>
-    ${fromLms.length ? `<dt>From LM Studio</dt><dd>${fromLms.length} models (made from LM Studio's data; not on Hugging Face as far as TensorTailor knows)</dd>` : ""}</dl>
+    ${fromLms.length ? `<dt>From LM Studio</dt><dd>${fromLms.length} models (made from LM Studio's data and the file header)</dd>` : ""}</dl>
     ${state.liveLog ? `<p class="status-line"><span class="dot warn"></span>${esc(state.liveLog)}</p>` : ""}
     ${r && r.error ? `<div class="warn-box">Stopped: ${esc(r.error)}</div>` : ""}
     ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.added.length ? ` (${r.added.filter((n) => ranked.has(n)).length} analysed for this PC)` : ""}${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}.</p>` : ""}
@@ -3057,7 +3059,7 @@ function grpStartRepo(x) {
   const loc = state.localGguf.byId.get(x.id), parts = loc && loc.path ? loc.path.split("/") : [];
   if (parts.length >= 3) return parts[0] + "/" + parts[1];
   const cat = catalogFor(x);
-  return cat && !(state.live.meta[cat.m.id] && state.live.meta[cat.m.id].src === "lms") ? cat.m.id : null;
+  return cat && !lmsOnly(cat.m.id) ? cat.m.id : null;
 }
 async function baseOf(id) {
   const c = baseStore[id];
@@ -3145,9 +3147,10 @@ function simGroupsCard(totalGB) {
       const dir = loc && loc.path ? loc.path.split("/").slice(0, -1).join("\\") : "";
       const where = dir ? (folder ? folder + "\\" : "") + dir : "";
       const how = (grpState.rootById.get(x.id) || {}).chain || [];
-      // The same verdict and speed as the list above (llmfit when matched, else the rough one from the file size).
+      // The same verdict and speed as the table above (llmfit when matched, scaled to your file; else the rough one).
       const rough = !cat && x.sizeGB > 0 ? roughFromFile(x, Math.min(CTX_STEPS[state.ctxIdx], x.max_context_length || 32768), "fp16") : null;
-      const plain = cat ? cat.best.plain : rough ? rough.plain : null, range = cat ? speedRange(cat.best) : rough ? speedRange(rough) : "—";
+      const est = measEstimate(x);
+      const plain = cat ? cat.best.plain : rough ? rough.plain : null, range = est && est.hi > 0 ? `${fmtT(est.lo)}–${fmtT(est.hi)}` : "—";
       return `<tr><td${how.length > 1 ? ` title="${esc("Made from (Hugging Face's base models, step by step):\n" + how.join("\n→ "))}"` : ""}><b>${esc(x.name)}</b>${how.length ? `<div class="hash">${esc(how[0])}</div>` : ""}</td>
         <td><span class="quant">${esc(lmsOwnQuant(x) || x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
         <td style="white-space:nowrap">${plain ? verdict(plain) + (range !== "—" ? ` <small>${range} tok/s</small>` : "") : "—"}</td><td style="font-size:12.5px;color:var(--muted)">${esc(best.text)}</td>
@@ -3247,8 +3250,9 @@ function measEstimate(x) {
     const b = cat.best, ownQ = lmsOwnQuant(x), P = cat.m.params || 0;  // billions
     const ownGB = loc && loc.size ? loc.size / 1e9 : x.sizeGB;
     let k = 1;
-    if (ownQ && ownQ !== String(b.q).toUpperCase() && P > 0 && ownGB > 0) k = clamp(P * (LMS_BPP[planQuant(b.q)] || 0.58) / ownGB, 0.5, 2);
-    return { lo: b.lo * k, hi: b.hi * k, mode: b.mode, src: "llmfit", id: cat.m.id, q: b.q, ownQ: ownQ || b.q, scaled: k !== 1 };
+    // Also scaled when LM Studio names no quant: the size of your file is known.
+    if ((!ownQ || ownQ !== String(b.q).toUpperCase()) && P > 0 && ownGB > 0) k = clamp(P * (LMS_BPP[planQuant(b.q)] || 0.58) / ownGB, 0.5, 2);
+    return { lo: b.lo * k, hi: b.hi * k, mode: b.mode, src: "llmfit", id: cat.m.id, q: b.q, ownQ: ownQ || "", scaled: k !== 1 };
   }
   const r = x.sizeGB > 0 ? roughFromFile(x, Math.min(CTX_STEPS[state.ctxIdx], x.max_context_length || 32768), "fp16") : null;
   return r && r.tps > 0 ? { lo: r.lo, hi: r.hi, mode: r.mode, src: "rough", id: null } : null;
@@ -3287,14 +3291,14 @@ const pctOf = (f) => Math.round(f * 100) + " %";
 function measTip(ms) {
   const e = ms.est;
   return `Measured on this PC on ${dayOf(ms.t)} with LM Studio: ${fmtT(ms.tps)} tok/s while writing ${ms.out} tokens; first token after ${ms.ttft.toFixed(2)} s.${ms.ctx ? ` Loaded with context ${ms.ctx.toLocaleString("en")}.` : ""}${ms.mtp ? " MTP was on." : ""}`
-    + (e ? `\nEstimate then: ${fmtT(e.lo)}–${fmtT(e.hi)} tok/s (${e.src === "llmfit" ? `llmfit${e.scaled ? `, scaled from its ${e.q} to your ${e.ownQ} file by size` : ""}` : "rough, from the file size"}). Measured = ${pctOf(ms.tps / ((e.lo + e.hi) / 2))} of the middle.` : "");
+    + (e ? `\nEstimate then: ${fmtT(e.lo)}–${fmtT(e.hi)} tok/s (${e.src === "llmfit" ? `llmfit${e.scaled ? `, scaled from its ${e.q} to your ${e.ownQ ? e.ownQ + " " : ""}file by size` : ""}`: "rough, from the file size"}). Measured = ${pctOf(ms.tps / ((e.lo + e.hi) / 2))} of the middle.` : "");
 }
 // The measure line in My models' Speed column.
 function measCell(x) {
   const ms = measStore[x.id];
   const busy = measState.busy === x.id ? `<div class="hash">${esc(measState.step)}</div>` : "";
   const err = measState.error && measState.error.id === x.id ? `<div class="hash" style="color:var(--tight)" title="${esc(measState.error.msg)}">not measured: ${esc(measState.error.msg.slice(0, 60))}${measState.error.msg.length > 60 ? "…" : ""}</div>` : "";
-  const got = ms ? `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)}${ms.est.scaled ? " for your " + esc(ms.est.ownQ) : ""}` : ""}</div>` : "";
+  const got = ms ? `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)}${ms.est.scaled ? " for your " + esc(ms.est.ownQ || "file") : ""}` : ""}</div>` : "";
   const btn = x.loaded && !busy ? `<button class="btn small" data-measure="${esc(x.id)}" title="${esc("Ask LM Studio to write about 256 tokens with this loaded model (about 10–30 seconds) and keep the real speed next to the estimate. Nothing is loaded or unloaded.")}">${ms ? "Measure again" : "Measure"}</button>` : "";
   return got + busy + err + btn;
 }
@@ -3307,7 +3311,7 @@ function measSummaryLine() {
 // For the detail panel: the measurement of your LM Studio file of this model, or llmfit's range corrected for this PC.
 function measLine(r) {
   const lms = inLms(r.m), ms = lms ? measStore[lms.id] : null;
-  if (ms) return `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est && ms.est.scaled ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)} for your ${esc(ms.est.ownQ)}` : lms && lmsOwnQuant(lms) && lmsOwnQuant(lms) !== String(r.best.q).toUpperCase() ? ` (your ${esc(lmsOwnQuant(lms))})` : ""}</div>`;
+  if (ms) return `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est && ms.est.scaled ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)} for your ${esc(ms.est.ownQ || "file")}`: lms && lmsOwnQuant(lms) && lmsOwnQuant(lms) !== String(r.best.q).toUpperCase() ? ` (your ${esc(lmsOwnQuant(lms))})` : ""}</div>`;
   const pf = pcFactor(), b = r.best;
   if (!pf || b.mode !== "GPU" || !(b.tps > 0)) return "";
   return `<div class="hash" title="${esc(`llmfit's estimate × ${pf.f.toFixed(2)}: on this PC your measurements were ${pctOf(pf.f)} of llmfit's estimate on the GPU (median of ${pf.n}). Not measured for this model.`)}">your PC: ~${fmtT(b.lo * pf.f)}–${fmtT(b.hi * pf.f)}</div>`;
@@ -3502,7 +3506,11 @@ function viewMine() {
     const ctxNow = Math.min(CTX_STEPS[state.ctxIdx], x.max_context_length || 32768);
     const rough = !cat && !isEmb && x.sizeGB > 0 ? roughFromFile(x, ctxNow, "fp16") : null;
     const plain = cat ? cat.best.plain : rough ? rough.plain : null;
-    const range = cat ? speedRange(cat.best) : rough ? speedRange(rough) : "—";
+    // The speed of YOUR file: llmfit counts its own best file (often another quant), so its range is scaled to your
+    // file by size (measEstimate, the same estimate Measure compares with).
+    const est = isEmb ? null : measEstimate(x);
+    const range = est && est.hi > 0 ? `${fmtT(est.lo)}–${fmtT(est.hi)}` : "—";
+    const rangeTip = !est ? "" : est.src !== "llmfit" ? "Rough estimate from the size of your file." : est.scaled ? `Estimate for your ${est.ownQ ? est.ownQ + " " : ""}file${est.ownQ ? "" : " (LM Studio names no quant)"}. llmfit counts its best file ${est.q} (${speedRange(cat.best)} tok/s); the speed is scaled to your file by size.` : `llmfit's estimate for ${est.q}, ${est.ownQ ? "the quant of your file" : "about the size of your file"}.`;
     const best = isEmb ? { text: "", tip: "", warn: "" } : mineBestSetting(x, cat);
     const tipText = best.text;
     const warn = best.warn ? `<div class="hash" style="color:var(--marginal)">Loaded at ${fmtCtx(x.loadedCtx)}: ${best.warn}.</div>` : "";
@@ -3523,7 +3531,7 @@ function viewMine() {
       <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : fileMtp ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy + "\nIn LM Studio's load settings, turn on speculative decoding with MTP (or use Load in LM Studio in the Run tab).")}">MTP in file</span>` : fileMtp === null && x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model, or read your model files (above the list), to know for sure.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? "llmfit: " + esc(cat.m.id) : "from your file (rough)"}</div>` : "—"}</td>
-      <td class="r">${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "") + measCell(x)}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
+      <td class="r"${rangeTip ? ` title="${esc(rangeTip)}"` : ""}>${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "") + measCell(x)}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
       <td class="r" style="white-space:nowrap">${cat ? `<button class="btn small" data-show="${esc(cat.m.id)}">Show</button>` : ""}</td></tr>`;
   }).join("");
   return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · ${s.models.length} models · ${gb(totalGB)} on disk</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
@@ -4040,7 +4048,7 @@ function renderAbout() {
   const b = state.build, i = state.info;
   $("aboutBody").innerHTML = `<p><b>TensorTailor</b> finds the AI models that fit your PC. It runs fully in this page; nothing is installed.</p>
     <dl class="lic"><dt>Engine</dt><dd>llmfit ${esc(i.llmfit_ref || b.llmfit || "")} by Alex Jones, compiled to WebAssembly. MIT License, Copyright (c) 2026 Alex Jones. Changes for the browser only: the clock (web_time) in the recency bonus, and llmfit's update code split so the page can fetch from Hugging Face itself and then use llmfit's own conversion.</dd>
-    <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from llmfit's catalog (data from the Hugging Face API)${state.live.models.some((m) => !lmsOnly(m.name)) ? `, plus ${state.live.models.filter((m) => !lmsOnly(m.name)).length} fetched live` : ""}${state.live.models.some((m) => lmsOnly(m.name)) ? `, plus ${state.live.models.filter((m) => lmsOnly(m.name)).length} made from LM Studio's data` : ""}.</dd>
+    <dt>Model catalog</dt><dd>${(i.catalog_models || 0).toLocaleString("en")} models from llmfit's catalog (data from the Hugging Face API)${state.live.models.some((m) => !lmsMade(m.name)) ? `, plus ${state.live.models.filter((m) => !lmsMade(m.name)).length} fetched live` : ""}${state.live.models.some((m) => lmsMade(m.name)) ? `, plus ${state.live.models.filter((m) => lmsMade(m.name)).length} made from LM Studio's data` : ""}.</dd>
     <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
     <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
     <dt>Rust libraries</dt><dd>The engine also contains Rust crates (MIT, Apache-2.0 and similar licenses). ${b.notices ? `<button class="btn small" id="btnNotices">Show the licenses</button>` : "This local build has no list inside; see THIRD-PARTY-NOTICES.txt with each release."}</dd>
