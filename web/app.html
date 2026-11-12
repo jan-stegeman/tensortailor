@@ -2625,15 +2625,25 @@ function hfRepoId(s) {
   const id = parts[0] + "/" + parts[1];
   return /^[\w.-]+\/[\w.-]+$/.test(id) ? id : null;
 }
+// The repo's config.json, or null when it has none (404) or is gated (401/403): then llmfit converts the model
+// without it, as `llmfit update` does. A busy or unreachable Hugging Face (429, 5xx, offline) throws instead,
+// so the model is not stored with a rough estimate for good but tried again on a later fetch.
 async function hfConfigText(idOrEntry) {
   const entry = idOrEntry && typeof idOrEntry === "object" ? idOrEntry : null;
   const id = entry ? entry.id : idOrEntry;
   if (!id || (entry && Array.isArray(entry.siblings) && !entry.siblings.some((s) => s && s.rfilename === "config.json"))) return null;
-  // Pure GGUF mirror repos rarely carry config.json; check the cached file tree first to avoid avoidable 404s.
+  // A GGUF-only repo (Hugging Face shows a gguf block and no safetensors) has no transformers config.json:
+  // llmfit reads the GGUF facts from the entry itself. Asking anyway only gave 404 errors in the console.
+  if (entry && entry.gguf && !entry.safetensors) return null;
+  // Also skip when the file tree is already known and has no config.json.
   const cached = state.files.get(id);
   if (cached && cached.files && !cached.files.some((f) => f.path === "config.json")) return null;
-  try { const res = await fetch(`https://huggingface.co/${id}/resolve/main/config.json`, { headers: hfHeaders() }); return res.ok ? await res.text() : null; }
-  catch (e) { return null; }
+  let res;
+  try { res = await fetch(`https://huggingface.co/${id}/resolve/main/config.json`, { headers: hfHeaders() }); }
+  catch (e) { throw new Error("Hugging Face could not be reached"); }
+  if (res.ok) return await res.text();
+  if ([401, 403, 404].includes(res.status)) return null;
+  throw new Error(res.status === 429 ? "Hugging Face asks to slow down (429)" : `Hugging Face answered ${res.status}`);
 }
 async function inPool(items, size, fn) {
   let next = 0;
@@ -2654,16 +2664,17 @@ function liveReady() {
 async function liveMapEntries(entries, log) {
   const fresh = new Set(await call("unknownIds", JSON.stringify(entries.map((e) => e.id))));
   const todo = entries.filter((e) => fresh.has(e.id)), found = [];
-  let done = 0;
+  let done = 0, later = 0;
   if (log) log(`${entries.length} models received, ${todo.length} not in the list yet. Reading their config.json…`);
   await inPool(todo, 6, async (e, i) => {
-    const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e));
-    if (model) found.push({ i, model, e });
+    // Hugging Face busy or unreachable for this one: leave it for the next fetch (no rough row kept for good).
+    try { const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e)); if (model) found.push({ i, model, e }); }
+    catch (err) { later++; }
     done++;
     if (log && (done % 5 === 0 || done === todo.length)) log(`Reading config.json: ${done} of ${todo.length}…`);
   });
   found.sort((a, b) => a.i - b.i).forEach(({ model, e }) => addLive(model, e));
-  return { known: entries.length - todo.length, added: found.map((x) => x.model.name), skipped: todo.length - found.length };
+  return { known: entries.length - todo.length, added: found.map((x) => x.model.name), skipped: todo.length - found.length - later, later };
 }
 async function hubFields() {
   const urls = await call("updateUrls");
@@ -2709,6 +2720,7 @@ async function fetchNewModels() {
     saveLiveStore();
     log("Adding them to the list…");
     await applyLive();
+    if (r.later) warn.push(`${r.later} model${r.later === 1 ? "" : "s"} could not be read now (Hugging Face was busy or not reachable); the next fetch tries again.`);
     state.liveResult = { checked: entries.length, known: r.known, added: r.added, skipped: r.skipped, warn };
     toast(r.added.length ? `${r.added.length} new models added.` : "No new models this time.");
   } catch (e) {
@@ -2800,7 +2812,7 @@ async function loadMtpConfig(id) {
   if (state.mtp.has(id)) return;
   state.mtp.set(id, { loading: true });
   // Pure GGUF repos (e.g. bartowski/*-GGUF) only hold .gguf files, not a transformers config.json.
-  const text = lmsOnly(id) || /[-_.]gguf$/i.test(id) ? null : await hfConfigText(id);
+  const text = lmsOnly(id) || /[-_.]gguf$/i.test(id) ? null : await hfConfigText(id).catch(() => null);
   let layers = null;
   if (text) {
     try {
