@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
+import { execSync } from "node:child_process";
 import { helpCheck } from "./help-check.mjs";
 
 const [pkg = "engine/pkg-nomod", out = "dist/tensortailor.html", hfModels = "vendor/llmfit/llmfit-core/data/hf_models.json"] = process.argv.slice(2);
@@ -68,11 +69,15 @@ for (const marker of ["/*__ENGINE_GLUE__*/", "__ENGINE_WASM_GZ_B64__", "__BUILD_
 }
 if (/<\/script/i.test(glue)) throw new Error("engine glue contains </script>; cannot inline it safely");
 
+function gitHead() {
+  try { return execSync("git rev-parse --short=7 HEAD", { cwd: new URL("..", import.meta.url), stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
+  catch { return ""; }
+}
 const buildInfo = {
   built: new Date().toISOString().slice(0, 10),
   llmfit: llmfitRef,
   // TT_COMMIT: set by the build action (the weekly run may add a commit after GITHUB_SHA).
-  commit: (process.env.TT_COMMIT || process.env.GITHUB_SHA || "local").slice(0, 7),
+  commit: (process.env.TT_COMMIT || process.env.GITHUB_SHA || gitHead() || "local").slice(0, 7),
   wasm_sha256: createHash("sha256").update(wasm).digest("hex"),
   wasm_mb: +(wasm.length / 1e6).toFixed(1),
   wasm_gz_mb: +(gz.length / 1e6).toFixed(2),

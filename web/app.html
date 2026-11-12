@@ -709,12 +709,13 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .m-name .sub { color: var(--muted); font-size: 12px; }
 .chip.lms { background: transparent; box-shadow: none; padding: 0 2px; color: var(--good); display: inline-flex; align-items: center; gap: 5px; }
 .chip.lms::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.membar { gap: 6px; }
+.membar { gap: 6px; min-width: 0; overflow: hidden; }
 .row .bar { height: 4px; border: 0; background: var(--line); }
 .row .seg-w { background: var(--data); border-radius: 4px; }
 .row .membar.hot .seg-w { background: linear-gradient(90deg, var(--data) 75%, var(--marginal)); }
-.memlabel { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--faint); }
-.memlabel span:first-child { color: var(--text-2); font-weight: 600; }
+.memlabel { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--faint); min-width: 0; }
+.memlabel span:first-child { color: var(--text-2); font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memlabel .pct { flex: none; }
 .tps { font-size: 14px; }
 .tps small { display: inline; margin-left: 3px; color: var(--faint); font-size: 11px; }
 .row .mode { font-size: 11px; }
@@ -848,7 +849,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .fighters { gap: 16px; align-items: end; }
 .fighter { padding: 20px; }
 .fighter.win { box-shadow: 0 0 0 1px color-mix(in srgb, var(--perfect) 45%, transparent), 0 18px 50px color-mix(in srgb, var(--perfect) 14%, transparent); padding-top: 28px; }
-.crown { top: -11px; left: 50%; right: auto; transform: translateX(-50%); height: 22px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; color: #04130a; background: linear-gradient(180deg, #6ef0a6, var(--perfect)); box-shadow: 0 4px 14px color-mix(in srgb, var(--perfect) 40%, transparent); }
+.crown { top: -11px; left: 50%; right: auto; transform: translateX(-50%); height: 22px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; letter-spacing: 0; color: #04130a; background: linear-gradient(180deg, #6ef0a6, var(--perfect)); box-shadow: 0 4px 14px color-mix(in srgb, var(--perfect) 40%, transparent); }
 .place { font: 650 12px var(--font); color: var(--faint); }
 .fhead { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .fname-b { min-width: 0; }
@@ -911,7 +912,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .files-t td { padding: 9px 6px; }
 .fcell { min-width: 0; }
 .fline { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.fline .fname { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip; overflow-wrap: normal; word-break: normal; font-size: 12px; color: var(--text-2); }
+.fline .fname { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; word-break: normal; font-size: 12px; color: var(--text-2); }
 .files-t tr.pick .fname { color: var(--text); font-weight: 600; }
 .link-copy { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0; padding: 0; }
 .link-copy svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -964,9 +965,9 @@ details.by-hand .hint { margin-top: 6px; }
   .sk-row { grid-template-columns: 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
   .sk-row > :nth-child(3) { display: none; }
 }
-/* The detail panel is a container too: when it is narrow, the labels above its numbers may wrap instead of "CONTE…". */
+/* The detail panel is a container too: when it is narrow, the labels above its numbers may wrap instead of "CONTE…", and Memory gets extra room so "22.3 GB" never cuts off. */
 .detail { container: detail / inline-size; }
-@container detail (max-width: 440px) { .stat .k { white-space: normal; overflow: visible; } }
+@container detail (max-width: 440px) { .stat .k { white-space: normal; overflow: visible; } .stats { grid-template-columns: 1.35fr 1.05fr .95fr .8fr; } .stat { padding: 10px 9px; } .stat .v { font-size: 17px; } }
 /* My models: a name breaks between words only; a narrow view leaves out the Arch column (MTP also shows under
    State); the table scrolls sideways instead of cutting off Show. */
 .view-pane { container: view / inline-size; }
@@ -1028,7 +1029,7 @@ details.by-hand .hint { margin-top: 6px; }
     <section class="card">
       <div class="card-head"><h2>Your hardware</h2><span class="tag" id="hwSource">saved profile</span></div>
       <div class="hw-gpu">
-        <div class="hw-icon">GPU</div>
+        <div class="hw-icon" id="hwIcon">GPU</div>
         <div><div class="hw-name" id="gpuName">NVIDIA GeForce RTX 3090</div><div class="hw-meta" id="hwSummary"></div></div>
       </div>
       <div class="usable" id="usableText"></div>
@@ -1151,10 +1152,10 @@ details.by-hand .hint { margin-top: 6px; }
 <dialog id="dlgImport" aria-labelledby="dlgImport-title">
   <div class="dlg-head"><h2 id="dlgImport-title">Import your hardware</h2><button class="btn ghost small" data-close>Close</button></div>
   <div class="dlg-body">
-    <p>1. Copy this line. 2. Paste it in PowerShell and press Enter. It copies your hardware, the VRAM in use right now and the free space on D: as text. 3. Paste that text in the box below.</p>
+    <p>1. Copy this line. 2. Paste it in PowerShell and press Enter. It copies your hardware, the VRAM in use right now and your free disk space as text. 3. Paste that text in the box below.</p>
     <pre class="snippet" id="psSnippet"></pre>
     <div><button class="btn small" id="btnCopySnippet">Copy the PowerShell line</button></div>
-    <textarea id="importText" placeholder='{"ram_gb":128,"gpu_name":"NVIDIA GeForce RTX 3090","vram_gb":24,"vram_used_gb":1.1,"gpu_count":1,"cpu_threads":128,"free_d_gb":1800}' aria-label="Hardware text"></textarea>
+    <textarea id="importText" placeholder='{"ram_gb":128,"gpu_name":"NVIDIA GeForce RTX 3090","vram_gb":24,"vram_used_gb":1.1,"gpu_count":1,"cpu_cores":64,"free_drive":"D:","free_gb":1800}' aria-label="Hardware text"></textarea>
   </div>
   <div class="dlg-foot"><button class="btn primary" id="btnImportApply">Use this hardware</button></div>
 </dialog>
@@ -1442,7 +1443,7 @@ const LMS_URL = "http://127.0.0.1:1234";
 // LM Studio's default models folder: in a PowerShell command, and as a hint for people.
 const LMS_FOLDER = "$env:USERPROFILE\\.lmstudio\\models";
 const LMS_FOLDER_HINT = "C:\\Users\\<you>\\.lmstudio\\models";
-const DEFAULT_HW = { gpuName: "NVIDIA GeForce RTX 3090", vram: 24, gpus: 1, ram: 128, reserve: 1, ramBw: 90, cores: 64, cpuName: "AMD Ryzen Threadripper 3990X 64-Core Processor", freeDisk: null };
+const DEFAULT_HW = { gpuName: "NVIDIA GeForce RTX 3090", vram: 24, gpus: 1, ram: 128, reserve: 1, ramBw: 90, cores: 64, cpuName: "AMD Ryzen Threadripper 3990X 64-Core Processor", freeDisk: null, freeDrive: "D:" };
 
 /* ===================== State ===================== */
 const state = {
@@ -1470,9 +1471,10 @@ const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const gb = (v) => (v == null || !isFinite(v) ? "—" : (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + " GB");
-const fmtParams = (p) => (!p ? "?" : p < 1 ? Math.round(p * 1000) + "M" : (p >= 100 ? p.toFixed(0) : p.toFixed(1).replace(/\.0$/, "")) + "B");
+const fmtParams = (p) => (!p ? "?" : p < 0.001 ? "<1M" : p < 1 ? Math.round(p * 1000) + "M" : (p >= 100 ? p.toFixed(0) : p.toFixed(1).replace(/\.0$/, "")) + "B");
 const fmtSize = (s) => (s == null || !isFinite(s) ? "—" : s < 1 ? Math.max(1, Math.round(s * 1000)) + " MB" : gb(s));
 const fmtCtx = (c) => (!c ? "—" : c >= 1024 ? Math.round(c / 1024) + "K" : String(c));
+const fmtCtxUnit = (c) => (!c ? "—" : c >= 1024 ? fmtCtx(c) : c + " tok");
 const fmtT = (t) => (t < 10 ? t.toFixed(1) : t.toFixed(0));
 const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
 const shortName = (id) => String(id).split("/").pop();
@@ -1681,6 +1683,11 @@ function recomputeSoon() { clearTimeout(recomputeTimer); recomputeTimer = setTim
 function renderUseCases() { $("useCases").innerHTML = USE_CASES.map(([k, l]) => `<button class="chip-btn" data-uc="${k}" aria-pressed="${state.useCase === k}">${l}</button>`).join(""); }
 function renderUsable() {
   const h = state.hw;
+  $("hwIcon").textContent = h.gpus === 0 ? "CPU" : "GPU";
+  $("gpuName").textContent = h.gpus === 0 ? "CPU only" : (h.gpuName || "GPU");
+  const hit = h.gpus > 0 ? lookupGpu(h.gpuName) : null;
+  $("bwText").textContent = h.gpus === 0 ? `Memory speed: ${h.ramBw} GB/s system RAM`
+    : hit ? `GPU memory speed: ~${hit[2]} GB/s (known card) · llmfit's table` : "GPU memory speed: from llmfit's table";
   $("usableText").innerHTML = h.gpus === 0 ? "No GPU: models run on the CPU and RAM." :
     `Usable for models: <b>${h.vram * h.gpus} GB − ${h.reserve} GB = ${gb(usableVram(false))}</b> VRAM` +
     (state.upg.gpu || state.upg.ram ? `<br>With upgrade: <b>${gb(usableVram(true))}</b> VRAM · <b>${hwInput(true).ram_gb} GB</b> RAM` : "");
@@ -1720,7 +1727,7 @@ const VERDICT_TIP = {
 };
 function memLabel(b) {
   if (b.vram === 0) return `${gb(b.need)} in RAM`;
-  if (b.inRam > 0.05) return `${gb(b.inGpu)} VRAM + ${gb(b.inRam)} RAM`;
+  if (b.inRam > 0.05) return `${b.inGpu.toFixed(1)} + ${gb(b.inRam)} RAM`;
   return `${gb(b.need)} of ${gb(b.vram)}`;
 }
 // Score: a small neutral ring and the number (the verdict next to it carries the colour).
@@ -1993,6 +2000,18 @@ function notesFor(r, d) {
   for (const t of (d && d.detail && d.detail.fit.notes) || []) n.push("llmfit: " + t);
   return n;
 }
+// The list runs at F16; when Q8_0 or Q4_0 is chosen, subtract the planner's KV cache savings from Memory and the pool bar.
+function kvAdjusted(b, d) {
+  if (b.mode === "MoE offload" || state.kvq === "fp16") return b;
+  const plan = d && d.plan, alts = (plan && plan.kv_alternatives) || [];
+  const fp16 = alts.find((a) => a.kv_quant === "fp16"), alt = alts.find((a) => a.kv_quant === state.kvq);
+  const save = fp16 && alt ? Math.max(0, fp16.kv_cache_gb - alt.kv_cache_gb) : 0;
+  if (!(save > 0)) return b;
+  const need = Math.max(0.1, b.need - save);
+  if (b.vram > 0 && need <= b.vram) return Object.assign({}, b, { need, mode: "GPU", inGpu: need, inRam: 0 });
+  if (b.vram > 0) return Object.assign({}, b, { need, inGpu: Math.min(need, b.vram), inRam: Math.max(0, need - b.vram) });
+  return Object.assign({}, b, { need });
+}
 function poolBar(b, d) {
   if (b.mode === "MoE offload") {
     // VRAM part (active experts + KV cache + engine) and the inactive experts in system RAM.
@@ -2045,20 +2064,20 @@ function aboutFacts(m) {
     m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
 }
 function tabOverview(r, d) {
-  const b = r.best, basis = d && d.detail ? d.detail.fit.estimate_basis : null, about = aboutFacts(r.m);
+  const b = r.best, bk = kvAdjusted(b, d), basis = d && d.detail ? d.detail.fit.estimate_basis : null, about = aboutFacts(r.m);
   const ladder = d && d.ladder;
   return `<section class="card">
     ${r.m.packed ? `<div class="warn-box" style="margin:0 0 10px"><b>Size uncertain.</b> ${esc(r.m.packed.text)}</div>` : ""}
-    <div class="ov-meta" title="Runs on, and whether the speed is estimated or measured"><span>${esc(b.mode)}</span><span class="${String(b.conf).startsWith("measured") ? "ok" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
+    <div class="ov-meta" title="Runs on, and whether the speed is estimated or measured"><span>${esc(bk.mode)}</span><span class="${String(b.conf).startsWith("measured") ? "ok" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
     ${about.length ? `<div class="ov-about">${about.map(esc).join(" · ")}</div>` : ""}
     <div class="stats">
       <div class="stat" title="Speed in tokens per second"><div class="k">Speed</div><div class="v">${speedRange(b)}${b.tps > 0 ? " <small>tok/s</small>" : ""}</div>${measLine(r)}</div>
-      <div class="stat" title="${b.mode === "MoE offload" ? `Total: ${gb(b.inGpu)} in VRAM + ${gb(b.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(b.mode === "MoE offload" ? b.inGpu + b.inRam : b.need).toFixed(1)} <small>GB</small></div></div>
+      <div class="stat" title="${bk.mode === "MoE offload" ? `Total: ${gb(bk.inGpu)} in VRAM + ${gb(bk.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(bk.mode === "MoE offload" ? bk.inGpu + bk.inRam : bk.need).toFixed(1)} <small>GB</small></div></div>
       <div class="stat"><div class="k">Best file</div><div class="v" style="font-size:14px" title="${esc(b.q)}">${esc(b.q)}</div></div>
-      <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Context</div><div class="v">${fmtCtx(r.ctxFit)}</div></div>
+      <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Context</div><div class="v">${r.ctxFit > 0 && r.ctxFit < 1024 ? `${r.ctxFit} <small>tok</small>` : fmtCtx(r.ctxFit)}</div></div>
     </div>
-    <div class="math">${mathLine(b)}</div>
-    ${poolBar(b, d)}
+    <div class="math">${mathLine(bk)}</div>
+    ${poolBar(bk, d)}
     ${basis ? `<p class="hint">Speed basis: ${esc(basis.method.replace(/_/g, " "))}${basis.gpu_bandwidth_gbps ? ` · GPU ${basis.gpu_bandwidth_gbps} GB/s` : ""}${basis.ddr_bandwidth_gbps ? ` · RAM ${basis.ddr_bandwidth_gbps} GB/s` : ""} · efficiency ${basis.efficiency} · at ${fmtCtx(basis.assumed_context)} context.</p>` : ""}
     <div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button class="btn small" id="btnPreview" ${b.tps <= 0 ? "disabled" : ""}>Preview speed</button><small>Shows how fast text appears at ${b.tps > 0 ? fmtT((b.lo + b.hi) / 2) : "—"} tok/s.</small></div>
     <div class="typing" id="typing" hidden></div>
@@ -2161,6 +2180,7 @@ async function searchGgufCopies(m) {
   renderDetail();
 }
 function quantOfFile(path) { const mm = /(IQ\d_[A-Z]+|Q\d_K_[SMLP]|Q\d_K|Q\d_\d|Q\d_[A-Z]|BF16|F16|F32|MXFP4)/i.exec(path); return mm ? mm[1].toUpperCase() : ""; }
+const splitGguf = (path) => /^(.*)-(\d{5})-of-(\d{5})(\.gguf)$/i.exec(path);
 function fileKind(path) {
   const p = path.toLowerCase();
   if (p.includes("mmproj")) return ["vision projector — needed for images", "tag okay"];
@@ -2196,22 +2216,24 @@ function tabFiles(r) {
     if (f && f.error) html += `<div class="warn-box">${esc(f.error)}</div>`;
     if (f && f.files) {
       // Leave out text, settings and Ollama's extension-less files (template, params, license).
-      const isPick = (x) => { const q = quantOfFile(x.path); return !!q && q === String(b.q).toUpperCase() && fileKind(x.path)[0] === "model file"; };
-      // The file "best for this PC" first, then the rest from large to small.
-      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => (isPick(c) - isPick(a)) || c.size - a.size);
+      const isPick = (x) => { const sm = splitGguf(x.path); if (sm && Number(sm[2]) > 1) return false; const q = quantOfFile(x.path); return !!q && q === String(b.q).toUpperCase() && fileKind(x.path)[0] === "model file"; };
+      const sortHit = (x) => { const q = quantOfFile(x.path); return !!q && q === String(b.q).toUpperCase() && fileKind(x.path)[0] === "model file"; };
+      // The file "best for this PC" (and any sibling shards in order) first, then the rest from large to small.
+      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => (sortHit(c) - sortHit(a)) || (sortHit(a) ? a.path.localeCompare(c.path) : c.size - a.size));
       // "Fits here": the verdict of llmfit's planner for this file's quant ("Which file fits?" in Overview).
-      const lv = ladderVerdicts(state.detail.get(detailKey(m.id)));
+      const det = state.detail.get(detailKey(m.id)), lv = ladderVerdicts(det);
       const fitCell = (x) => { if (fileKind(x.path)[0] !== "model file") return ""; const q = quantOfFile(x.path); if (!q) return "—"; const v = lv.get(planQuant(q)); return v ? `<span title="${esc(`llmfit planner for ${planQuant(q)}${planQuant(q) !== q ? ` (counted for ${q})` : ""}: ${PLAIN[v.plain].label} on ${v.mode}`)}"><span class="badge ${PLAIN[v.plain].cls}">${{ well: "Runs well", tight: "Tight", slower: "Slower", nofit: "Won't fit" }[v.plain]}</span></span>` : "—"; };
-      // Read the GGUF header of the file llmfit picks (else the smallest model file): MTP layers and more.
-      const models = shown.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file");
+      // Read the GGUF header of the file llmfit picks (part 1 if split, else the smallest model file): MTP layers and more.
+      const models = shown.filter((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0] === "model file" && !(splitGguf(x.path) && Number(splitGguf(x.path)[2]) > 1));
       const headFile = models.find((x) => quantOfFile(x.path) === String(b.q).toUpperCase()) || models.slice().sort((a, c) => a.size - c.size)[0];
       if (headFile) { if (!state.gguf.has(repo + "/" + headFile.path)) setTimeout(() => loadGgufHeader(m, repo, headFile.path), 0); html += ggufLine(repo, headFile.path); }
+      html += saferNote(r, det);
       // As many characters as fit next to size, verdict and button (the panel can be dragged wider).
-      const nameMax = Math.max(20, Math.floor((($("detail").clientWidth || 446) - 262) / 7.4));
+      const nameMax = Math.max(18, Math.floor((($("detail").clientWidth || 446) - 282) / 7.5));
       html += `<table class="ftable files-t" style="margin-top:8px"><thead><tr><th>File</th><th title="llmfit planner, with extra safety room (as in Which file fits?)">Fits here</th><th></th></tr></thead><tbody>${shown.map((x) => {
-        const k = fileKind(x.path), pick = isPick(x);
+        const k = fileKind(x.path), pick = isPick(x), sm = splitGguf(x.path), partTag = sm ? `<span class="tag" title="Split GGUF model: all ${Number(sm[3])} parts are needed to load it. Download queues all parts together.">part ${Number(sm[2])} of ${Number(sm[3])}</span>` : "";
         const job = dlJob(repo, x.path);
-        return `<tr class="${pick ? "pick" : ""}"><td class="fcell"><div class="fline"><span class="fname" title="${esc(x.path)}">${esc(midShort(x.path, nameMax))}</span><button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button></div><div class="fsub"><span class="fsize">${fmtSize(x.size)}</span>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}</div>${x.sha256 && state.showSha ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
+        return `<tr class="${pick ? "pick" : ""}"><td class="fcell"><div class="fline"><span class="fname" title="${esc(x.path)}">${esc(midShort(x.path, nameMax))}</span><button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button></div><div class="fsub"><span class="fsize">${fmtSize(x.size)}</span>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}${partTag}${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}</div>${x.sha256 && state.showSha ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
       }).join("")}</tbody></table><p class="hint"><b>best for this PC</b> = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>) and LM Studio sees the file at once.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
       html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>Every download is checked with SHA-256 at the end. <button class="btn ghost small" data-showsha="1" aria-pressed="${!!state.showSha}">${state.showSha ? "Hide" : "Show"} SHA-256 of each file</button></li></ul>`;
@@ -2266,9 +2288,9 @@ const FILE_QUANT = /^Q\d|^IQ\d|^F16|^BF16/i;
 // matched model file tells it (My models reads LM Studio's folder).
 function lmsOwnQuant(lms) {
   if (!lms) return "";
-  if (FILE_QUANT.test(lms.quantization || "")) return lms.quantization.toUpperCase();
   const loc = state.localGguf.byId.get(lms.id), fromFile = loc && loc.path ? quantOfFile(loc.path.split("/").pop()) : "";
-  return FILE_QUANT.test(fromFile) ? fromFile : "";
+  if (FILE_QUANT.test(fromFile)) return fromFile;
+  return FILE_QUANT.test(lms.quantization || "") ? lms.quantization.toUpperCase() : "";
 }
 function lmsFileQuant(lms, b) {
   return lmsOwnQuant(lms) || (FILE_QUANT.test(b.q) ? b.q : "Q4_K_M");
@@ -2492,11 +2514,13 @@ function upgText(desc) {
 }
 function hwText(h) { return h ? `${h.vram_gb != null ? gb(h.vram_gb) + " VRAM · " : ""}${gb(h.ram_gb)} RAM · ${h.cpu_cores} cores` : "—"; }
 function tabPlan(r, d) {
-  const b = r.best, plan = d && d.plan;
+  const b = r.best, bk = kvAdjusted(b, d), plan = d && d.plan;
   const alt = plan ? (plan.kv_alternatives || []).find((a) => a.kv_quant === state.kvq) || (plan.kv_alternatives || [])[0] : null;
   const kvSession = alt ? alt.kv_cache_gb : 0;
-  const free = b.vram - (b.need - kvSession);
-  const sessions = b.mode === "GPU" && kvSession > 0 ? Math.max(0, Math.floor(free / kvSession)) : 0;
+  const free = bk.vram - Math.max(0, bk.need - kvSession);
+  const sessions = bk.mode === "GPU" && kvSession > 0 ? Math.max(0, Math.floor(free / kvSession)) : 0;
+  const kvHint = state.kvq === "fp16" ? "or use KV cache Q8_0" : state.kvq === "q8_0" ? "or use KV cache Q4_0" : "or choose a smaller quant";
+  const drv = state.hw.freeDrive || "D:";
   const keep = state.plan.keep;
   const top = state.results.filter((x) => passFilters(x) && x.best.plain !== "nofit").sort((a, c) => c.best.score - a.best.score).slice(0, keep);
   const disk = top.reduce((s, x) => s + x.m.params * (QUANT_BPW[String(x.best.q).toUpperCase()] || 5) / 8, 0) * 1.1 + 20;
@@ -2513,11 +2537,11 @@ function tabPlan(r, d) {
   <section class="card"><div class="card-head"><h2>How many chats at the same time?</h2><span class="ctx-value">${state.plan.users} wanted</span></div>
     <input type="range" id="planUsers" min="1" max="16" step="1" value="${state.plan.users}" aria-label="Chats at the same time">
     <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${plan ? sessions : "—"}</div><small>chats of ${fmtCtx(r.ctx)} fit in VRAM</small></div><div><div class="big-num">${plan ? gb(kvSession) : "—"}</div><small>KV cache per chat (${state.kvq.toUpperCase()})</small></div></div>
-    ${plan ? `<div class="${sessions >= state.plan.users ? "ok-box" : "warn-box"}">${b.mode !== "GPU" ? "Parallel chats need the model fully in VRAM." : sessions >= state.plan.users ? `${state.plan.users} agents can share this model at ${fmtCtx(r.ctx)} context.` : `For ${state.plan.users} chats: lower the context, or use KV cache Q8_0.`}</div>` : ""}
+    ${plan ? `<div class="${sessions >= state.plan.users ? "ok-box" : "warn-box"}">${bk.mode !== "GPU" ? "Parallel chats need the model fully in VRAM." : sessions >= state.plan.users ? `${state.plan.users} agents can share this model at ${fmtCtx(r.ctx)} context.` : `For ${state.plan.users} chats: lower the context, ${kvHint}.`}</div>` : ""}
   </section>
   <section class="card"><div class="card-head"><h2>Disk space for my best models</h2><span class="ctx-value">keep ${keep}</span></div>
     <input type="range" id="planKeep" min="1" max="10" step="1" value="${keep}" aria-label="Number of models to keep">
-    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${gb(disk)}</div><small>needed (files + 10% + 20 GB for downloads, rough)</small></div><div><div class="big-num">${state.hw.freeDisk != null ? gb(state.hw.freeDisk) : "—"}</div><small>${state.hw.freeDisk != null ? "free on D:" : "free on D: not known. <b>Import…</b> (Your hardware) reads it from your PC."}</small></div></div>
+    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${gb(disk)}</div><small>needed (files + 10% + 20 GB for downloads, rough)</small></div><div><div class="big-num">${state.hw.freeDisk != null ? gb(state.hw.freeDisk) : "—"}</div><small>${state.hw.freeDisk != null ? `free on ${esc(drv)}` : `free on ${esc(drv)} not known. <b>Import…</b> (Your hardware) reads it from your PC.`}</small></div></div>
     <p class="hint">The ${keep} best with the current filters: ${top.map((x) => esc(x.m.name) + " " + esc(x.best.q)).join(", ")}.</p>
   </section>`;
 }
@@ -2591,7 +2615,13 @@ function hfRepoId(s) {
   const id = parts[0] + "/" + parts[1];
   return /^[\w.-]+\/[\w.-]+$/.test(id) ? id : null;
 }
-async function hfConfigText(id) {
+async function hfConfigText(idOrEntry) {
+  const entry = idOrEntry && typeof idOrEntry === "object" ? idOrEntry : null;
+  const id = entry ? entry.id : idOrEntry;
+  if (!id || (entry && Array.isArray(entry.siblings) && !entry.siblings.some((s) => s && s.rfilename === "config.json"))) return null;
+  // Pure GGUF mirror repos rarely carry config.json; check the cached file tree first to avoid avoidable 404s.
+  const cached = state.files.get(id);
+  if (cached && cached.files && !cached.files.some((f) => f.path === "config.json")) return null;
   try { const res = await fetch(`https://huggingface.co/${id}/resolve/main/config.json`, { headers: hfHeaders() }); return res.ok ? await res.text() : null; }
   catch (e) { return null; }
 }
@@ -2617,7 +2647,7 @@ async function liveMapEntries(entries, log) {
   let done = 0;
   if (log) log(`${entries.length} models received, ${todo.length} not in the list yet. Reading their config.json…`);
   await inPool(todo, 6, async (e, i) => {
-    const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
+    const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e));
     if (model) found.push({ i, model, e });
     done++;
     if (log && (done % 5 === 0 || done === todo.length)) log(`Reading config.json: ${done} of ${todo.length}…`);
@@ -2727,7 +2757,7 @@ async function checkHfLink(id) {
       state.lookup = { id, msg: inList ? "This model is in the list, but llmfit leaves it out of its ranking on this PC: " + NOT_RANKED : `llmfit already has this model under a very similar name. Search for "${e.id.split("/")[1]}".` };
       return;
     }
-    const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
+    const model = await call("mapHf", JSON.stringify(e), await hfConfigText(e));
     if (!model) {
       const base = (e.tags || []).filter((t) => t.startsWith("base_model:")).map((t) => t.split(":").pop()).find((b) => /^[\w.-]+\/[\w.-]+$/.test(b) && b !== e.id);
       state.lookup = { id, base, msg: `llmfit does not list this kind of model (Hugging Face says: ${e.pipeline_tag || "no model type"}). It lists text, vision, any-to-any and speech models.` + (base ? " It names a base model, which may be listed." : "") };
@@ -2759,7 +2789,8 @@ const MTP_WHAT = "MTP (multi-token prediction): the model has extra layers that 
 async function loadMtpConfig(id) {
   if (state.mtp.has(id)) return;
   state.mtp.set(id, { loading: true });
-  const text = lmsOnly(id) ? null : await hfConfigText(id);
+  // Pure GGUF repos (e.g. bartowski/*-GGUF) only hold .gguf files, not a transformers config.json.
+  const text = lmsOnly(id) || /[-_.]gguf$/i.test(id) ? null : await hfConfigText(id);
   let layers = null;
   if (text) {
     try {
@@ -2889,7 +2920,8 @@ async function checkLms() {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 2500);
     const res = await fetch(LMS_URL + "/api/v1/models", { signal: ctl.signal }); clearTimeout(t);
     const data = await res.json();
-    state.lms.models = (data.models || []).map(normLms); state.lms.online = state.lms.models.length > 0;
+    state.lms.online = res.ok && Array.isArray(data && data.models);
+    state.lms.models = state.lms.online ? data.models.map(normLms) : [];
   } catch (e) { state.lms.online = false; state.lms.models = []; }
   state.lms.checked = true;
   if (state.ready) { renderList(); ensureLmsLinks(); }
@@ -3486,9 +3518,14 @@ function enrichLmsRows() {
   }
   return changed;
 }
+function lmsOrphanNames() {
+  if (!state.lms.online || !state.lms.models.length) return [];
+  const keep = new Set(state.lms.models.map((x) => state.lmsLinks[x.id]).filter(Boolean));
+  return state.live.models.map((y) => y.name).filter((n) => state.live.meta[n] && state.live.meta[n].src === "lms" && !keep.has(n));
+}
 function ensureLmsLinks() {
   if (!state.ready || !state.lms.online || state.lmsLinkBusy || state.localGguf.busy) return;
-  if (!state.lms.models.some((x) => !/embed/i.test(x.type) && !catalogFor(x) && !state.lmsLinks[x.id])) return;
+  if (!state.lms.models.some((x) => !/embed/i.test(x.type) && !catalogFor(x) && !state.lmsLinks[x.id]) && !lmsOrphanNames().length) return;
   if (state.dl.root && !state.localGguf.done && !state.localGguf.needClick) scanLocalGguf(false);
   else if (!state.dl.root || state.localGguf.done) linkLmsModels(false);
 }
@@ -3497,7 +3534,7 @@ async function linkLmsModels(relink) {
   const isLmsRow = (n) => !!(state.live.meta[n] && state.live.meta[n].src === "lms");
   const todo = state.lms.models.filter((x) => !/embed/i.test(x.type) && (relink && isLmsRow(state.lmsLinks[x.id]) ? true : !catalogFor(x) && !state.lmsLinks[x.id]));
   const headers = state.lms.models.some((x) => (state.localGguf.byId.get(x.id) || {}).kvf);
-  if (!todo.length && !headers) return;
+  if (!todo.length && !headers && !lmsOrphanNames().length) return;
   state.lmsLinkBusy = true;
   const info = { live: [], lms: [], linked: [], failed: [] }, before = JSON.stringify(state.live), linksBefore = JSON.stringify(state.lmsLinks);
   let changed = false;
@@ -3515,7 +3552,7 @@ async function linkLmsModels(relink) {
           const c = known ? state.catalog.find((y) => y.name.toLowerCase() === e.id.toLowerCase()) : null;
           if (c && !isLmsRow(c.name) && lmsParamsOk(c, x)) { name = c.name; info.linked.push(x.name); }
           else if (!c || isLmsRow(c.name)) {
-            const m = await call("mapHf", JSON.stringify(e), await hfConfigText(e.id));
+            const m = await call("mapHf", JSON.stringify(e), await hfConfigText(e));
             if (m && lmsParamsOk(m, x)) { addLive(m, e); name = m.name; info.live.push(x.name); changed = true; }
           }
         } catch (err) { /* offline, gated or not on Hugging Face: LM Studio's own data below */ }
@@ -3529,6 +3566,13 @@ async function linkLmsModels(relink) {
         } else info.failed.push(x.name);
       }
       if (name) state.lmsLinks[x.id] = name;
+    }
+    // Clean up old "lmstudio/<key>" rows that were replaced by a real repo link or removed in LM Studio.
+    const orphans = new Set(lmsOrphanNames());
+    if (orphans.size) {
+      state.live.models = state.live.models.filter((y) => !orphans.has(y.name));
+      for (const n of orphans) delete state.live.meta[n];
+      changed = true;
     }
     info.kv = enrichLmsRows();
     if (info.kv.length) changed = true;
@@ -3558,11 +3602,12 @@ function lmsLinkLine() {
   return (parts.length ? `<p class="hint">Added to Models, so "Already in LM Studio" shows them: ${parts.join("; ")}.</p>` : "") + kv + (i.error ? `<div class="warn-box">${esc(i.error)}</div>` : "");
 }
 function localGgufLine() {
-  const s = state.localGguf, n = state.lms.models.length;
+  const s = state.localGguf, nonEmb = state.lms.models.filter((x) => !/embed/i.test(x.type));
+  const n = nonEmb.length, matched = nonEmb.filter((x) => s.byId.has(x.id)).length;
   const btn = (label) => `<button class="btn small" id="btnLocalGguf">${label}</button>`;
   if (s.busy) return `<div class="loading">Reading the GGUF headers of your model files${s.folder ? " in " + esc(s.folder) : ""}…</div>`;
   if (s.error) return `<div class="warn-box">Could not read your model files: ${esc(s.error)}</div><p class="hint">${btn("Try again")}</p>`;
-  if (s.done) return `<p class="hint">Read from your files in <b>${esc(s.folder)}</b>: ${s.byId.size} of ${n} models matched (${s.files} .gguf files). Layers, maximum context and MTP come from each file's header. ${btn("Read again")}</p>`;
+  if (s.done) return `<p class="hint">Read from your files in <b>${esc(s.folder)}</b>: ${matched} of ${n} models matched (${s.files} .gguf files). Layers, maximum context and MTP come from each file's header. ${btn("Read again")}</p>`;
   if (!state.dl.root) return `<p class="hint">LM Studio does not say which file a model uses. To read MTP, layers and maximum context from your own files, and to check them for updates on Hugging Face, choose LM Studio's models folder (the same folder as for Downloads). TensorTailor only reads the start of each file. ${btn("Choose the models folder")}</p>`;
   return `<p class="hint">To read MTP, layers and maximum context from your own files in <b>${esc(state.dl.root.name)}</b>, the browser needs your OK once. TensorTailor only reads the start of each file. ${btn("Read the model files")}</p>`;
 }
@@ -3599,14 +3644,15 @@ const KPI_ICON = {
   measured: '<svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>'
 };
 function mineKpis(totalGB) {
-  const s = state.lms, lg = state.localGguf, nModels = s.models.filter((x) => !/embed/i.test(x.type)).length, nEmb = s.models.length - nModels;
+  const s = state.lms, lg = state.localGguf, nonEmb = s.models.filter((x) => !/embed/i.test(x.type)), nModels = nonEmb.length, nEmb = s.models.length - nModels;
+  const nMatched = nonEmb.filter((x) => lg.byId.has(x.id)).length;
   const files = lg.done ? updFiles() : [], codes = files.map((f) => updStatus(f).code);
   const nUpd = codes.filter((c) => c === "update").length, nChecked = codes.filter((c) => c !== "unknown").length;
   const gs = grpState.done ? simGroups() : [], gTotal = gs.reduce((t, g) => t + g.total, 0), gFree = gs.reduce((t, g) => t + g.free, 0);
   const nMeas = Object.keys(measStore).length, pf = pcFactor();
   const card = (key, c, label, value, unit, note) => `<div class="card kpi" style="--c:${c}"><span class="kpi-l">${label}</span><span class="kpi-ic" aria-hidden="true">${KPI_ICON[key]}</span><b class="num">${value}${unit ? `<small>${unit}</small>` : ""}</b><p>${note}</p></div>`;
   return `<div class="kpis">${[
-    card("models", "var(--accent)", "Models", nModels, "", (nEmb ? `+ ${nEmb} embedding model${nEmb === 1 ? "" : "s"} · ` : "") + (lg.done ?`${lg.byId.size} of ${s.models.length} files read from <b>${esc(lg.folder)}</b>` : "Model files not read yet")),
+    card("models", "var(--accent)", "Models", nModels, "", (nEmb ? `+ ${nEmb} embedding model${nEmb === 1 ? "" : "s"} · ` : "") + (lg.done ? `${nMatched} of ${nModels} files read from <b>${esc(lg.folder)}</b>` : "Model files not read yet")),
     card("disk", "var(--good)", "On disk", totalGB.toFixed(totalGB >= 100 ? 0 : 1), "GB", `${s.models.length} models in LM Studio`),
     card("updates", nUpd ? "var(--marginal)" : "var(--perfect)", "Updates", lg.done && files.length ? nUpd : "—", "", !lg.done || !files.length ? "Read your models folder to check" : updState.busy ? "Checking on Hugging Face…" : `${nUpd ? `<b>${nUpd} available</b>` : "<b>All up to date</b>"} · ${nChecked} of ${files.length} files checked`),
     card("similar", "var(--marginal)", "Similar", gs.length ? gTotal.toFixed(1) : "0", gs.length ? "GB" : "", gs.length ? `${gs.length} group${gs.length === 1 ? "" : "s"} · up to <b>${gb(gFree)}</b> to free` : grpState.busy ? "Looking up base models…" : "No two models share a base model"),
@@ -3624,6 +3670,8 @@ function viewMine() {
       `<button class="btn primary" id="btnLmsRefresh">Try again</button>`,
       `<ol class="es-steps"><li>Start <b>LM Studio</b>.</li><li>Open the <b>Developer</b> tab.</li><li>Switch the server <b>on</b> (Status: Running).</li><li>Press <b>Try again</b>. Still nothing? Switch on <b>Enable CORS</b> in the server settings.</li></ol>`)
       : `<div class="loading">Looking for LM Studio…</div>`}</section>`;
+  if (!s.models.length) return `<div class="view-head"><h1>My models</h1><span class="status-line"><span class="dot ok"></span>Connected to LM Studio at 127.0.0.1:1234 · 0 models</span><span class="spacer"></span><button class="btn small" id="btnLmsRefresh">Refresh</button></div>
+    <section class="card">${emptyState(ES_ICON.down, "No models in LM Studio yet", "LM Studio's server is running, but your models list is empty. Pick a model in the list and download its GGUF file into LM Studio's models folder.", `<button class="btn primary" data-view-models="1">Go to the list</button><button class="btn" id="btnLmsRefresh">Refresh</button>`)}</section>`;
   const totalGB = s.models.reduce((t, x) => t + (x.sizeGB || 0), 0);
   const rows = s.models.map((x) => {
     const isEmb = /embed/i.test(x.type);
@@ -3650,10 +3698,11 @@ function viewMine() {
     const locLine = loc ? (loc.error ? `<div class="hash" title="${esc(loc.path)}">file header: ${esc(loc.error)}</div>` : `<div class="hash" title="${esc("GGUF header of " + loc.path + (loc.kvf ? "\n" + kvFieldsText(loc.kvf) + "." : "") + (fileMtp === false ? "\nNo MTP layers in this file." : ""))}">${loc.blocks ? loc.blocks + " layers" : ""}${loc.blocks && loc.ctx ? " · " : ""}${loc.ctx ? "max " + fmtCtx(loc.ctx) : ""}${fileMtp === false && x.mtpName ? " · no MTP in file" : ""}</div>`) : "";
     // The same favorite star as in the Models list (stars belong to models in llmfit's list).
     const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
+    const ownQ = lmsOwnQuant(x);
     return `<tr><td><div class="mm">${star}${avatar({ name: x.name, provider: x.publisher, id: x.id })}<div class="mm-n"><div class="mm-t"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}${isEmb ? "" : grpTag(x)}</div>${isEmb ? "" : updLine(x)}</div></div></td>
       <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy)}">MTP</span>` : ""}${locLine}</td>
       <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
-      <td><span class="quant">${esc(x.quantization || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
+      <td><span class="quant">${esc(ownQ || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
       <td><span class="tag ${x.loaded ? "okay" : ""}">${x.loaded ? "loaded" + (x.loadedCtx ? " · " + fmtCtx(x.loadedCtx) : "") : "not loaded"}</span>${x.mtp !== null ? ` <span class="tag ${x.mtp ? "okay" : ""}" title="${esc(MTP_WHAT + (x.mtp ? "\nLM Studio uses it for this model now." : "\nLM Studio does not use it now: in the model's load settings, turn on speculative decoding with MTP (only works if the model file has MTP layers)."))}">MTP ${x.mtp ? "on" : "off"}</span>` : fileMtp ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy + "\nIn LM Studio's load settings, turn on speculative decoding with MTP (or use Load in LM Studio in the Run tab).")}">MTP in file</span>` : fileMtp === null && x.mtpName ? ` <span class="tag" title="${esc(MTP_WHAT + "\nThe name says MTP. Load the model, or read your model files (above the list), to know for sure.")}">MTP (name)</span>` : ""}${warn}</td>
       <td>${isEmb ? '<span class="tag">embedding model</span>' : plain ? verdict(plain) + `<div class="hash">${cat ? (lmsOnly(cat.m.id) ? "made from LM Studio's data" : "llmfit: " + esc(cat.m.id)) : "from your file (rough)"}</div>` : "—"}</td>
       <td class="r"${rangeTip ? ` title="${esc(rangeTip)}"` : ""}>${isEmb ? "—" : range + (range !== "—" ? " tok/s" : "") + measCell(x)}</td><td style="font-size:12.5px;color:var(--muted);max-width:220px"${best.tip ? ` title="${esc(best.tip)}"` : ""}>${esc(tipText)}</td>
@@ -3695,11 +3744,12 @@ function viewBattle() {
   const led = win ? rounds.map(([k]) => k).filter((k) => alive.every((f) => win.p[k] >= f.p[k] - 0.5)) : [];
   const card = (f) => {
     const rank = f.p ? ranked.indexOf(f) : -1, isWin = win && f === win;
-    return `<section class="card fighter ${isWin ? "win" : ""} ${f.p ? "" : "out"}">${isWin ? '<span class="crown">★ WINNER</span>' : ""}<span class="place">${rank >= 0 ? ORDINAL[rank] + " place" : "Knocked out"}</span>
+    return `<section class="card fighter ${isWin ? "win" : ""} ${f.p ? "" : "out"}">${isWin ? '<span class="crown">Winner</span>' : ""}<span class="place">${rank >= 0 ? ORDINAL[rank] + " place" : "Knocked out"}</span>
     <div class="fhead">${avatar(f.r.m, isWin)}<div class="fname-b"><h3 title="${esc(f.r.m.id)}">${esc(f.r.m.name)}</h3><div class="hash">${esc(f.r.best.q)} · ${speedRange(f.r.best)} tok/s</div></div></div>
     ${f.p ? `<div class="pts num">${f.p.total.toFixed(0)}<small> / 100</small></div>${rounds.map(([k, max]) => `<div class="round"><span>${k}</span><div class="bar"><span style="width:${(f.p[k] / max * 100).toFixed(0)}%;background:${ROUND_COL[k]}"></span></div><span class="r num">${f.p[k].toFixed(0)}</span></div>`).join("")}` : `<div class="warn-box">Knocked out: it does not fit on this PC.</div>`}</section>`;
   };
-  const why = !win ? "No model fits on this PC." : `${esc(win.r.m.name)} wins with ${win.p.total.toFixed(0)} points` + (led.length ? `: best (or equal best) in ${led.join(", ")}.` : ".");
+  const ledStr = led.length <= 1 ? led.join("") : led.slice(0, -1).join(", ") + " and " + led[led.length - 1];
+  const why = !win ? "No model fits on this PC." : `${esc(win.r.m.name)} wins with ${win.p.total.toFixed(0)} points` + (ledStr ? `: best (or equal best) in ${ledStr}.` : ".");
   // A podium: the winner in the middle (2nd left, 3rd right); with 2 or 4 fighters, by rank.
   const order = alive.length === 3 && fighters.length === 3 ? [ranked[1], ranked[0], ranked[2]] : ranked.concat(fighters.filter((f) => !f.p));
   const legend = rounds.map(([k, max]) => `<span style="--c:${ROUND_COL[k]}">${k[0].toUpperCase() + k.slice(1)} ${max}</span>`).join("");
@@ -3778,14 +3828,22 @@ async function dlAdd(repo, file) {
   try {
     if (!(await dlFolder(true))) { toast("TensorTailor needs a folder with write permission."); return; }
   } catch (e) { if (e.name !== "AbortError") toast(e.message); return; }
-  const added = await dlQueue(repo, file);
-  if (!added) { setView("downloads"); return; }
+  // Split GGUF files (model-00001-of-00002.gguf): queue all parts in order so LM Studio can load the model.
+  const sm = splitGguf(file.path), allFiles = (state.files.get(repo) || {}).files || [];
+  const parts = sm ? allFiles.filter((x) => { const m = splitGguf(x.path); return m && m[1].toLowerCase() === sm[1].toLowerCase() && m[3] === sm[3]; }).sort((a, c) => a.path.localeCompare(c.path)) : [file];
+  let nAdded = 0;
+  for (const p of (parts.length ? parts : [file])) {
+    const why = parts.length > 1 && p.path !== file.path ? `Taken along: part of a ${parts.length}-file GGUF model (all parts are needed).` : undefined;
+    if (await dlQueue(repo, p, why)) nAdded++;
+  }
+  if (!nAdded) { setView("downloads"); return; }
   // A model file of a vision model needs its vision projector (mmproj) next to it, or LM Studio
   // shows no vision. Take it along when the repo has one and it is not queued or done yet.
   const proj = fileKind(file.path)[0] === "model file" ? dlProjector(repo) : null;
   const projAdded = proj && !dlJob(repo, proj.path) ? await dlQueue(repo, proj, "Taken along: the vision projector. LM Studio needs it next to the model to read images.") : false;
   renderNav(); renderDetail();
-  toast(projAdded ? `Added to Downloads, with the vision projector ${proj.path.split("/").pop()} (needed for images).` : "Added to Downloads.");
+  const baseMsg = parts.length > 1 ? `Added all ${parts.length} parts to Downloads` : "Added to Downloads";
+  toast(projAdded ? `${baseMsg}, with the vision projector ${proj.path.split("/").pop()} (needed for images).` : baseMsg + ".");
   dlNext();
 }
 // Put one file in the queue. Returns false when it is already queued, running or done.
@@ -3794,8 +3852,8 @@ async function dlQueue(repo, file, note) {
   if (job && ["done", "queued", "downloading", "assembling", "verifying"].includes(job.status)) return false;
   if (!job) { job = { id: repo + "/" + file.path, repo, path: file.path, bytes: file.bytes, sha256: file.sha256 || null, partBytes: state.dl.partBytes, added: new Date().toISOString() }; state.dl.jobs.push(job); }
   job.status = "queued"; job.error = ""; job.note = ""; if (note) job.why = note;
-  const free = state.hw.freeDisk;
-  if (free && job.bytes * 2 / 1e9 > free) job.note = `Your last import showed ${free.toFixed(0)} GB free on D:. Joining the parts needs about twice the file size for a short time.`;
+  const free = state.hw.freeDisk, drv = state.hw.freeDrive || "D:";
+  if (free != null && free > 0 && job.bytes * 2 / 1e9 > free) job.note = `Your last import showed ${free.toFixed(0)} GB free on ${drv}. Joining the parts needs about twice the file size for a short time.`;
   await dlSave(job);
   return true;
 }
@@ -4062,7 +4120,7 @@ function openCompare() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
   if (rs.length < 2) { toast("Pick at least 2 models."); return; }
   const rows = [["Verdict", (r) => verdict(r.best.plain), null], ["Runs on", (r) => r.best.mode, null], ["Best file", (r) => `<span class="quant">${esc(r.best.q)}</span>`, null],
-    ["Memory", (r) => gb(r.best.need), (r) => -r.best.need], ["Speed", (r) => speedRange(r.best) + " tok/s", (r) => r.best.tps], ["Usable context", (r) => fmtCtx(r.ctxFit), (r) => r.ctxFit],
+    ["Memory", (r) => gb(r.best.need), (r) => -r.best.need], ["Speed", (r) => speedRange(r.best) + " tok/s", (r) => r.best.tps], ["Usable context", (r) => fmtCtxUnit(r.ctxFit), (r) => r.ctxFit],
     ["Score", (r) => r.best.score.toFixed(0), (r) => r.best.score], ["Quality", (r) => r.best.parts.quality.toFixed(0), (r) => r.best.parts.quality], ["Parameters", (r) => fmtParams(r.m.params), null], ["License", (r) => esc(r.m.license), null]];
   $("cmpBody").innerHTML = `<table class="cmp-table"><tr><th></th>${rs.map((r) => `<td><b>${esc(r.m.name)}</b></td>`).join("")}</tr>${rows.map(([label, cell, rank]) => { const bv = rank ? Math.max(...rs.map(rank)) : null; return `<tr><th>${label}</th>${rs.map((r) => `<td class="${rank && rank(r) === bv ? "best" : ""}">${cell(r)}</td>`).join("")}</tr>`; }).join("")}</table>`;
   $("dlgCompare").showModal();
@@ -4088,11 +4146,17 @@ function detectInBrowser() {
   try { const gl = document.createElement("canvas").getContext("webgl"); const ext = gl && gl.getExtension("WEBGL_debug_renderer_info"); renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ""; } catch (e) { renderer = ""; }
   const m = /((?:NVIDIA |AMD |Intel\(R\) )?(?:GeForce|Radeon|Arc|Quadro|RTX|Tesla)[^,(]*)/.exec(renderer || "");
   const threads = navigator.hardwareConcurrency || 0;
-  if (m) { setGpuName(m[1].replace(/\s+Direct3D.*$/, "").trim()); toast(`Found ${m[1].trim()} and ${threads} CPU threads. Check RAM, VRAM and cores yourself.`); }
-  else toast(threads ? `Found ${threads} CPU threads. The browser did not show the GPU name.` : "The browser did not share hardware details.");
+  if (!m && !threads) { toast("The browser did not share hardware details."); return; }
+  state.hw.cpuName = ""; $("cpuName").textContent = "";
+  if (threads > 0) $("cores").value = Math.max(1, Math.round(threads / 2));
+  if (m) {
+    const gpu = m[1].replace(/\s+Direct3D.*$/, "").trim(), known = lookupGpu(gpu);
+    setGpuName(gpu);
+    toast(known ? `Found ${gpu} and ${threads} CPU threads. Check RAM, VRAM and cores yourself.` : `Found ${gpu}, but its VRAM is not in the table. Enter VRAM and RAM yourself, or use Import….`);
+  } else toast(`Found ${threads} CPU threads (~${Math.max(1, Math.round(threads / 2))} cores). The browser did not show the GPU name.`);
   applyHardware("from browser");
 }
-const PS_LINE = `$g = @(nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits); $f = $g[0] -split ','; $c = Get-CimInstance Win32_Processor | Select-Object -First 1; @{ ram_gb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB); gpu_name = $f[0].Trim(); vram_gb = [math]::Round([double]$f[1] / 1024); vram_used_gb = [math]::Round([double]$f[2] / 1024, 1); gpu_count = $g.Count; cpu_name = $c.Name.Trim(); cpu_cores = $c.NumberOfCores; free_d_gb = [math]::Round((Get-PSDrive D).Free / 1GB) } | ConvertTo-Json -Compress | Set-Clipboard`;
+const PS_LINE = `$n = @($(if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits 2>$null }) | Where-Object { $_ -match ',' }); $w = @(if (-not $n.Count) { Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.AdapterRAM -gt 0 } }); $c = Get-CimInstance Win32_Processor | Select-Object -First 1; $drv = if (Test-Path 'D:\\') { 'D' } else { ($env:SystemDrive -replace ':','') }; $ps = Get-PSDrive $drv -ErrorAction SilentlyContinue; @{ ram_gb = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB); gpu_name = if ($n.Count) { ($n[0] -split ',')[0].Trim() } elseif ($w.Count) { $w[0].Name.Trim() } else { 'CPU only' }; vram_gb = if ($n.Count) { [math]::Round([double]($n[0] -split ',')[1] / 1024) } elseif ($w.Count) { [math]::Round($w[0].AdapterRAM / 1GB) } else { 0 }; vram_used_gb = if ($n.Count) { [math]::Round([double]($n[0] -split ',')[2] / 1024, 1) } else { 1 }; gpu_count = if ($n.Count) { $n.Count } elseif ($w.Count) { 1 } else { 0 }; cpu_name = $c.Name.Trim(); cpu_cores = $c.NumberOfCores; free_drive = ($drv + ':'); free_gb = if ($ps) { [math]::Round($ps.Free / 1GB) } else { $null } } | ConvertTo-Json -Compress | Set-Clipboard`;
 function importHardware() {
   let d; try { d = JSON.parse($("importText").value); } catch (e) { toast("That text is not valid. Paste the text that PowerShell copied."); return; }
   if (d.gpu_name) setGpuName(String(d.gpu_name));
@@ -4102,7 +4166,9 @@ function importHardware() {
   if (d.vram_used_gb != null) $("reserve").value = Math.max(0.5, Math.round(Number(d.vram_used_gb) * 4) / 4);
   if (d.cpu_cores != null) $("cores").value = Number(d.cpu_cores);
   if (d.cpu_name) { state.hw.cpuName = String(d.cpu_name); $("cpuName").textContent = state.hw.cpuName; }
-  if (d.free_d_gb != null) state.hw.freeDisk = Number(d.free_d_gb);
+  const free = d.free_gb ?? d.free_d_gb;
+  if (free != null) state.hw.freeDisk = Number(free);
+  if (d.free_drive) state.hw.freeDrive = String(d.free_drive);
   $("dlgImport").close(); applyHardware("imported"); toast("Hardware imported. 'Kept for Windows' now uses the VRAM that is in use right now.");
 }
 
@@ -4277,7 +4343,7 @@ function removeFilter(key) {
   syncFilterUi(); renderUseCases(); renderList();
 }
 function resetFilters() {
-  state.f = { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, gpu: false, pop: true };
+  state.f = { lang: "", size: "", caps: new Set(), llama: true, gguf: false, isNew: false, watch: false, lms: false, open: false, free: false, gpu: false, pop: true };
   $("fLang").value = ""; $("fSize").value = "";
   ["fGguf", "fNew", "fWatch", "fLms", "fOpen", "fFree", "fGpu"].forEach((id) => { $(id).checked = false; }); $("fLlama").checked = true; $("fPop").checked = true;
   document.querySelectorAll("[data-cap]").forEach((b) => b.setAttribute("aria-pressed", "false"));
@@ -4298,7 +4364,7 @@ function wireSplit() {
   sp.addEventListener("pointerdown", (e) => {
     e.preventDefault(); sp.setPointerCapture(e.pointerId); lay.classList.add("resizing");
     const move = (ev) => setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, false);
-    const up = (ev) => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); lay.classList.remove("resizing"); setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, true); renderRowsWindow(); };
+    const up = (ev) => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); lay.classList.remove("resizing"); setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, true); renderRowsWindow(); if (state.tab === "files") renderDetail(); };
     sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
   });
   sp.addEventListener("keydown", (e) => {
@@ -4306,8 +4372,9 @@ function wireSplit() {
     e.preventDefault(); e.stopPropagation();
     const now = $("detail").getBoundingClientRect().width;
     setDetailWidth(now + (e.key === "ArrowLeft" ? 24 : -24), true);
+    if (state.tab === "files") renderDetail();
   });
-  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); });
+  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); if (state.tab === "files") renderDetail(); });
   // The detail header shrinks to one line while you scroll (with a gap, so it does not flicker).
   $("detail").addEventListener("scroll", () => { const d = $("detail"), t = d.scrollTop; if (t > 90) d.classList.add("scrolled"); else if (t < 20) d.classList.remove("scrolled"); });
 }
@@ -4441,13 +4508,13 @@ function wire() {
     if (e.key === "?" && !typing) { e.preventDefault(); openHelp(); return; }
     if (typing || e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key >= "1" && e.key <= "4") { setView(["models", "mine", "battle", "downloads"][Number(e.key) - 1]); return; }
+    if (e.key === "t" || e.key === "T") { toggleTheme(); return; }
     if (state.view !== "models") return;
     if ((e.key === "ArrowDown" || e.key === "ArrowUp") && ownArrows) return;
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); moveSelection(1); }
     else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); moveSelection(-1); }
     else if (e.key === "c" || e.key === "C") toggleCompare(state.selected);
     else if (e.key === "w" || e.key === "W") toggleWatch(state.selected);
-    else if (e.key === "t" || e.key === "T") toggleTheme();
   });
 }
 
