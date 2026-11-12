@@ -1236,7 +1236,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="caps"><span data-helpcap="vision"></span></span> Vision</dt><dd>The model can read images (photos, screenshots). It does not make images.</dd>
       <dt><span class="caps"><span data-helpcap="tools"></span></span> Tool use</dt><dd>The model can call functions, so AI agents can use it.</dd>
       <dt><span class="caps"><span data-helpcap="reason"></span></span> Reasoning</dt><dd>The model thinks step by step before it answers. "(from the model name)" means the name says so, not the model card.</dd>
-      <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days.</dd>
+      <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days: the date this repo was made on Hugging Face. A new re-upload of an old model does not make the old model new.</dd>
       <dt><span class="tag okay">MTP</span></dt><dd>Multi-token prediction: the model has extra layers that guess the next few tokens at once. In LM Studio, speculative decoding with MTP can then answer faster with the same quality. TensorTailor reads it from the GGUF header of the file (tab Files), else from config.json, else from the name ("from the name"). For the MTP labels in My models, see "My models" below.</dd>
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them.</dd>
@@ -1508,7 +1508,7 @@ const engineBytes = () => gunzipB64("engine-wasm");
 async function loadMeta() {
   try {
     const rows = JSON.parse(new TextDecoder().decode(await gunzipB64("catalog-meta")));
-    for (const [name, downloads, likes, langs] of rows) state.meta.set(name, { downloads, likes, langs: langs ? langs.split(",") : [] });
+    for (const [name, downloads, likes, langs, date] of rows) state.meta.set(name, { downloads, likes, langs: langs ? langs.split(",") : [], date: date || "" });
   } catch (e) { /* page still works, without popularity and languages */ }
 }
 function startWorker() {
@@ -1606,7 +1606,8 @@ function modelView(name, row, F) {
     active: c.active_parameters ? c.active_parameters / 1e9 : null, moe: !!c.is_moe,
     ctx: c.context_length || 0, uses: [ucKey(row[F.use_case])], license: c.license || "unknown",
     gated: GATED_LICENSES.test(c.license || ""), langs: meta.langs, caps: capsOf(c),
-    added: c.release_date || "", downloads: meta.downloads, likes: meta.likes, format: c.format || "",
+    // The date of this exact repo when the catalog file has it (the engine keeps the newest date of all re-uploads).
+    added: meta.date || c.release_date || "", downloads: meta.downloads, likes: meta.likes, format: c.format || "",
     gguf: (c.gguf_sources || []).map((s) => ({ repo: s.repo, provider: s.provider })), runtime: row[F.runtime],
     live: state.live.meta[name] ? state.live.meta[name].at || "yes" : "",
     fromLms: !!(state.live.meta[name] && state.live.meta[name].src === "lms"),

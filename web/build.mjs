@@ -21,12 +21,16 @@ import { helpCheck } from "./help-check.mjs";
 
 const [pkg = "engine/pkg-nomod", out = "dist/tensortailor.html", hfModels = "vendor/llmfit/llmfit-core/data/hf_models.json"] = process.argv.slice(2);
 
-// name -> [downloads, likes, "en,nl,..."] for every model that has any of them.
+// name -> [downloads, likes, "en,nl,...", "YYYY-MM-DD"] for every model that has any of them.
+// The release date is the one of this exact repo: llmfit's engine merges re-uploads with the same short
+// name into one row and keeps the NEWEST date of them all (models.rs, dedupe_hf_entries), so an old model
+// would look new.
 let meta = [];
 if (existsSync(hfModels)) {
   for (const e of JSON.parse(readFileSync(hfModels, "utf8"))) {
     const langs = Array.isArray(e.languages) ? e.languages.join(",") : "";
-    if (e.hf_downloads || e.hf_likes || langs) meta.push([e.name, e.hf_downloads || 0, e.hf_likes || 0, langs]);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(e.release_date || "") ? e.release_date : "";
+    if (e.hf_downloads || e.hf_likes || langs || date) meta.push([e.name, e.hf_downloads || 0, e.hf_likes || 0, langs, date]);
   }
 } else {
   console.warn(`warning: ${hfModels} not found; the page will have no download counts or languages`);
