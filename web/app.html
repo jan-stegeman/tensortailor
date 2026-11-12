@@ -941,6 +941,39 @@ details.by-hand .hint { margin-top: 6px; }
 .upg-lv { font-size: 11.5px; color: var(--faint); }
 .notes li .upg-arrow { margin: 0 2px; }
 .btn.icon.key.on::after { content: ""; position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--perfect); box-shadow: 0 0 0 2px var(--bg); }
+/* ==== Narrow screens (about 1366 px wide) and small fixes from the GUI review ==== */
+/* The detail panel starts a little narrower below 1500 px (dragging its edge still sets any width). */
+@media (max-width: 1500px) { .layout { grid-template-columns: 264px minmax(0, 1fr) var(--dw, 400px); } }
+/* The list area is a container: the list, tiles and cards follow its width, not the window's. */
+.center { container: center / inline-size; }
+/* Verdict tiles: a label never breaks; a hidden tile says "hidden" instead of a line through the word. */
+.tile .n, .tile .l { white-space: nowrap; }
+.tile, .tile[aria-pressed="false"] { padding: 0 9px; gap: 6px; }
+.tile[aria-pressed="false"] .l { text-decoration: none; color: var(--faint); }
+.tile .off { display: inline; font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--faint); }
+.list-head { flex-wrap: wrap; row-gap: 8px; }
+.list-tools { margin-left: auto; }
+.list-tools select { max-width: 150px; }
+/* Top picks cards: the buttons at the bottom of every card, on a second line when the card is narrow. */
+.sug .acts { margin-top: auto; flex-wrap: wrap; }
+/* Score: just the number (a small ring looked like a loading spinner, a short bar like a minus sign). */
+.score i { display: none; }
+/* A narrow list leaves out the Best file column (the detail panel shows it) and tightens the others. */
+@container center (max-width: 780px) {
+  .cols, .row { grid-template-columns: 24px 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
+  .cols > :nth-child(4), .row > :nth-child(4) { display: none; }
+  .sk-row { grid-template-columns: 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
+  .sk-row > :nth-child(3) { display: none; }
+}
+/* The detail panel is a container too: when it is narrow, the labels above its numbers may wrap instead of "CONTE…". */
+.detail { container: detail / inline-size; }
+@container detail (max-width: 440px) { .stat .k { white-space: normal; overflow: visible; letter-spacing: .03em; } }
+/* My models: a name breaks between words only; a narrow view leaves out the Arch column (MTP also shows under
+   State); the table scrolls sideways instead of cutting off Show. */
+.view-pane { container: view / inline-size; }
+.mtable .d-id { overflow-wrap: normal; word-break: normal; }
+.mine-card { overflow-x: auto; }
+@container view (max-width: 1150px) { .mine-card .mtable th:nth-child(2), .mine-card .mtable td:nth-child(2) { display: none; } }
 </style>
 </head>
 <body>
@@ -1173,7 +1206,7 @@ details.by-hand .hint { margin-top: 6px; }
     <h3>Above the list</h3>
     <dl>
       <dt>Top picks for this PC</dt><dd>Three suggestions that follow your filters: <b>Best overall</b>, <b>Highest quality</b> and <b>Fastest</b>, each with its verdict, file and speed. <b>View details</b> opens the model; <b>Add to battle</b> puts it in Battle. Closed, they are one slim strip with the three names (click a name to open it); the arrow at its right, or the sparkle button next to Sort, shows them as cards; <b>Hide</b> folds the cards back into the strip.</dd>
-      <dt>The four tiles</dt><dd>The segments at the left of the toolbar count each verdict. Click one to show or hide those models; a hidden one is crossed out and grey.</dd>
+      <dt>The four tiles</dt><dd>The segments at the left of the toolbar count each verdict. Click one to show or hide those models; a hidden one is grey and says "hidden".</dd>
       <dt>Count line</dt><dd>At the right of the filter chips: how many models are shown, how many the tiles hide, how many llmfit analysed, and how long that took.</dd>
       <dt>Filter chips</dt><dd>Every active filter is a chip: click its × to remove it. <b>Clear all</b> shows every analysed model; <b>Defaults</b> gives the start values.</dd>
       <dt>Export CSV</dt><dd>The arrow-up button next to Sort: saves the shown list as a CSV file (for a spreadsheet).</dd>
@@ -1184,7 +1217,7 @@ details.by-hand .hint { margin-top: 6px; }
     <h3>The columns</h3>
     <dl>
       <dt>Model</dt><dd>The name (↗ opens it on Hugging Face), its labels and icons (see below), the publisher and the number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower. The star makes it a favorite; the box selects it for compare or battle.</dd>
-      <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size.</dd>
+      <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size. When the list is narrow (a screen about 1366 px wide), this column is left out; the detail panel shows it.</dd>
       <dt>Memory</dt><dd>The memory bar (see above), with the memory the model needs.</dd>
       <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace.</dd>
       <dt>Verdict</dt><dd>How well it runs here, and where it runs (GPU, CPU+GPU, MoE offload, CPU).</dd>
@@ -1247,7 +1280,7 @@ details.by-hand .hint { margin-top: 6px; }
     <h3>The detail panel (right)</h3>
     <dl>
       <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and one line with the facts (parameters, maximum context, license with "(gated)" or "(not gated)", release date, downloads). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs.</dd>
-      <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width. The width is remembered in this browser.</dd>
+      <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width (a little narrower on screens below 1500 px). The width is remembered in this browser.</dd>
       <dt>Overview</dt><dd>One quiet line (runs on, llmfit's own level, estimated or measured), then speed, memory, best file and context, and "Which file fits?" for every quantization (the verdict itself is at the top of the panel). When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face, one line per file (point at a long name for the full name; the copy button copies the download link), the file "best for this PC" first, and the verdict per file. <b>Download</b> saves a file into your folder and checks its SHA-256 at the end. <b>Show SHA-256 of each file</b> (under the table) shows the codes; click one to copy it.</dd>
@@ -1259,7 +1292,7 @@ details.by-hand .hint { margin-top: 6px; }
     <h3>Views (top) and keys</h3>
     <dl>
       <dt>Models · My models · Battle · Downloads</dt><dd>Click to switch, or press <kbd>1</kbd> to <kbd>4</kbd>. <kbd>Esc</kbd> always brings you back to Models.</dd>
-      <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. The speed is for <b>your</b> file: llmfit counts its own best file (often another quant), so its range is scaled to the size of your file (point at the speed for both). <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
+      <dt>My models</dt><dd>The models in your LM Studio (its server must be on: Developer tab → server on), with their size on disk, whether they are loaded, the verdict and speed here. The speed is for <b>your</b> file: llmfit counts its own best file (often another quant), so its range is scaled to the size of your file (point at the speed for both). On a narrow screen the Arch column is left out (MTP still shows under State). <b>Show</b> opens the model in Models. "bundled with LM Studio" marks the embedding model that comes with LM Studio itself (it is not in your models folder; LM Studio uses it to search documents you add to a chat).</dd>
       <dt>My models: your files</dt><dd>My models asks once for LM Studio's models folder (the same folder as for Downloads). TensorTailor matches each model to its file by size and reads only the start of the file. The Arch column then shows the layers and the maximum context ("65 layers · max 256K"); point at it for the KV cache figures (KV heads, head size, how many layers keep the whole context). For models that TensorTailor added itself ("live" or "from LM Studio"), llmfit then counts the KV cache exactly instead of roughly. When LM Studio does not name the quant, the file name tells it.</dd>
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
       <dt>My models: summary cards</dt><dd>Five cards at the top: <b>Models</b> (and how many files TensorTailor read from your folder), <b>On disk</b>, <b>Updates</b> (files with a newer version on Hugging Face), <b>Similar</b> (space of models made from the same base model, and how much keeping one per group would free) and <b>Measured</b> (your real speed as a share of llmfit's estimate). The details are in the lines above the table and in the rows.</dd>
