@@ -233,7 +233,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .sug .m { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .suggest[hidden] { display: none; }
 .sug { border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; min-width: 0; }
-.sug .k { text-transform: uppercase; font-weight: 700; }
+.sug .k { font-weight: 650; }
 .sug .n { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sug .m { font-size: 12.5px; color: var(--muted); }
 .sug .acts { display: flex; gap: 6px; margin-top: 6px; }
@@ -250,7 +250,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .sort { display: flex; align-items: center; font-size: 13px; }
 .table { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .cols, .row { display: grid; align-items: center; }
-.cols { text-transform: uppercase; color: var(--faint); }
+.cols { color: var(--faint); }
 .rows { overflow: auto; flex: 1; position: relative; }
 .row { height: 60px; cursor: pointer; overflow: hidden; }
 
@@ -354,7 +354,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tabs button[aria-selected="true"] { color: var(--text); }
 .stats { display: grid; }
 .stat { min-width: 0; }
-.stat .k { color: var(--faint); text-transform: uppercase; }
+.stat .k { color: var(--faint); }
 .stat .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat .v small { font-size: 11px; font-weight: 400; }
 .verdict-big { display: flex; align-items: center; flex-wrap: wrap; }
@@ -368,7 +368,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .typing { margin-top: 10px; min-height: 92px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
 .typing .cur { display: inline-block; width: 7px; height: 14px; background: var(--accent); vertical-align: -2px; margin-left: 1px; }
 .ladder, .ftable, .mtable, .ptable { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-.ladder th, .ftable th, .mtable th, .ptable th { text-align: left; font-size: 11px; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px 6px; }
+.ladder th, .ftable th, .mtable th, .ptable th { text-align: left; color: var(--faint); padding: 0 6px 6px; }
 .ladder td, .ftable td, .mtable td, .ptable td { padding: 6px; border-top: 1px solid var(--line); vertical-align: middle; }
 
 .notes { margin: 0; font-size: 13px; display: grid; }
@@ -439,7 +439,6 @@ pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--pa
 /* A verdict tile that is switched off stays readable: dashed and quiet, with "hidden". */
 .tile[aria-pressed="false"] { opacity: 1; background: transparent; border-style: dashed; }
 
-.tile .off { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 /* A clear focus ring on the search box and the number fields (keyboard use). */
 .search:focus-within, .unit-input:focus-within { outline-offset: 2px; }
 /* "Load in LM Studio" at the top of the Run card. */
@@ -559,9 +558,9 @@ select, .unit-input, .dlg-body input[type="password"], .dlg-body textarea { bord
 .search:focus-within, .unit-input:focus-within { outline: 0; box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); background: var(--sunken); }
 kbd { border: 0; box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 0 var(--line-2); background: var(--panel); }
 /* Tables: quiet uppercase headers and hairlines. */
-.ladder th, .ftable th, .mtable th, .ptable th, .cmp-table th { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: var(--faint); }
+.ladder th, .ftable th, .mtable th, .ptable th, .cmp-table th { font-size: 12px; font-weight: 600; color: var(--faint); }
 .ladder td, .ftable td, .mtable td, .ptable td { border-top-color: var(--line); }
-.cols { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; background: transparent; }
+.cols { font-size: 12px; font-weight: 600; background: transparent; }
 .ladder tr.pick td, .ftable tr.pick td { background: var(--accent-soft); }
 .ladder tr.pick td:first-child, .ftable tr.pick td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
 /* Boxes: tinted with a ring. */
@@ -614,7 +613,7 @@ header.top { position: relative; z-index: 6; height: 58px; padding: 0 16px; grid
 .side > .card { background: transparent; box-shadow: none; border-radius: 0; padding: 14px 0 16px; border-bottom: 1px solid var(--line); }
 .side > .card:last-child { border-bottom: 0; }
 .side .card-head { margin-bottom: 12px; }
-.side .card-head h2, .side .fold-head h2 { font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.side .card-head h2, .side .fold-head h2 { font: 650 12.5px var(--font); color: var(--muted); }
 .side .ctx-value { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); }
 .side .btn.ghost.small { height: 24px; padding: 0 6px; color: var(--accent); font-size: 12px; }
 .hw-gpu { background: transparent; box-shadow: none; padding: 0; }
@@ -649,7 +648,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .center { gap: 10px; }
 /* Top picks: a slim strip of three pills (closed) or three cards (open). */
 .suggest.strip { display: flex; align-items: center; gap: 8px; margin: 0; min-width: 0; }
-.pk-lbl { display: inline-flex; align-items: center; gap: 6px; font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); white-space: nowrap; margin-right: 2px; }
+.pk-lbl { display: inline-flex; align-items: center; gap: 6px; font: 650 12px var(--font); color: var(--accent); white-space: nowrap; margin-right: 2px; }
 .pk-lbl svg.ic, .sort svg.ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .pk { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px 0 10px; border: 0; border-radius: 99px; background: var(--panel); box-shadow: var(--elev); font-size: 12px; min-width: 0; flex: 0 1 auto; color: var(--text); transition: box-shadow .15s; }
 .pk:hover { box-shadow: 0 0 0 1px var(--accent-ring); }
@@ -660,7 +659,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .suggest:not(.strip) { margin-bottom: 0; }
 .sug { padding: 14px 16px; gap: 8px; }
 .sug .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.sug .k { color: var(--faint); font-size: 10.5px; letter-spacing: .08em; }
+.sug .k { color: var(--faint); font-size: 12px; }
 /* One toolbar: verdict segments at the left, sort and icon buttons at the right. */
 .list-head { margin: 0; }
 .tiles { display: inline-flex; grid-template-columns: none; gap: 2px; padding: 3px; margin: 0; border-radius: 10px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
@@ -764,7 +763,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .stats { gap: 0; border-radius: 12px; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
 .stat { background: transparent; box-shadow: none; border-radius: 0; padding: 11px 13px; }
 .stat + .stat { border-left: 1px solid var(--line); }
-.stat .k { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; }
+.stat .k { font-size: 12px; font-weight: 600; }
 .stat .v { font: 700 19px/1.2 var(--display); letter-spacing: -.02em; margin-top: 3px; }
 .stat .v small { font: 500 11.5px var(--font); color: var(--muted); letter-spacing: 0; }
 .math { font: 13px var(--font); background: transparent; box-shadow: none; padding: 12px 0 0; color: var(--muted); }
@@ -779,7 +778,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .lmrow { border-top-color: var(--line); padding: 10px 0; }
 .lmhead b { font-weight: 650; }
 .lmload.top { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-ring); border-radius: 12px; }
-.cmd .who { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.cmd .who { font-size: 12px; font-weight: 650; }
 .ftable .fname { font-size: 12px; }
 .detail .card-head h2 { font-size: 14.5px; }
 /* The sticky header sits right at the top edge (no gap above it while you scroll). */
@@ -798,7 +797,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .view-head .status-line .dot.ok { box-shadow: 0 0 0 3px var(--perfect-soft), 0 0 8px var(--perfect); }
 .kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .kpi { position: relative; overflow: hidden; padding: 16px 16px 14px; }
-.kpi-l { font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.kpi-l { font: 650 12.5px var(--font); color: var(--faint); }
 .kpi-ic { position: absolute; right: 14px; top: 14px; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 26%, transparent); }
 .kpi-ic svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .kpi b { display: block; margin-top: 8px; font: 700 30px/1 var(--display); letter-spacing: -.03em; }
@@ -850,7 +849,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .fighter { padding: 20px; }
 .fighter.win { box-shadow: 0 0 0 1px color-mix(in srgb, var(--perfect) 45%, transparent), 0 18px 50px color-mix(in srgb, var(--perfect) 14%, transparent); padding-top: 28px; }
 .crown { top: -11px; left: 50%; right: auto; transform: translateX(-50%); height: 22px; padding: 0 10px; display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; color: #04130a; background: linear-gradient(180deg, #6ef0a6, var(--perfect)); box-shadow: 0 4px 14px color-mix(in srgb, var(--perfect) 40%, transparent); }
-.place { font: 700 10.5px var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+.place { font: 650 12px var(--font); color: var(--faint); }
 .fhead { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .fname-b { min-width: 0; }
 .fhead h3 { margin: 0; font: 650 16px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -884,7 +883,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .menu .btn { height: 38px; font-weight: 500; color: var(--text-2); gap: 10px; }
 .menu .btn:hover { color: var(--text); }
 .menu .btn svg.ic { width: 16px; height: 16px; color: var(--faint); }
-.menu-lbl { padding: 8px 10px 4px; font: 700 10.5px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.menu-lbl { padding: 8px 10px 4px; font: 650 12px var(--font); color: var(--faint); }
 .menu-sep { height: 1px; background: var(--line); margin: 6px 4px; }
 .mi-r { margin-left: auto; font-size: 11px; color: var(--faint); font-weight: 400; }
 /* Help: a table of contents with a search box at the left. */
@@ -950,7 +949,7 @@ details.by-hand .hint { margin-top: 6px; }
 .tile .n, .tile .l { white-space: nowrap; }
 .tile, .tile[aria-pressed="false"] { padding: 0 9px; gap: 6px; }
 .tile[aria-pressed="false"] .l { text-decoration: none; color: var(--faint); }
-.tile .off { display: inline; font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--faint); }
+.tile .off { display: inline; font-size: 12px; font-weight: 500; color: var(--faint); }
 .list-head { flex-wrap: wrap; row-gap: 8px; }
 .list-tools { margin-left: auto; }
 .list-tools select { max-width: 150px; }
@@ -967,12 +966,14 @@ details.by-hand .hint { margin-top: 6px; }
 }
 /* The detail panel is a container too: when it is narrow, the labels above its numbers may wrap instead of "CONTE…". */
 .detail { container: detail / inline-size; }
-@container detail (max-width: 440px) { .stat .k { white-space: normal; overflow: visible; letter-spacing: .03em; } }
+@container detail (max-width: 440px) { .stat .k { white-space: normal; overflow: visible; } }
 /* My models: a name breaks between words only; a narrow view leaves out the Arch column (MTP also shows under
    State); the table scrolls sideways instead of cutting off Show. */
 .view-pane { container: view / inline-size; }
 .mtable .d-id { overflow-wrap: normal; word-break: normal; }
 .mine-card { overflow-x: auto; }
+/* Overview: license, release date and downloads (moved out of the detail header). */
+.ov-about { font-size: 12.5px; color: var(--muted); margin: -2px 0 10px; }
 /* Numbered steps in an empty state (My models without LM Studio). */
 .es-steps { text-align: left; margin: 0 auto 18px; padding-left: 22px; max-width: 400px; font-size: 13.5px; line-height: 1.8; color: var(--text-2); }
 /* The Measure button on its own line under the speed (it touched "32–43 tok/s"). */
@@ -1283,9 +1284,9 @@ details.by-hand .hint { margin-top: 6px; }
 
     <h3>The detail panel (right)</h3>
     <dl>
-      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and one line with the facts (parameters, maximum context, license with "(gated)" or "(not gated)", release date, downloads). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs.</dd>
+      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and the two key facts (parameters and maximum context). The license (with "(gated)" or "(not gated)"), release date and downloads are at the top of the Overview tab. This part stays in view while you scroll; it shrinks to the name, the answer and the tabs.</dd>
       <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width (a little narrower on screens below 1500 px). The width is remembered in this browser.</dd>
-      <dt>Overview</dt><dd>One quiet line (runs on, llmfit's own level, estimated or measured), then speed, memory, best file and context, and "Which file fits?" for every quantization (the verdict itself is at the top of the panel). When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" lists llmfit's reasons.</dd>
+      <dt>Overview</dt><dd>One quiet line (runs on, estimated or measured), then speed, memory, best file and context, and "Which file fits?" for every quantization (the verdict itself is at the top of the panel). When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" starts with llmfit's own level (Perfect, Good, Marginal) and lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face, one line per file (point at a long name for the full name; the copy button copies the download link), the file "best for this PC" first, and the verdict per file. <b>Download</b> saves a file into your folder and checks its SHA-256 at the end. <b>Show SHA-256 of each file</b> (under the table) shows the codes; click one to copy it.</dd>
       <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Set it by hand in LM Studio</b> (folded) says where these settings are in LM Studio. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them.</dd>
@@ -2037,12 +2038,19 @@ function saferNote(r, d) {
   const alt = ok && ok[0] !== String(b.q).toUpperCase() ? `For a safe margin, choose <b>${esc(ok[0])}</b> (${gb(ok[1].size)}, runs well${ok[1].tps > 0 ? `, about ${fmtT(ok[1].tps)} tok/s` : ""}).` : "";
   return `<div class="warn-box safer">The list puts <b>${esc(b.q)}</b> at <b>${esc(PLAIN[b.plain].label.toLowerCase())}</b> on ${esc(b.mode)}. llmfit's planner keeps more safety room and says <b>${esc(PLAIN[mine.plain].label.toLowerCase())}</b> on ${esc(mine.mode)}. Both are estimates; the truth is in between. ${alt}</div>`;
 }
+// The facts that left the detail header: license (gated or not), release date, downloads.
+function aboutFacts(m) {
+  const g = gatedOf(m.id);
+  return [m.license && m.license !== "unknown" ? "License " + m.license + (g ? " (gated)" : g === false && m.gated ? " (not gated)" : "") : g ? "gated" : "",
+    m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
+}
 function tabOverview(r, d) {
-  const b = r.best, basis = d && d.detail ? d.detail.fit.estimate_basis : null;
+  const b = r.best, basis = d && d.detail ? d.detail.fit.estimate_basis : null, about = aboutFacts(r.m);
   const ladder = d && d.ladder;
   return `<section class="card">
     ${r.m.packed ? `<div class="warn-box" style="margin:0 0 10px"><b>Size uncertain.</b> ${esc(r.m.packed.text)}</div>` : ""}
-    <div class="ov-meta" title="Runs on, llmfit's own level, and whether the speed is estimated or measured"><span>${esc(b.mode)}</span><span>llmfit: ${esc(LLMFIT_LABEL[b.level])}</span><span class="${String(b.conf).startsWith("measured") ? "ok" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
+    <div class="ov-meta" title="Runs on, and whether the speed is estimated or measured"><span>${esc(b.mode)}</span><span class="${String(b.conf).startsWith("measured") ? "ok" : ""}">${esc(String(b.conf).replace("_", " "))}</span></div>
+    ${about.length ? `<div class="ov-about">${about.map(esc).join(" · ")}</div>` : ""}
     <div class="stats">
       <div class="stat" title="Speed in tokens per second"><div class="k">Speed</div><div class="v">${speedRange(b)}${b.tps > 0 ? " <small>tok/s</small>" : ""}</div>${measLine(r)}</div>
       <div class="stat" title="${b.mode === "MoE offload" ? `Total: ${gb(b.inGpu)} in VRAM + ${gb(b.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(b.mode === "MoE offload" ? b.inGpu + b.inRam : b.need).toFixed(1)} <small>GB</small></div></div>
@@ -2062,7 +2070,7 @@ function tabOverview(r, d) {
       return `<tr class="${x.quant === b.q ? "pick" : ""}"><td><span class="quant">${esc(x.quant)}</span></td><td class="r">${gb(x.plan.disk_size_gb)}</td><td>${md}</td><td>${verdict(plainOf(lv, md))}</td><td class="r">${t > 0 ? fmtT(t) : "—"}</td></tr>`;
     }).join("")}</tbody></table><p class="hint">llmfit's planner keeps extra room, so it can be stricter than the list: a file the list puts in VRAM may show "CPU+GPU" here.</p>`}
   </section>
-  <section class="card"><div class="card-head"><h2>Why this result</h2></div><ul class="notes">${notesFor(r, d).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section>`;
+  <section class="card"><div class="card-head"><h2>Why this result</h2></div><ul class="notes">${[`llmfit's own level for this file: ${LLMFIT_LABEL[b.level]} (the verdict at the top translates it for this PC).`].concat(notesFor(r, d)).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section>`;
 }
 
 /* ---------- Files tab: live from Hugging Face ---------- */
@@ -2527,7 +2535,8 @@ function renderDetail() {
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   // The answer first (verdict, file, one action); model facts as one quiet line; the header stays in view.
   const fav = state.watch.has(m.id), b = r.best;
-  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`, m.license && m.license !== "unknown" ? m.license +(gatedOf(m.id) ? " (gated)" : gatedOf(m.id) === false && m.gated ? " (not gated)" : "") : gatedOf(m.id) ? "gated" : "", m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
+  // The header keeps two key facts (size and context); license, release date and downloads are on the Overview tab.
+  const meta = [`${fmtParams(m.params)} parameters`, m.moe ? `MoE${m.active ? " · " + fmtParams(m.active) + " active" : ""}` : "", `max ${fmtCtx(m.ctx)} context`].filter(Boolean);
   const lmsQ = lms && lms.quantization ? lms.quantization.toUpperCase() : "";
   const action = lms && state.lms.online && !/embed/i.test(lms.type) && b.plain !== "nofit"
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
