@@ -964,9 +964,10 @@ details.by-hand .hint { margin-top: 6px; }
   .cols > :nth-child(4), .row > :nth-child(4) { display: none; }
   .sk-row { grid-template-columns: 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
   .sk-row > :nth-child(3) { display: none; }
-  /* The memory label keeps its numbers: "16.3 GB" (the % and the bar give the share), "8.6 GB + 106 GB". */
-  .memlabel .wide { display: none; }
 }
+/* The memory label keeps its numbers: "16.3 GB" (the % and the bar give the share), "8.6 GB + 106 GB". Up to
+   about 900 px the memory column is too narrow for "of 23.0 GB" (measured: 112 px between 800 and 895 px). */
+@container center (max-width: 900px) { .memlabel .wide { display: none; } }
 /* The detail panel is a container too: when it is narrow, the labels above its numbers may wrap instead of "CONTE…", and Memory gets extra room so "22.3 GB" never cuts off. */
 .detail { container: detail / inline-size; }
 @container detail (max-width: 440px) { .stat .k { white-space: normal; overflow: visible; } .stats { grid-template-columns: 1.35fr 1.05fr .95fr .8fr; } .stat { padding: 10px 9px; } .stat .v { font-size: 17px; } }
@@ -1189,7 +1190,7 @@ details.by-hand .hint { margin-top: 6px; }
     <dl>
       <dt><i class="sw" style="background:var(--data)"></i>Grey bar</dt><dd>The part that sits in VRAM: model file, KV cache and engine together. Fast. The number at the right of the line below it is how much of your usable VRAM that is.</dd>
       <dt><i class="sw" style="background:var(--marginal)"></i>Amber end</dt><dd>Less than 12 % of the usable VRAM stays free: it runs, but a longer context or other programs can push it over.</dd>
-      <dt><i class="sw seg-ram"></i>Orange stripes</dt><dd>The model does not fit in VRAM. The rest goes to system RAM, which is about 10 times slower, so the model runs slower. The stripes are a warning sign, not to scale: the numbers below the bar give the real sizes, for example "3.2 GB VRAM + 75.0 GB RAM". When the list is narrow (a small screen or a wide detail panel), the words drop out and the numbers stay: "3.2 GB + 75.0 GB", and "16.3 GB" instead of "16.3 GB of 23.0 GB" (the % at the right gives the share).</dd>
+      <dt><i class="sw seg-ram"></i>Orange stripes</dt><dd>The model does not fit in VRAM. The rest goes to system RAM, which is about 10 times slower, so the model runs slower. The stripes are a warning sign, not to scale: the numbers below the bar give the real sizes, for example "3.2 GB VRAM + 75.0 GB RAM". When the list is narrower than about 900 px (a small screen or a wide detail panel), the words drop out and the numbers stay: "3.2 GB + 75.0 GB", and "16.3 GB" instead of "16.3 GB of 23.0 GB" (the % at the right gives the share).</dd>
       <dt>Empty part</dt><dd>VRAM that stays free.</dd>
     </dl>
     <p>The big bar in the detail panel (tab Overview) splits it further:</p>
@@ -1292,7 +1293,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Overview</dt><dd>One quiet line (runs on, estimated or measured), then speed, memory, best file and context, and "Which file fits?" for every quantization (the verdict itself is at the top of the panel). When llmfit's planner (more safety room) rates the best file lower than the list, a yellow note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" starts with llmfit's own level (Perfect, Good, Marginal) and lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face, one line per file (point at a long name for the full name; the copy button copies the download link), the file "best for this PC" first, and the verdict per file. <b>Download</b> saves a file into your folder and checks its SHA-256 at the end. <b>Show SHA-256 of each file</b> (under the table) shows the codes; click one to copy it.</dd>
-      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Set it by hand in LM Studio</b> (folded) says where these settings are in LM Studio. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them.</dd>
+      <dt>Run</dt><dd>"LM Studio load settings for this PC": what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, speculative decoding, remember settings), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Set it by hand in LM Studio</b> (folded) says where these settings are in LM Studio. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them. <b>Run it on this PC</b> gives the same as commands: the LM Studio command uses the card's context, and "--gpu max" only when the model fits fully in VRAM; the llama.cpp command puts all layers on the GPU only then (a MoE model that does not fit keeps its experts in system RAM with --cpu-moe).</dd>
       <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
       <dt>Plan</dt><dd>llmfit's planner: the minimum and recommended hardware, which routes work here (<b>GPU only</b>, <b>GPU + system RAM</b>, <b>CPU only</b>) with a verdict and speed for each, and <b>What would make it better?</b>: for example "+1.7 GB VRAM → Runs well (llmfit: Good)". Below: whether a target speed is reached (the answer uses the route speeds above), how many chats fit at the same time, and the disk space for your best models.</dd>
     </dl>
@@ -2271,8 +2272,9 @@ async function loadLmsSettings(r, quant) {
   const entry = { loading: true }; state.detail.set(key, entry);
   try {
     const hw = JSON.stringify(hwInput(false)), rows = [];
-    const max = r.m.ctx || 32768;
-    for (const ctx of LMS_CTX_STEPS.filter((c) => c <= max)) {
+    // A model with a short maximum (under 8K, older models) is planned at that maximum.
+    const max = r.m.ctx || 32768, steps = LMS_CTX_STEPS.filter((c) => c <= max);
+    for (const ctx of steps.length ? steps : [max]) {
       const p = await call("plan", hw, r.m.id, ctx, quant, "fp16", null);
       const k = (q) => (p.kv_alternatives || []).find((a) => a.kv_quant === q) || null;
       rows.push({ ctx, f16: k("fp16") ? k("fp16").memory_required_gb : null, q8: k("q8_0") ? k("q8_0").memory_required_gb : null, file: p.disk_size_gb });
@@ -2316,6 +2318,9 @@ function lmsPlanFor(r, lms) {
   const ok = e && !e.loading && !e.error;
   return { fileQuant, quant, e, budget, fits, bestF16: ok ? e.rows.filter((x) => fits(x.f16)).pop() || null : null, bestQ8: ok ? e.rows.filter((x) => fits(x.q8)).pop() || null : null };
 }
+// The context the card advises: the longest that fits fully in VRAM, else a short one (8K, or less when the
+// model's maximum is shorter). The Run commands below the card use the same number.
+function lmsCtxRec(r, bestF16, bestQ8) { return bestF16 ? bestF16.ctx : bestQ8 ? bestQ8.ctx : Math.min(8192, r.m.ctx || 8192); }
 function lmsSettingsCard(r, repo, file) {
   const m = r.m, b = r.best, lms = inLms(m);
   const { fileQuant, quant, e, budget, fits, bestF16, bestQ8 } = lmsPlanFor(r, lms);
@@ -2334,7 +2339,7 @@ function lmsSettingsCard(r, repo, file) {
   const layers = g && g.blocks ? g.blocks : null;
   const drafter = files.find((x) => /\.gguf$/i.test(x.path) && fileKind(x.path)[0].startsWith("draft head"));
   const mtp = g && g.layers > 0;
-  const ctxRec = bestF16 ? bestF16.ctx : bestQ8 ? bestQ8.ctx : 8192;
+  const ctxRec = lmsCtxRec(r, bestF16, bestQ8);
   const useQ8 = !bestF16 && !!bestQ8;
   const longer = bestF16 && bestQ8 && bestQ8.ctx > bestF16.ctx ? bestQ8 : null;
   const row = (tip, name, value, why) => `<div class="lmrow"><div class="lmhead"><span title="${esc(tip)}">${name} <button type="button" class="q" data-tip="${esc(tip)}" aria-expanded="false" aria-label="What is ${esc(name)}?">?</button></span><b>${value}</b></div><div class="lmwhy">${why}</div></div>`;
@@ -2385,6 +2390,9 @@ async function lmsPost(path, body) {
 }
 // "Load in LM Studio…" in the detail header: open the Run tab, wait until its settings are calculated, then the check window.
 async function headLoad(id) {
+  // The settings card (and so the load plan) is only made in the LM Studio view of the Run tab; a plan from an
+  // earlier visit may be old (other hardware, KV choice or LM Studio state), so it is made again.
+  state.engine = "lms"; state.lmsPlans.delete(id);
   state.tab = "run"; renderDetail();
   for (let i = 0; i < 100 && !state.lmsPlans.has(id); i++) await new Promise((res) => setTimeout(res, 150));
   if (state.selected !== id) return;
@@ -2476,16 +2484,33 @@ function tabRun(r) {
     ? `Higher quality: <b>${esc(b.q)}</b>, llmfit's best file for this PC (${esc(memLabel(b))}, ${esc(PLAIN[b.plain].label.toLowerCase())}). It is a new download (tab <b>Files</b>) and leaves less room for context than your ${esc(ownQ)}.`
     : qBits(b.q) < qBits(ownQ) ? `llmfit's best file for this PC is <b>${esc(b.q)}</b> (${esc(memLabel(b))}): smaller, so it fits with more room, but lower quality than your ${esc(ownQ)}.`
     : `llmfit's best file for this PC is <b>${esc(b.q)}</b> (${esc(memLabel(b))}), about the same size as your ${esc(ownQ)}.`}</p>`;
-  let body = "", base = "";
+  let body = "", base = "", ctxShown = ctx;
   if (state.engine === "lms") {
     base = "http://127.0.0.1:1234/v1";
+    // The command follows the settings card above it: the same context, and "--gpu max" only when the model
+    // fits fully in VRAM (else LM Studio chooses the GPU share itself).
+    const lp = b.plain !== "nofit" ? lmsPlanFor(r, lms) : null;
+    const planned = !!(lp && lp.e && !lp.e.loading && !lp.e.error);
+    const allGpu = planned ? !!(lp.bestF16 || lp.bestQ8) : b.mode === "GPU";
+    const ctxCmd = planned ? lmsCtxRec(r, lp.bestF16, lp.bestQ8) : ctx;
+    ctxShown = ctxCmd;
     body = (lms ? `<div class="ok-box">Already in LM Studio as <b>${esc(lms.id)}</b>.</div>` : repo ? cmdLine("download", `lms get ${repo}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) +
-      cmdLine("load", `lms load ${lmsId} --gpu max --context-length ${ctx}`) + cmdLine("server", "lms server start") +
+      cmdLine("load", `lms load ${lmsId}${allGpu ? " --gpu max" : ""} --context-length ${ctxCmd}`) + cmdLine("server", "lms server start") +
       (kv !== "fp16" ? `<p class="hint">KV cache ${kv.toUpperCase()}: in LM Studio open the model's load settings and set K and V cache quantization to ${kv.toUpperCase()}.</p>` : "") + otherFile;
   } else if (state.engine === "llama") {
     base = "http://127.0.0.1:8080/v1";
     const path = file ? `${LMS_FOLDER}\\${repo.replace("/", "\\")}\\${file.replace(/\//g, "\\")}` : "<path to the .gguf file>";
-    body = cmdLine("start", `llama-server -m "${path}" -ngl 99 -c ${ctx} -fa on` + (kv !== "fp16" ? ` --cache-type-k ${kv} --cache-type-v ${kv}` : "") + " --host 127.0.0.1 --port 8080") + `<p class="hint">Needs a separate llama.cpp. LM Studio already contains llama.cpp.</p>`;
+    // All layers on the GPU only when the model fits there. MoE offload: the experts stay in system RAM
+    // (--cpu-moe). CPU+GPU: about the share that fits, from the file's layer count when it is known.
+    const g = file ? state.gguf.get(repo + "/" + file) : null, blocks = g && g.blocks;
+    let ngl = "", nglHint = "";
+    if (b.mode === "GPU") ngl = " -ngl 99";
+    else if (b.mode === "MoE offload") ngl = " -ngl 99 --cpu-moe";
+    else if (b.vram > 0 && b.need > 0) {
+      if (blocks) ngl = ` -ngl ${Math.max(1, Math.floor(blocks * Math.min(1, b.inGpu / b.need) * 0.9))}`;
+      else nglHint = `<p class="hint">The model does not fit fully in VRAM: add <code>-ngl</code> with the number of layers that fit (start low, raise it while it still loads).</p>`;
+    }
+    body = cmdLine("start", `llama-server -m "${path}"${ngl} -c ${ctx} -fa on` + (kv !== "fp16" ? ` --cache-type-k ${kv} --cache-type-v ${kv}` : "") + " --host 127.0.0.1 --port 8080") + nglHint + `<p class="hint">Needs a separate llama.cpp. LM Studio already contains llama.cpp.</p>`;
   } else {
     base = "http://127.0.0.1:11434/v1";
     body = (kv !== "fp16" ? cmdLine("setting", `$env:OLLAMA_FLASH_ATTENTION = "1"; $env:OLLAMA_KV_CACHE_TYPE = "${kv}"`) : "") + (repo ? cmdLine("run", `ollama run hf.co/${repo}:${b.q}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) + `<p class="hint">Needs Ollama.</p>`;
@@ -2493,7 +2518,7 @@ function tabRun(r) {
   const opencode = JSON.stringify({ provider: { local: { npm: "@ai-sdk/openai-compatible", options: { baseURL: base }, models: { [lmsId]: {} } } } }, null, 2);
   const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = "${lmsId}"`;
   return `${state.engine === "lms" && b.plain !== "nofit" ? lmsSettingsCard(r, setRepo, file) : ""}<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
-    <p class="hint" style="margin-top:0">${own ? `Your file in LM Studio · quant <b>${esc(ownQ)}</b>` : `${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)}`} · context ${fmtCtx(ctx)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
+    <p class="hint" style="margin-top:0">${own ? `Your file in LM Studio · quant <b>${esc(ownQ)}</b>` : `${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)}`} · context ${fmtCtx(ctxShown)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
   <section class="card"><div class="card-head"><h2>Use it in an AI agent</h2></div>
     <p class="hint" style="margin-top:0">Base address <code>${base}</code> · model <code>${esc(lmsId)}</code></p>
     <div class="card-head" style="margin:10px 0 0"><small>OpenCode — opencode.json</small><button class="btn small" data-copy="${esc(opencode)}" data-what="OpenCode settings">Copy</button></div><pre class="block">${esc(opencode)}</pre>
