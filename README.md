@@ -16,7 +16,7 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
   already-compressed weights in another format (EXL3, bnb-4bit, AWQ, GPTQ, MLX …) get the label *size uncertain*:
   LM Studio cannot load them as they are, and llmfit counts them too small.
 - **Pick the right file.** Tab **Files** shows the real GGUF files on Hugging Face, with size and SHA-256.
-  A star (⭐) marks the file that suits your PC best.
+  The green label **best for this PC** marks the file that suits your PC best.
 - **Download safely.** Press **Download** next to a file. The file comes in parts, so after a crash you can
   resume. At the end TensorTailor reads the file back from disk and checks its SHA-256.
 - **Load it in LM Studio.** Tab **Run** shows the LM Studio load settings for your PC. **Load in LM Studio with
