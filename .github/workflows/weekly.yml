@@ -188,7 +188,7 @@ jobs:
           CHANGED=false
           if [ -z "$CHROME" ]; then
             echo "::warning::Chrome not found on runner; keeping existing README screenshots"
-          elif out=$(node tools/cdp_test.mjs "$CHROME" "file://$GITHUB_WORKSPACE/dist/tensortailor.html" "/tmp/tt-last.png" "state.ready && state.results.length > 0" tools/readme-screenshots.json 2>&1) && [ "$(printf '%s\n' "$out" | grep -c '^screenshot: docs/screenshots/')" -eq 12 ]; then
+          elif shots() { out=$(node tools/cdp_test.mjs "$CHROME" "file://$GITHUB_WORKSPACE/dist/tensortailor.html" "/tmp/tt-last.png" "state.ready && state.results.length > 0" tools/readme-screenshots.json 2>&1) && [ "$(printf '%s\n' "$out" | grep -c '^screenshot: docs/screenshots/')" -eq 12 ]; }; shots || { echo "First try failed, trying once more."; git checkout -- docs/screenshots; shots; }; then
             if ! git diff --quiet -- docs/screenshots; then
               git config user.name "github-actions[bot]"
               git config user.email "41898783+github-actions[bot]@users.noreply.github.com"

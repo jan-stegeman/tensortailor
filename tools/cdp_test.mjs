@@ -36,11 +36,12 @@ const proc = spawn(edge, ["--headless=new", "--no-first-run", "--disable-extensi
   `--remote-debugging-port=${port}`, "--window-size=1600,900", "about:blank"], { stdio: "ignore" });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
-for (let i = 0; i < 60 && !target; i++) {
+// Up to 60 s: a busy GitHub runner once needed more than the 15 s this used to wait.
+for (let i = 0; i < 240 && !target; i++) {
   try { const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); target = list.find((t) => t.type === "page"); } catch { /* not up yet */ }
   if (!target) await sleep(250);
 }
-if (!target) { console.log("FAIL: Edge did not start"); proc.kill(); if (server) server.close(); process.exit(1); }
+if (!target) { console.log(`FAIL: the browser did not start (no answer on port ${port} within 60 s)`); proc.kill(); if (server) server.close(); process.exit(1); }
 
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener("open", r, { once: true }));
