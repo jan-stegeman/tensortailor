@@ -31,7 +31,8 @@ const port = 9333 + Math.floor(Math.random() * 300);
 // Edge's throw-away profile: in CDP_PROFILE_DIR when set, else in the system's temp folder.
 const profile = join(process.env.CDP_PROFILE_DIR || tmpdir(), `tt-cdp-profile-${port}`);
 mkdirSync(profile, { recursive: true });
-const proc = spawn(edge, ["--headless=new", "--no-first-run", "--disable-extensions", `--user-data-dir=${profile}`,
+const extraFlags = process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
+const proc = spawn(edge, ["--headless=new", "--no-first-run", "--disable-extensions", ...extraFlags, `--user-data-dir=${profile}`,
   `--remote-debugging-port=${port}`, "--window-size=1600,900", "about:blank"], { stdio: "ignore" });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
@@ -62,6 +63,9 @@ for (let i = 0; i < 120; i++) { await sleep(500); if (await evaluate(`(() => { t
 console.log(ok ? `READY after ${((Date.now() - t0) / 1000).toFixed(1)} s` : "FAIL: condition not met in 60 s");
 const steps = JSON.parse((stepsJson.endsWith(".json") ? readFileSync(stepsJson, "utf8") : stepsJson).replace(/^﻿/, ""));
 for (const step of steps) {
+  if (Array.isArray(step.viewport) && step.viewport.length === 2) {
+    await send("Emulation.setDeviceMetricsOverride", { width: step.viewport[0], height: step.viewport[1], deviceScaleFactor: 1, mobile: false });
+  }
   const out = step.js ? await evaluate(step.js) : undefined;
   if (step.log) console.log(`[step] ${step.log}:`, typeof out === "string" ? out.slice(0, 800) : JSON.stringify(out));
   await sleep(step.wait || 300);
