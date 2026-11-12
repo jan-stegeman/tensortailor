@@ -1303,11 +1303,11 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: MTP labels</dt><dd><span class="tag okay">MTP on</span> / <span class="tag">MTP off</span>: LM Studio's own setting for a loaded model. <span class="tag okay">MTP in file</span>: the header of your model file has MTP layers. <span class="tag">MTP (name)</span>: only the name says MTP; read your files to know for sure. "no MTP in file": the name says MTP, the file has none.</dd>
       <dt>My models: summary cards</dt><dd>Five cards at the top: <b>Models</b> (and how many files TensorTailor read from your folder), <b>On disk</b>, <b>Updates</b> (files with a newer version on Hugging Face), <b>Similar</b> (space of models made from the same base model, and how much keeping one per group would free) and <b>Measured</b> (your real speed as a share of llmfit's estimate). The details are in the lines above the table and in the rows.</dd>
       <dt>My models: Best setting</dt><dd>For a model matched to llmfit's list: the longest context that runs well, from llmfit's planner, the same advice as the LM Studio card in the Run tab ("Runs well up to 32K · 64K with KV Q8_0" = 32K normally, 64K with K and V cache at Q8_0). Capped at LM Studio's maximum. Not matched: a rough estimate from the file size. A loaded model with a longer context than fits gets a warning.</dd>
-      <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. TensorTailor never replaces or deletes a file.</dd>
+      <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>). <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. The update check never replaces or deletes a file.</dd>
       <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model. With GPU measurements of models in llmfit's list, other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the list marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash; at the end the file is read back and its SHA-256 compared with Hugging Face's (<b>Check again</b> reads it once more). A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the file is read back and checked again (<b>Check again</b> reads it once more). <b>SHA-256 differs</b>: <b>Download again</b> asks you, deletes the damaged file and downloads it anew. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines. <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token</b>: the same window as the key button. <b>About and licenses</b>. <b>Light or dark</b> (key <kbd>T</kbd>).</dd>
@@ -3782,9 +3782,11 @@ function battlePng() {
 }
 /* ===================== Downloads: a folder you pick, crash-safe resume, SHA-256 from disk ===================== */
 // A file comes down in parts (256 MB) into <folder>/<publisher>/<repo>/.tensortailor-parts/, so a crash or
-// restart loses at most the parts in progress. The parts are joined into "<name>.tt-tmp", which gets the
-// real name only when it is complete. Then the file is read back from disk and its SHA-256 compared with
-// Hugging Face's. Nothing outside the parts folder is ever deleted.
+// restart loses at most the parts in progress. The SHA-256 of the parts is checked first, so a file damaged
+// on the way never gets its real name in LM Studio's folder. Then the parts are joined under the real name
+// (the browser keeps the file empty until close()), and the file is read back from disk and checked again.
+// Outside the parts folder TensorTailor deletes only a 0-byte file it left itself, and a damaged download
+// when you confirm "Download again". A different file with the same name is never overwritten.
 const DL_LABEL = { queued: "Waiting", downloading: "Downloading", paused: "Paused", assembling: "Joining parts", verifying: "Checking SHA-256", done: "Done ✓", mismatch: "SHA-256 differs", failed: "Stopped" };
 const DL_PARTS = ".tensortailor-parts";
 function dlUrl(repo, path) { return `https://huggingface.co/${repo}/resolve/main/${path.split("/").map(encodeURIComponent).join("/")}`; }
@@ -3861,7 +3863,8 @@ async function dlQueue(repo, file, note) {
   if (!job) { job = { id: repo + "/" + file.path, repo, path: file.path, bytes: file.bytes, sha256: file.sha256 || null, partBytes: state.dl.partBytes, added: new Date().toISOString() }; state.dl.jobs.push(job); }
   job.status = "queued"; job.error = ""; job.note = ""; if (note) job.why = note;
   const free = state.hw.freeDisk, drv = state.hw.freeDrive || "D:";
-  if (free != null && free > 0 && job.bytes * 2 / 1e9 > free) job.note = `Your last import showed ${free.toFixed(0)} GB free on ${drv}. Joining the parts needs about twice the file size for a short time.`;
+  job.diskNote = "";
+  if (free != null && free > 0 && job.bytes * 2 / 1e9 > free) job.diskNote = `Your last import showed ${free.toFixed(0)} GB free on ${drv}. Joining the parts needs about twice the file size for a short time.`;
   await dlSave(job);
   return true;
 }
@@ -3894,9 +3897,13 @@ async function dlRun(job) {
     // The complete file is already there (joined earlier, or downloaded before): only check it.
     const parts = job.path.split("/"), fileName = parts.pop();
     const fileDir = await dlDir(repoDir, parts);
-    let existing = null;
-    try { const fh = await fileDir.getFileHandle(fileName); if ((await fh.getFile()).size === job.bytes) existing = fh; } catch (e) { /* not there yet */ }
+    // A 0-byte file of this name is what a stopped join leaves behind (a crash or restart): remove it.
+    if (job.bytes > 0) await dlDropEmpty(fileDir, fileName);
+    let existing = null, other = 0;
+    try { const fh = await fileDir.getFileHandle(fileName), sz = (await fh.getFile()).size; if (sz === job.bytes) existing = fh; else other = sz; } catch (e) { /* not there yet */ }
     if (existing) { job.note = "The complete file was already in the folder; it is only checked."; await dlVerify(job, existing); return; }
+    // Never overwrite another file with this name (an older version, or your own file).
+    if (other) throw new Error(`Another file with this name is already in the folder (${fmtSize(other / 1e9)}, Hugging Face's is ${fmtSize(job.bytes / 1e9)}). TensorTailor does not overwrite it: move or delete it in File Explorer, then press Resume.`);
     // A complete "<name>.tt-tmp" from an older version: give it the real name and check it (no new download).
     let tmpDone = false;
     try { tmpDone = (await (await fileDir.getFileHandle(fileName + ".tt-tmp")).getFile()).size === job.bytes; } catch (e) { /* none */ }
@@ -3937,6 +3944,21 @@ async function dlRun(job) {
       } catch (e) { job.live -= got; try { await w.abort(); } catch (x) { /* already closed */ } throw e; }
       job.have += len; job.live -= got;
     });
+    // Check the parts before the model file gets its real name: a file damaged on the way never shows up in
+    // LM Studio. (The joined file is read back from disk and checked once more at the end.)
+    if (job.sha256) {
+      job.status = "verifying"; job.phase = "parts"; job.hashed = 0; dlSave(job); dlRefresh(true);
+      const pfs = [];
+      for (let i = 0; i < n; i++) pfs.push(await (await partsDir.getFileHandle(partName(i))).getFile());
+      const got = await hashFile(new Blob(pfs), (done) => { job.hashed = done; dlRefresh(); }, job.ctl.signal);
+      job.phase = "";
+      if (got !== String(job.sha256).toLowerCase()) {
+        await dlDropParts(repoDir, job);
+        job.status = "mismatch"; job.gotSha = got; job.finished = new Date().toISOString();
+        job.error = "The downloaded parts differ from Hugging Face's SHA-256: the download was damaged on the way. Nothing was put in the models folder, and the parts are removed. Press Download again.";
+        return;
+      }
+    }
     // Join the parts under the real name. The browser writes into a hidden swap file and puts the data in
     // place at close(), so the file is empty until it is complete. (Joining into "<name>.tt-tmp" and renaming
     // it afterwards failed: Chrome refused the rename of a 7.4 GB file with NotAllowedError.)
@@ -3953,10 +3975,10 @@ async function dlRun(job) {
       }
       await out.close();
     } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } await dlDropEmpty(fileDir, fileName); throw e; }
-    try { await (await repoDir.getDirectoryHandle(DL_PARTS)).removeEntry(dlSafe(job.path), { recursive: true }); } catch (e) { /* parts stay; harmless */ }
-    try { const pd = await repoDir.getDirectoryHandle(DL_PARTS); let empty = true; for await (const _ of pd.keys()) { empty = false; break; } if (empty) await repoDir.removeEntry(DL_PARTS); } catch (e) { /* keep it */ }
+    await dlDropParts(repoDir, job);
     await dlVerify(job, final);
   } catch (e) {
+    job.phase = "";
     if (e && e.name === "AbortError") { job.status = job.removing ? "removed" : "paused"; }
     else { job.status = "failed"; job.error = String((e && e.message) || e); if (job.ctl) job.ctl.abort(); }
   } finally {
@@ -4001,6 +4023,11 @@ async function dlFileDir(job, create) {
   return { dir, fileName };
 }
 function dlRenameNow(job) { return dlCheckAgain(job); }
+// Remove this file's parts, and the parts folder when nothing else is in it.
+async function dlDropParts(repoDir, job) {
+  try { await (await repoDir.getDirectoryHandle(DL_PARTS)).removeEntry(dlSafe(job.path), { recursive: true }); } catch (e) { /* parts stay; harmless */ }
+  try { const pd = await repoDir.getDirectoryHandle(DL_PARTS); let empty = true; for await (const _ of pd.keys()) { empty = false; break; } if (empty) await repoDir.removeEntry(DL_PARTS); } catch (e) { /* keep it */ }
+}
 // After a stopped join or copy: remove the EMPTY file TensorTailor created for it, so LM Studio does not
 // list a 0-byte model. A file with any data in it is never touched.
 async function dlDropEmpty(dir, fileName) {
@@ -4015,7 +4042,7 @@ async function dlVerify(job, handle) {
   job.gotSha = await hashFile(file, (done) => { job.hashed = done; dlRefresh(); }, job.ctl && job.ctl.signal);
   job.finished = new Date().toISOString();
   if (job.gotSha === String(job.sha256).toLowerCase()) { job.status = "done"; job.note = ""; }
-  else { job.status = "mismatch"; job.error = "The SHA-256 read back from disk differs from Hugging Face. The file is damaged: do not use it. Remove the file and download it again."; }
+  else { job.status = "mismatch"; job.error = "The SHA-256 read back from disk differs from Hugging Face. The file is damaged: do not use it. Press Download again: TensorTailor asks you, deletes this file and downloads it again."; }
 }
 let hashWorker = null, hashSeq = 0;
 const hashWaiters = new Map();
@@ -4034,6 +4061,8 @@ function hashFile(file, onProgress, signal) {
 async function dlCheckAgain(job) {
   if (state.dl.active) { toast("Wait until the running download is finished."); return; }
   if (!(await dlFolder(true))) return;
+  // Paused before the end: the job goes back to what it was (a stopped check proves nothing).
+  const before = { status: job.status, gotSha: job.gotSha, error: job.error };
   state.dl.active = job; job.ctl = new AbortController(); job.error = "";
   try {
     const { dir, fileName } = await dlFileDir(job);
@@ -4042,13 +4071,30 @@ async function dlCheckAgain(job) {
     if (handle) await dlVerify(job, handle);
     else await dlFinishTmp(job, dir, fileName); // NotFoundError when there is no .tt-tmp either
   } catch (e) {
-    if (e && e.name === "AbortError") job.status = "done"; else { job.status = "failed"; job.error = e.name === "NotFoundError" ? "The file is not in the folder any more." : String(e.message || e); }
-  } finally { state.dl.active = null; dlSave(job); dlRefresh(true); dlNext(); }
+    if (e && e.name === "AbortError") Object.assign(job, before); else { job.status = "failed"; job.error = e.name === "NotFoundError" ? "The file is not in the folder any more." : String(e.message || e); }
+  } finally { state.dl.active = null; if (!job.removing) dlSave(job); dlRefresh(true); dlNext(); }
+}
+// "Download again" after a SHA-256 mismatch: delete the damaged file (after your OK) and download it anew.
+async function dlRedo(job) {
+  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
+  if (!(await dlFolder(true))) return;
+  const { dir, fileName } = await dlFileDir(job, true);
+  let f = null;
+  try { f = await (await dir.getFileHandle(fileName)).getFile(); } catch (e) { /* no file: the parts were damaged */ }
+  if (f && f.size > 0) {
+    const where = `${state.dl.root.name || "the folder"}\\${job.repo.replace("/", "\\")}\\${job.path.replace(/\//g, "\\")}`;
+    if (!confirm(`Delete the damaged file and download it again?\n\n${where}\n${fmtSize(f.size / 1e9)}`)) return;
+    try { await dir.removeEntry(fileName); } catch (e) { toast("Could not delete the file: " + e.message); return; }
+  }
+  job.status = "queued"; job.error = ""; job.note = ""; job.gotSha = ""; job.phase = "";
+  await dlSave(job); dlRefresh(true); dlNext();
 }
 async function dlAction(act, id) {
   const job = state.dl.jobs.find((j) => j.id === id);
   if (!job) return;
-  if (act === "pause") { if (job.ctl) job.ctl.abort(); else { job.status = "paused"; dlSave(job); dlRefresh(true); } return; }
+  // Only the running job has a live controller; a waiting job that ran before still holds its old, stopped one.
+  if (act === "pause") { if (state.dl.active === job && job.ctl) job.ctl.abort(); else { job.status = "paused"; dlSave(job); dlRefresh(true); } return; }
+  if (act === "redo") return dlRedo(job);
   if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } job.status = "queued"; job.error = ""; await dlSave(job); dlRefresh(true); dlNext(); return; }
   if (act === "check") return dlCheckAgain(job);
   if (act === "rename") return dlRenameNow(job);
@@ -4068,7 +4114,7 @@ function dlRow(j) {
   let p = 0, text = DL_LABEL[j.status] || j.status;
   if (j.status === "downloading") { p = (j.have + (j.live || 0)) / j.bytes; const left = j.speed > 0 ? (j.bytes - j.have - (j.live || 0)) / j.speed : 0; text += ` · ${pct(p)}% · ${(j.speed / 1e6).toFixed(0)} MB/s` + (left ? ` · about ${fmtTime(left)} left` : ""); }
   else if (j.status === "assembling") { p = (j.joined || 0) / j.bytes; text += ` · ${pct(p)}%`; }
-  else if (j.status === "verifying") { p = (j.hashed || 0) / j.bytes; text += ` · ${pct(p)}% read from disk`; }
+  else if (j.status === "verifying") { p = (j.hashed || 0) / j.bytes; text += j.phase === "parts" ? ` · the parts · ${pct(p)}%` : ` · ${pct(p)}% read from disk`; }
   else if (j.status === "done" || j.status === "mismatch") p = 1;
   if (j.status === "done" && j.rename) text = "Checked ✓, but not renamed yet";
   const btn = (act, label, cls = "") => `<button class="btn small ${cls}" data-dlact="${act}" data-dlid="${esc(j.id)}">${label}</button>`;
@@ -4076,6 +4122,7 @@ function dlRow(j) {
   if (["downloading", "assembling", "verifying", "queued"].includes(j.status)) acts.push(btn("pause", "Pause"));
   if (["paused", "failed"].includes(j.status)) acts.push(btn("resume", "Resume", "primary"));
   if (j.rename && !busy) acts.push(btn("rename", "Rename now", "primary"));
+  if (j.status === "mismatch" && !busy) acts.push(btn("redo", "Download again", "primary"));
   if (["done", "mismatch"].includes(j.status) && !busy) acts.push(btn("check", "Check again"));
   acts.push(btn("remove", j.status === "done" ? "Remove from list" : "Remove", "ghost"));
   const ok = j.status === "done" && j.gotSha;
@@ -4084,7 +4131,7 @@ function dlRow(j) {
     <td style="min-width:260px"><div class="bar dlbar${j.status === "done" && j.gotSha ? " done" : ""}${j.status === "downloading" ? " run" : ""}"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
     ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: <span data-copy="${esc(j.gotSha)}" data-what="SHA-256" title="${esc(j.gotSha)}&#10;Click to copy" style="cursor:copy">${esc(j.gotSha.slice(0, 16))}…</span></div>` : ""}
     ${j.rename ? `<div class="warn-box" style="margin-top:6px">The file is still called <b>${esc(j.path.split("/").pop())}.tt-tmp</b>, so LM Studio does not see it yet. Windows did not allow the rename (${esc(j.rename)}). Press <b>Rename now</b>, or in Explorer remove <b>.tt-tmp</b> from the end of the name.</div>` : ""}
-    ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}${j.why ? `<div class="hash">${esc(j.why)}</div>` : ""}</td>
+    ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}${j.diskNote && ["queued", "downloading", "assembling", "paused"].includes(j.status) ? `<div class="hash" style="color:var(--marginal)">${esc(j.diskNote)}</div>` : ""}${j.why ? `<div class="hash">${esc(j.why)}</div>` : ""}</td>
     <td class="r" style="white-space:nowrap">${acts.join(" ")}</td></tr>`;
 }
 function fmtTime(s) { s = Math.round(s); return s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; }
@@ -4095,9 +4142,10 @@ function viewDownloads() {
     <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : emptyState(ES_ICON.down, "No downloads yet", "Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file. It goes straight into LM Studio's models folder and is checked with SHA-256 at the end.", `<button class="btn primary" data-view-models="1">Go to the list</button>`)}</section>
     <section class="card"><details class="help-fold"><summary>How downloads work (folder, parts, check, vision, remove)</summary><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>; LM Studio shows yours under <b>My Models</b>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
     <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
-    <b>Checked:</b> at the end TensorTailor reads the whole file back from disk and compares its SHA-256 with Hugging Face's. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk.<br>
+    <b>Checked:</b> before the join, the SHA-256 of the parts is compared with Hugging Face's, so a file damaged on the way never appears in LM Studio's folder. At the end TensorTailor reads the whole file back from disk and compares it again. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk. <b>SHA-256 differs</b>: do not use the file; <b>Download again</b> asks you, deletes the damaged file and downloads it anew.<br>
+    <b>Never overwritten:</b> when another file with the same name (and another size) is already there, the download stops and says so. After a crash during the join, Chrome may leave a <code>.crswap</code> file next to the model; you can delete it.<br>
     <b>Vision:</b> when you download a model file from a repo with a vision projector (mmproj), the projector is taken along. LM Studio needs it in the same folder to read images.<br>
-    <b>Remove</b> only removes the entry and its temporary parts. A finished model file is never deleted by TensorTailor.</p></details></section>`;
+    <b>Remove</b> only removes the entry and its temporary parts. A finished model file stays; only <b>Download again</b> deletes a damaged one, after your OK.</p></details></section>`;
 }
 function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
 function setView(v) {
