@@ -1220,7 +1220,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>GPU</dt><dd>Everything in VRAM. The list shows no line under the verdict then.</dd>
       <dt>CPU+GPU</dt><dd>Part in VRAM, part in system RAM.</dd>
       <dt>MoE offload</dt><dd>A "mixture of experts" model: it has many experts but uses only a few per word. The unused experts wait in system RAM, so even a very big model can run, more slowly.</dd>
-      <dt>CPU</dt><dd>No GPU: everything from system RAM.</dd>
+      <dt>CPU</dt><dd>Everything from system RAM: there is no GPU, or llmfit runs this kind of model on the CPU only (for example a BitNet model). The memory label then says "… in RAM".</dd>
     </dl>
     <h3>Above the list</h3>
     <dl>
@@ -1238,7 +1238,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Model</dt><dd>The name (↗ opens it on Hugging Face), its labels and icons (see below), the publisher and the number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower. The star makes it a favorite; the box selects it for compare or battle. Both show when you point at a row, and stay on the chosen row, on a starred model and on a ticked box.</dd>
       <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size. When the list area is narrow (below about 780 px: a laptop screen, or a wide detail panel), this column is left out; the detail panel shows it.</dd>
       <dt>Memory</dt><dd>The memory bar (see above), with the memory the model needs.</dd>
-      <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace.</dd>
+      <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace. A model that won't fit shows "—": it has no speed on this PC.</dd>
       <dt>Verdict</dt><dd>How well it runs here. Under it, where it runs: CPU+GPU, MoE offload or CPU. No line means GPU (everything in VRAM).</dd>
       <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context.</dd>
       <dt>Chosen row</dt><dd>The model you clicked (or opened with <b>Show</b> or <b>View details</b>) has a purple tint and a glowing purple bar at its left edge; its details are on the right.</dd>
@@ -1360,7 +1360,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (× removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the file is read back and checked again (<b>Check again</b> reads it once more). <b>SHA-256 differs</b>: <b>Download again</b> asks you, deletes the damaged file and downloads it anew. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines. <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
@@ -1638,7 +1638,7 @@ const NO_LLAMACPP_ARCH = { mllama: "Llama 3.2 Vision (architecture mllama)" };
 // Words in a model's name that say how someone changed a known model (Help: "Words in model names").
 // hide: the filter "Hide uncensored versions" hides names with this word. s = the id in lower case, t = its parts.
 const NAME_WORDS = [
-  { w: "abliterated", hide: true, test: (s) => /[ao]bliterat/.test(s), text: "refusals cut out of the weights, without new training; often a little less accurate than the original" },
+  { w: "abliterated", hide: true, test: (s) => /[ao]bli?t(?:e?r|ra)|(?:^|[-_./])ablit(?:[-_./]|$)/.test(s), text: "refusals cut out of the weights, without new training; often a little less accurate than the original" },
   { w: "Heretic", hide: true, test: (s) => s.includes("heretic"), text: "made with the Heretic tool: automatic abliteration that keeps the damage low; the model card often gives its refusals and KL divergence" },
   { w: "uncensored", hide: true, test: (s) => /uncensor|decensor|unfiltered/.test(s), text: "refuses little or nothing; the name does not say how this was done" },
   { w: "derestricted", hide: true, test: (s) => s.includes("derestrict"), text: "a newer, gentler kind of abliteration that keeps more of the original" },
@@ -1710,7 +1710,8 @@ function bestView(row, F, vram) {
   const mode = MODE[row[F.run_mode]] || row[F.run_mode], level = LEVEL[row[F.fit_level]] || "tight";
   const conf = row[F.estimate_confidence];
   const measured = row[F.measured_tps];
-  const tps = row[F.estimated_tps] || 0;
+  // A model that does not fit has no speed (llmfit still gives a formula value): the page shows "—".
+  const tps = level === "tight" ? 0 : row[F.estimated_tps] || 0;
   let inGpu = need, inRam = 0;
   if (mode === "CPU") { inGpu = 0; inRam = need; }
   // llmfit's MoE offload: memory_required_gb is what stays in VRAM (active experts, KV cache, engine);
@@ -1799,6 +1800,7 @@ function memTip(b) {
     ? `Needed: ${gb(b.inGpu + b.inRam)} in total (${gb(b.inGpu)} in VRAM: active experts, KV cache and engine; ${gb(b.inRam)} of experts in RAM).`
     : `Needed: ${gb(b.need)} (model file + KV cache for the context + engine).`;
   if (b.vram === 0) return `No GPU: everything runs from system RAM.\n${total}\nThe bar is fully striped: all of it is in RAM.`;
+  if (b.mode === "CPU") return `llmfit runs this kind of model on the CPU only (for example a BitNet model), so it uses system RAM, not VRAM.\n${total}\nThe bar is fully striped: all of it is in RAM.`;
   if (b.mode === "GPU") return `Fits in the GPU's memory (VRAM).\n${total}\nThe grey bar = used VRAM: ${gb(b.need)} of your ${gb(b.vram)} usable VRAM; its end turns amber when less than 12 % stays free.\nThe empty part of the bar is VRAM that stays free.`;
   const why = b.mode === "MoE offload" ? "MoE offload: the experts that are not in use wait in system RAM." : "Too big for VRAM: the rest goes to system RAM.";
   return `${why}\n${total}\nThe whole bar = everything the model needs, to scale.\nGrey = in VRAM: ${gb(b.inGpu)} (your VRAM is full).\nOrange stripes = in system RAM: ${gb(b.inRam)}. System RAM is much slower than VRAM, so the model runs slower.`;
@@ -1817,12 +1819,12 @@ const VERDICT_TIP = {
 // The memory label as plain text (tooltips, the Run tab) and as list HTML, whose words in .wide drop out when
 // the list is narrow, so the numbers stay readable instead of "16.3 GB of 2…".
 function memLabel(b) {
-  if (b.vram === 0) return `${gb(b.need)} in RAM`;
+  if (b.vram === 0 || b.mode === "CPU") return `${gb(b.need)} in RAM`;
   if (b.inRam > 0.05) return `${gb(b.inGpu)} VRAM + ${gb(b.inRam)} RAM`;
   return `${gb(b.need)} of ${gb(b.vram)}`;
 }
 function memLabelHtml(b) {
-  if (b.vram === 0) return `${gb(b.need)} in RAM`;
+  if (b.vram === 0 || b.mode === "CPU") return `${gb(b.need)} in RAM`;
   if (b.inRam > 0.05) return `${gb(b.inGpu)}<span class="wide"> VRAM</span> + ${gb(b.inRam)}<span class="wide"> RAM</span>`;
   return `${gb(b.need)}<span class="wide"> of ${gb(b.vram)}</span>`;
 }
@@ -1883,8 +1885,8 @@ function rowHTML(r) {
     <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
       <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
     <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
-    <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 && b.inRam <= 0.05 ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
-    <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}<small>tok/s</small></div>
+    <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 && b.inRam <= 0.05 && b.plain !== "nofit" ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
+    <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}${b.tps > 0 ? "<small>tok/s</small>" : ""}</div>
     <div title="${esc(VERDICT_TIP[b.plain] + "\nRuns on: " + b.mode + ".")}">${verdict(b.plain)}${b.mode !== "GPU" ? `<div class="mode">${b.mode}</div>` : ""}</div>
     <div title="${esc(`Score ${Math.round(b.score || 0)} of 100: llmfit's match for this PC.\nQuality ${Math.round(b.parts.quality)} · speed ${Math.round(b.parts.speed)} · fit ${Math.round(b.parts.fit)} · context ${Math.round(b.parts.context)} (each 0–100).`)}">${ring(b.score)}</div></div>`;
 }
@@ -2151,8 +2153,9 @@ function poolBar(b, d) {
     <div class="pool-legend"><span><i class="seg-w"></i>Model file ${gb(weights)}</span>${ramW > 0.05 ? `<span><i class="seg-ram"></i>of which in RAM ${gb(ramW)}</span>` : ""}${plan ? `<span><i class="seg-kv"></i>KV cache ${gb(kv)}</span><span><i class="seg-oh"></i>Engine + other ${gb(engine)}</span>` : ""}</div></div>`;
 }
 function mathLine(b) {
+  // Does not fit: checked first, so a GPU-mode row never shows a negative "free". MoE: the whole model counts.
+  if (b.level === "tight") return `${gb(b.mode === "MoE offload" ? b.inGpu + b.inRam : b.need)} needed > ${gb(b.pool)} available: does not fit`;
   if (b.mode === "GPU") return `${gb(b.vram)} usable VRAM − ${gb(b.need)} needed = ${gb(b.vram - b.need)} free`;
-  if (b.level === "tight") return `${gb(b.need)} needed > ${gb(b.pool)} available: does not fit`;
   if (b.mode === "CPU") return `${gb(b.need)} needed from ${gb(b.pool)} RAM (no GPU)`;
   if (b.mode === "MoE offload") return `${gb(b.inGpu)} in VRAM (of ${gb(b.vram)}) + ${gb(b.inRam)} experts in RAM (slower)`;
   return `${gb(b.need)} needed − ${gb(b.vram)} VRAM = ${gb(b.inRam)} in RAM (slower)`;
@@ -2693,7 +2696,7 @@ function tabPlan(r, d) {
   </section>
   <section class="card"><div class="card-head"><h2>How many chats at the same time?</h2><span class="ctx-value">${state.plan.users} wanted</span></div>
     <input type="range" id="planUsers" min="1" max="16" step="1" value="${state.plan.users}" aria-label="Chats at the same time">
-    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${plan ? sessions : "—"}</div><small>chats of ${fmtCtx(r.ctx)} fit in VRAM</small></div><div><div class="big-num">${plan ? gb(kvSession) : "—"}</div><small>KV cache per chat (${state.kvq.toUpperCase()})</small></div></div>
+    <div class="grid-2" style="margin-top:8px"><div><div class="big-num">${plan ? sessions : "—"}</div><small>${plan && sessions === 1 ? "chat" : "chats"} of ${fmtCtx(r.ctx)} fit${plan && sessions === 1 ? "s" : ""} in VRAM</small></div><div><div class="big-num">${plan ? gb(kvSession) : "—"}</div><small>KV cache per chat (${state.kvq.toUpperCase()})</small></div></div>
     ${plan ? `<div class="${sessions >= state.plan.users ? "ok-box" : "warn-box"}">${!inVram ? "Parallel chats need the model fully in VRAM." : sessions >= state.plan.users ? `${state.plan.users} agents can share this model at ${fmtCtx(r.ctx)} context.` : `For ${state.plan.users} chats: lower the context, ${kvHint}.`}</div>` : ""}
   </section>
   <section class="card"><div class="card-head"><h2>Disk space for my best models</h2><span class="ctx-value">keep ${keep}</span></div>
@@ -3276,7 +3279,8 @@ function updFiles() { return state.lms.models.filter((x) => !/embed/i.test(x.typ
 function localSha(f) {
   const s = lshaStore[f.path];
   if (s && s.size === f.size && s.mtime === f.mtime) return { sha: s.sha, src: "here" };
-  const j = state.dl.jobs.find((j) => j.repo === f.repo && j.path === f.inRepo && j.status === "done" && j.gotSha && j.bytes === f.size);
+  // A read-back that differed ("mismatch") counts too: then My models says the SHA-256 differs, never "up to date".
+  const j = state.dl.jobs.find((j) => j.repo === f.repo && j.path === f.inRepo && (j.status === "done" || j.status === "mismatch") && j.gotSha && j.bytes === f.size);
   return j ? { sha: j.gotSha, src: "download" } : null;
 }
 function updEntry(f) { const e = updStore[f.path]; return e && e.size === f.size && e.mtime === f.mtime ? e : null; }
@@ -4113,7 +4117,12 @@ async function dlRun(job) {
     if (job.bytes > 0) await dlDropEmpty(fileDir, fileName);
     let existing = null, other = 0;
     try { const fh = await fileDir.getFileHandle(fileName), sz = (await fh.getFile()).size; if (sz === job.bytes) existing = fh; else other = sz; } catch (e) { /* not there yet */ }
-    if (existing) { job.note = "The complete file was already in the folder; it is only checked."; await dlVerify(job, existing); return; }
+    if (existing) {
+      job.note = "The complete file was already in the folder; it is only checked.";
+      await dlVerify(job, existing);
+      if (job.status === "done") await dlDropParts(repoDir, job); // parts kept from a check that was paused
+      return;
+    }
     // Never overwrite another file with this name (an older version, or your own file).
     if (other) throw new Error(`Another file with this name is already in the folder (${fmtSize(other / 1e9)}, Hugging Face's is ${fmtSize(job.bytes / 1e9)}). TensorTailor does not overwrite it: move or delete it in File Explorer, then press Resume.`);
     // A complete "<name>.tt-tmp" from an older version: give it the real name and check it (no new download).
@@ -4174,30 +4183,55 @@ async function dlRun(job) {
     // Join the parts under the real name. The browser writes into a hidden swap file and puts the data in
     // place at close(), so the file is empty until it is complete. (Joining into "<name>.tt-tmp" and renaming
     // it afterwards failed: Chrome refused the rename of a 7.4 GB file with NotAllowedError.)
-    job.status = "assembling"; job.joined = 0; dlSave(job); dlRefresh(true);
-    const final = await fileDir.getFileHandle(fileName, { create: true });
-    const out = await final.createWritable();
-    try {
-      for (let i = 0; i < n; i++) {
-        if (job.ctl.signal.aborted) throw new DOMException("Paused", "AbortError");
-        const pf = await (await partsDir.getFileHandle(partName(i))).getFile();
-        if (pf.size !== partLen(i)) throw new Error(`Part ${i + 1} on disk has the wrong size. Press Resume.`);
-        await pf.stream().pipeTo(out, { preventClose: true, preventAbort: true, signal: job.ctl.signal });
-        job.joined += pf.size; dlRefresh();
+    const join = async () => {
+      job.status = "assembling"; job.joined = 0; dlSave(job); dlRefresh(true);
+      const final = await fileDir.getFileHandle(fileName, { create: true });
+      const out = await final.createWritable();
+      try {
+        for (let i = 0; i < n; i++) {
+          if (job.ctl.signal.aborted) throw new DOMException("Paused", "AbortError");
+          const pf = await (await partsDir.getFileHandle(partName(i))).getFile();
+          if (pf.size !== partLen(i)) throw new Error(`Part ${i + 1} on disk has the wrong size. Press Resume.`);
+          await pf.stream().pipeTo(out, { preventClose: true, preventAbort: true, signal: job.ctl.signal });
+          job.joined += pf.size; dlRefresh();
+        }
+        await out.close();
+      } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } await dlDropEmpty(fileDir, fileName); throw e; }
+      return final;
+    };
+    // The checked parts stay until the joined file, read back from disk, has passed its check too. If it fails
+    // (the parts were good, so the join or the disk damaged it), the file TensorTailor just made is removed and
+    // joined once more; a second failure removes it again, so a damaged file never stays in LM Studio's folder.
+    await dlVerify(job, await join());
+    if (job.status === "mismatch" && job.sha256) {
+      await fileDir.removeEntry(fileName);
+      await dlVerify(job, await join());
+      if (job.status === "mismatch") {
+        try { await fileDir.removeEntry(fileName); } catch (e) { /* in use: the message below still holds */ }
+        job.error = "The model file came out damaged twice while joining the checked parts on this PC (a memory or disk problem?). It is removed, so LM Studio never sees it; the checked parts are kept. Press Download again to join and check once more.";
+        return;
       }
-      await out.close();
-    } catch (e) { try { await out.abort(); } catch (x) { /* already closed */ } await dlDropEmpty(fileDir, fileName); throw e; }
-    await dlDropParts(repoDir, job);
-    await dlVerify(job, final);
+      job.note = "The first join came out damaged and was removed; the second join is checked and good.";
+    }
+    if (job.status === "done") await dlDropParts(repoDir, job);
   } catch (e) {
     job.phase = "";
     if (e && e.name === "AbortError") { job.status = job.removing ? "removed" : "paused"; }
     else { job.status = "failed"; job.error = String((e && e.message) || e); if (job.ctl) job.ctl.abort(); }
   } finally {
     job.speed = 0; d.active = null;
-    if (job.status !== "removed") dlSave(job);
+    if (job.removing) await dlRemoveParts(job); // Remove was pressed while it ran
+    if (job.status !== "removed" && !job.removing) dlSave(job);
     dlRefresh(true); renderDetail(); dlNext();
   }
+}
+// Remove a job's temporary parts (and the parts folder when it is empty). A finished model file stays.
+async function dlRemoveParts(job) {
+  try {
+    if (!(await dlFolder(false))) return;
+    const [pub, name] = job.repo.split("/");
+    await dlDropParts(await (await state.dl.root.getDirectoryHandle(pub)).getDirectoryHandle(name), job);
+  } catch (e) { /* nothing to clean */ }
 }
 // A "<name>.tt-tmp" left by an older version (LM Studio only sees names ending in .gguf): rename it; if the
 // browser refuses (Chrome: NotAllowedError), copy it to the real name, check the copy's SHA-256 read from
@@ -4264,6 +4298,8 @@ function hashFile(file, onProgress, signal) {
     hashWorker.onmessage = (e) => { const w = hashWaiters.get(e.data.id); if (!w) return; if (e.data.done !== undefined && !e.data.hex && !e.data.error) { w.onProgress(e.data.done); return; } hashWaiters.delete(e.data.id); e.data.error ? w.reject(new Error(e.data.error === "cancelled" ? "Paused" : e.data.error)) : w.resolve(e.data.hex); };
   }
   const id = ++hashSeq;
+  // Paused just before the check started: the abort event has already fired, so stop at once.
+  if (signal && signal.aborted) return Promise.reject(new DOMException("Paused", "AbortError"));
   return new Promise((resolve, reject) => {
     hashWaiters.set(id, { resolve, reject: (err) => reject(signal && signal.aborted ? new DOMException("Paused", "AbortError") : err), onProgress });
     if (signal) signal.addEventListener("abort", () => hashWorker.postMessage({ cancel: id }), { once: true });
@@ -4313,10 +4349,12 @@ async function dlAction(act, id) {
   if (act === "remove") {
     // Removes the entry and its temporary parts. A finished model file stays on disk.
     job.removing = true;
-    if (state.dl.active === job && job.ctl) job.ctl.abort();
     state.dl.jobs = state.dl.jobs.filter((j) => j !== job);
     await idbDo("jobs", "readwrite", (s) => s.delete(id)).catch(() => {});
-    try { if (await dlFolder(false)) { const [pub, name] = job.repo.split("/"); const pd = await (await (await state.dl.root.getDirectoryHandle(pub)).getDirectoryHandle(name)).getDirectoryHandle(DL_PARTS); await pd.removeEntry(dlSafe(job.path), { recursive: true }); } } catch (e) { /* nothing to clean */ }
+    // A running job: stop it; dlRun removes its parts when it has really stopped (its part files are still
+    // open right after abort(), and removing them then fails). Otherwise remove the parts now.
+    if (state.dl.active === job && job.ctl) job.ctl.abort();
+    else await dlRemoveParts(job);
     dlRefresh(true); renderDetail();
   }
 }
@@ -4336,7 +4374,7 @@ function dlRow(j) {
   if (j.rename && !busy) acts.push(btn("rename", "Rename now", "primary"));
   if (j.status === "mismatch" && !busy) acts.push(btn("redo", "Download again", "primary"));
   if (["done", "mismatch"].includes(j.status) && !busy) acts.push(btn("check", "Check again"));
-  acts.push(btn("remove", j.status === "done" ? "Remove from list" : "Remove", "ghost"));
+  acts.push(btn("remove", j.status === "done" || j.status === "mismatch" ? "Remove from list" : "Remove", "ghost"));
   const ok = j.status === "done" && j.gotSha;
   const icon = ["done"].includes(j.status) ? '<path d="m5 12 5 5 9-10"/>' : ["failed", "mismatch"].includes(j.status) ? '<path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/>' : '<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>';
   return `<tr><td><div class="dl-f"><span class="dl-ic s-${esc(j.status)}" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div style="min-width:0"><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></div></div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
@@ -4354,10 +4392,10 @@ function viewDownloads() {
     <section class="card">${jobs.length ? `<table class="ftable"><thead><tr><th>File</th><th class="r">Size</th><th>State</th><th></th></tr></thead><tbody>${jobs.map(dlRow).join("")}</tbody></table>` : emptyState(ES_ICON.down, "No downloads yet", "Open a model, go to <b>Files</b>, and press <b>Download</b> next to a file. It goes straight into LM Studio's models folder and is checked with SHA-256 at the end.", `<button class="btn primary" data-view-models="1">Go to the list</button>`)}</section>
     <section class="card"><details class="help-fold"><summary>How downloads work (folder, parts, check, vision, remove)</summary><p class="hint" style="margin-top:0"><b>Where:</b> pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>; LM Studio shows yours under <b>My Models</b>). Each file goes to <code>&lt;folder&gt;\\&lt;publisher&gt;\\&lt;repo&gt;\\</code>, so LM Studio sees it at once.<br>
     <b>Safe:</b> the file comes in parts of ${Math.round(d.partBytes / 1048576)} MB. After a crash or restart, press <b>Resume</b>: finished parts are kept. Then the parts are joined into the model file; it stays empty until the join is complete. Joining needs about twice the file size free for a short time.<br>
-    <b>Checked:</b> before the join, the SHA-256 of the parts is compared with Hugging Face's, so a file damaged on the way never appears in LM Studio's folder. At the end TensorTailor reads the whole file back from disk and compares it again. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk. <b>SHA-256 differs</b>: do not use the file; <b>Download again</b> asks you, deletes the damaged file and downloads it anew.<br>
+    <b>Checked:</b> before the join, the SHA-256 of the parts is compared with Hugging Face's, so a file damaged on the way never appears in LM Studio's folder. At the end TensorTailor reads the whole file back from disk and compares it again; only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; a second failure removes it too (a memory or disk problem on this PC) and keeps the parts. Windows may serve the read from its memory cache; <b>Check again</b> after a restart reads it fresh from the disk. <b>SHA-256 differs</b> for a file that was already there: do not use it; <b>Download again</b> asks you, deletes it and downloads it anew.<br>
     <b>Never overwritten:</b> when another file with the same name (and another size) is already there, the download stops and says so. After a crash during the join, Chrome may leave a <code>.crswap</code> file next to the model; you can delete it.<br>
     <b>Vision:</b> when you download a model file from a repo with a vision projector (mmproj), the projector is taken along. LM Studio needs it in the same folder to read images.<br>
-    <b>Remove</b> only removes the entry and its temporary parts. A finished model file stays; only <b>Download again</b> deletes a damaged one, after your OK.</p></details></section>`;
+    <b>Remove</b> (or <b>Remove from list</b>) removes the entry and its temporary parts; during a download it first stops it. A finished model file stays; only <b>Download again</b> deletes a damaged one, after your OK.</p></details></section>`;
 }
 function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
 function setView(v) {
@@ -4401,12 +4439,15 @@ function fillHwInputs() {
   $("gpuName").textContent = h.gpuName; $("vram").value = h.vram; $("gpus").value = String(h.gpus); $("ram").value = h.ram;
   $("reserve").value = h.reserve; $("ramBw").value = h.ramBw; $("cores").value = h.cores; $("cpuName").textContent = h.cpuName;
 }
-function applyHardware(src) {
+// writeBack false = while typing: the fields keep what you type; the used (clamped) values are written back
+// when you leave the field (change event), so "64" typed into an emptied field stays "64".
+function applyHardware(src, writeBack = true) {
   const h = state.hw;
-  h.vram = Math.max(0, Number($("vram").value) || 0); h.gpus = Number($("gpus").value); h.ram = Math.max(4, Number($("ram").value) || 4);
-  h.reserve = clamp(Number($("reserve").value) || 0, 0, 8); h.ramBw = clamp(Number($("ramBw").value) || 50, 5, 1000); h.cores = Math.max(1, Number($("cores").value) || 1);
+  // The engine reads CPU cores and GPUs as whole numbers: 6.5 would make every calculation fail.
+  h.vram = Math.max(0, Number($("vram").value) || 0); h.gpus = Math.max(0, Math.round(Number($("gpus").value) || 0)); h.ram = Math.max(4, Number($("ram").value) || 4);
+  h.reserve = clamp(Number($("reserve").value) || 0, 0, 8); h.ramBw = clamp(Number($("ramBw").value) || 50, 5, 1000); h.cores = Math.max(1, Math.round(Number($("cores").value) || 1));
   // The fields show the values that are used (an import can give "Kept for Windows" 10.25; the limit is 8).
-  $("vram").value = h.vram; $("ram").value = h.ram; $("reserve").value = h.reserve; $("ramBw").value = h.ramBw; $("cores").value = h.cores;
+  if (writeBack) { $("vram").value = h.vram; $("ram").value = h.ram; $("reserve").value = h.reserve; $("ramBw").value = h.ramBw; $("cores").value = h.cores; }
   if (src) { const t = $("hwSource"); t.textContent = src; t.className = "tag" + (src === "from browser" ? " browser" : src === "imported" ? " imported" : ""); }
   saveHw(); renderUsable(); recomputeSoon();
 }
@@ -4682,7 +4723,11 @@ function wire() {
   [["fLlama", "llama"], ["fGguf", "gguf"], ["fNew", "isNew"], ["fWatch", "watch"], ["fLms", "lms"], ["fOpen", "open"], ["fFree", "free"], ["fUnc", "unc"], ["fGpu", "gpu"], ["fPop", "pop"]].forEach(([id, k]) => $(id).addEventListener("change", (e) => { state.f[k] = e.target.checked; renderList(); }));
   document.querySelectorAll("[data-cap]").forEach((b) => b.addEventListener("click", () => { const c = b.dataset.cap; if (state.f.caps.has(c)) state.f.caps.delete(c); else state.f.caps.add(c); b.setAttribute("aria-pressed", String(state.f.caps.has(c))); renderList(); }));
   $("btnResetFilters").addEventListener("click", () => { resetFilters(); renderList(); });
-  ["vram", "ram", "reserve", "ramBw", "cores"].forEach((id) => $(id).addEventListener("input", () => applyHardware("changed by you")));
+  ["vram", "ram", "reserve", "ramBw", "cores"].forEach((id) => {
+    // While typing: use the value only when it is a number (an empty field or "1." is not used yet).
+    $(id).addEventListener("input", () => { const v = $(id).value.trim(); if (v !== "" && isFinite(Number(v)) && !v.endsWith(".")) applyHardware("changed by you", false); });
+    $(id).addEventListener("change", () => applyHardware("changed by you"));
+  });
   $("gpus").addEventListener("change", () => applyHardware("changed by you"));
   let rafPending = false;
   $("rows").addEventListener("scroll", () => { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; renderRowsWindow(); }); });
@@ -4795,8 +4840,8 @@ function wire() {
     if ((e.key === "ArrowDown" || e.key === "ArrowUp") && ownArrows) return;
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); moveSelection(1); }
     else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); moveSelection(-1); }
-    else if (e.key === "c" || e.key === "C") toggleCompare(state.selected);
-    else if (e.key === "w" || e.key === "W") toggleWatch(state.selected);
+    else if ((e.key === "c" || e.key === "C") && state.selected) toggleCompare(state.selected);
+    else if ((e.key === "w" || e.key === "W") && state.selected) toggleWatch(state.selected);
   });
 }
 

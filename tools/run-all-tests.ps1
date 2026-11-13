@@ -10,8 +10,8 @@ $page = "file:///" + ((Resolve-Path "dist\tensortailor.html").Path -replace '\\'
 node web/build.mjs engine/pkg-nomod dist/tensortailor.html D:\AI\temp\hf_models_v1.1.20.json *> D:\AI\temp\build.log
 if ($LASTEXITCODE -ne 0) { "BUILD FAILED"; Get-Content D:\AI\temp\build.log; exit 1 }
 "build OK"
-$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure", "test-kv-fill", "test-key", "test-plan-reach", "test-mine-speed", "test-packed", "test-narrow", "test-small-fixes", "test-calm", "test-review-fixes", "test-review2", "test-name-words", "test-help-audit"
-$served = "test-local-gguf", "test-downloads", "test-vision-download", "test-updates", "test-groups"
+$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure", "test-kv-fill", "test-key", "test-plan-reach", "test-mine-speed", "test-packed", "test-narrow", "test-small-fixes", "test-calm", "test-review-fixes", "test-review2", "test-name-words", "test-help-audit", "test-review3"
+$served = "test-local-gguf", "test-downloads", "test-vision-download", "test-updates", "test-groups", "test-review3-dl"
 $bad = 0
 foreach ($t in $plain + $served) {
   if ($served -contains $t) { $env:CDP_SERVE_DIR = "dist"; $u = "{server}/tensortailor.html" } else { Remove-Item Env:CDP_SERVE_DIR -ErrorAction SilentlyContinue; $u = $page }
