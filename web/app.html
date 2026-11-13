@@ -39,7 +39,7 @@
   --accent-soft: rgba(79, 70, 229, .09);
   --accent-text: #ffffff;
   --accent-ring: rgba(79, 70, 229, .3);
-  --perfect: #10803f;
+  --perfect: #0f7a3c; /* 4.7:1 on its own soft background (was #10803f: 4.39, below WCAG AA) */
   --perfect-soft: rgba(16, 128, 63, .1);
   --good: #0b6fa8;
   --good-soft: rgba(11, 111, 168, .1);
@@ -257,7 +257,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 .row[aria-selected="true"] .m-name .t { font-weight: 700; }
 .row[aria-selected="true"].is-tight .m-name, .row[aria-selected="true"].is-tight .num { opacity: 1; }
-.row.is-tight .m-name, .row.is-tight .num { opacity: .6; }
+.row.is-tight .m-name, .row.is-tight .num { opacity: .75; }
 .row-acts { display: flex; align-items: center; }
 .row input[type="checkbox"] { accent-color: var(--accent); margin: 0; }
 .star { border: 0; background: transparent; border-radius: 6px; color: var(--faint); line-height: 1; padding: 0; }
@@ -406,7 +406,7 @@ pre.block { margin: 8px 0 0; padding: 10px; border-radius: 9px; background: var(
 .fighters { display: grid; grid-template-columns: repeat(4, 1fr); }
 .fighter { position: relative; }
 .fighter.win { border-color: var(--perfect); }
-.fighter.out { opacity: .6; }
+.fighter.out { opacity: .75; }
 .crown { position: absolute; border-radius: 99px; }
 .pts { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .round { display: grid; gap: 8px; align-items: center; color: var(--muted); }
@@ -1032,6 +1032,15 @@ details.by-hand .hint { margin-top: 6px; }
 .tray-chip { flex: 0 1 auto; min-width: 0; max-width: 220px; }
 .tray-chip .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tray-chip button { flex: none; }
+/* ==== Screen review 2026-11-13: colours ==== */
+/* C2: on the chosen row of "Which file fits?" and the Files table, labels keep the background they have on a
+   plain row, so their text stays readable (it was 3.9:1 on the blue-grey row). */
+.ladder tr.pick .badge, .ftable tr.pick .badge, .ftable tr.pick .rec { background-color: color-mix(in srgb, currentColor 10%, var(--panel)); }
+/* C4: a damaged download ("SHA-256 differs") has a red bar. */
+.dlbar.bad span { background: var(--tight); }
+/* C5: sentences under a download are in the normal font; only names, paths and hashes use the code font. */
+.dlnote { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.dlnote .mono { font-family: var(--mono); font-size: 11.5px; }
 </style>
 </head>
 <body>
@@ -1257,7 +1266,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="badge perfect">Runs well</span></dt><dd>Fits fully in VRAM with room to spare.</dd>
       <dt><span class="badge marginal">Runs, but tight</span></dt><dd>Fits in VRAM, but with little room left. A longer context or another program can push it over.</dd>
       <dt><span class="badge good">Runs, but slower</span></dt><dd>Part of the model runs from system RAM, or there is no GPU.</dd>
-      <dt><span class="badge tight">Won't fit</span></dt><dd>VRAM and RAM together are too small.</dd>
+      <dt><span class="badge tight">Won't fit</span></dt><dd>VRAM and RAM together are too small. In the list such a row is a little paler (hidden by default: the tile <b>Won't fit</b> shows them).</dd>
       <dt>GPU</dt><dd>Everything in VRAM. The list shows no line under the verdict then.</dd>
       <dt>CPU+GPU</dt><dd>Part in VRAM, part in system RAM.</dd>
       <dt>MoE offload</dt><dd>A "mixture of experts" model: it has many experts but uses only a few per word. The unused experts wait in system RAM, so even a very big model can run, more slowly.</dd>
@@ -1403,7 +1412,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (a long name ends in "…"; point at it for the full name; × removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
@@ -4553,10 +4562,10 @@ function dlRow(j) {
   const ok = j.status === "done" && j.gotSha;
   const icon = ["done"].includes(j.status) ? '<path d="m5 12 5 5 9-10"/>' : ["failed", "mismatch"].includes(j.status) ? '<path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/>' : '<path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/>';
   return `<tr><td><div class="dl-f"><span class="dl-ic s-${esc(j.status)}" aria-hidden="true"><svg viewBox="0 0 24 24">${icon}</svg></span><div style="min-width:0"><div class="fname">${esc(j.path.split("/").pop())}</div><div class="hash">${esc(j.repo)}${j.path.includes("/") ? " · " + esc(j.path) : ""}</div></div></div></td><td class="r">${fmtSize(j.bytes / 1e9)}</td>
-    <td style="min-width:260px"><div class="bar dlbar${j.status === "done" && j.gotSha ? " done" : ""}${j.status === "downloading" ? " run" : ""}"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
-    ${ok ? `<div class="hash" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: <span data-copy="${esc(j.gotSha)}" data-what="SHA-256" title="${esc(j.gotSha)}&#10;Click to copy" style="cursor:copy">${esc(j.gotSha.slice(0, 16))}…</span></div>` : ""}
+    <td style="min-width:260px"><div class="bar dlbar${j.status === "done" && j.gotSha ? " done" : ""}${j.status === "downloading" ? " run" : ""}${j.status === "mismatch" ? " bad" : ""}"><span style="width:${pct(p)}%"></span></div><div class="dlstate ${j.status}">${esc(text)}</div>
+    ${ok ? `<div class="dlnote" style="color:var(--perfect)">SHA-256 read back from disk matches Hugging Face: <span class="mono" data-copy="${esc(j.gotSha)}" data-what="SHA-256" title="${esc(j.gotSha)}&#10;Click to copy" style="cursor:copy">${esc(j.gotSha.slice(0, 16))}…</span></div>` : ""}
     ${j.rename ? `<div class="warn-box" style="margin-top:6px">The file is still called <b>${esc(j.path.split("/").pop())}.tt-tmp</b>, so LM Studio does not see it yet. Windows did not allow the rename (${esc(j.rename)}). Press <b>Rename now</b>, or in Explorer remove <b>.tt-tmp</b> from the end of the name.</div>` : ""}
-    ${j.error ? `<div class="hash" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="hash">${esc(j.note)}</div>` : ""}${j.diskNote && ["queued", "downloading", "assembling", "paused"].includes(j.status) ? `<div class="hash" style="color:var(--marginal)">${esc(j.diskNote)}</div>` : ""}${j.why ? `<div class="hash">${esc(j.why)}</div>` : ""}</td>
+    ${j.error ? `<div class="dlnote" style="color:var(--tight)">${esc(j.error)}</div>` : ""}${j.note ? `<div class="dlnote">${esc(j.note)}</div>` : ""}${j.diskNote && ["queued", "downloading", "assembling", "paused"].includes(j.status) ? `<div class="dlnote" style="color:var(--marginal)">${esc(j.diskNote)}</div>` : ""}${j.why ? `<div class="dlnote">${esc(j.why)}</div>` : ""}</td>
     <td class="r" style="white-space:nowrap">${acts.join(" ")}</td></tr>`;
 }
 function fmtTime(s) { s = Math.round(s); return s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.round((s % 3600) / 60)} min` : s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; }
