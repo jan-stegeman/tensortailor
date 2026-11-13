@@ -21,9 +21,10 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
   The green label **best for this PC** marks the file that suits your PC best.
 - **Download safely.** Press **Download** next to a file. The file comes in parts, so after a crash you can
   resume. The SHA-256 of the parts is checked before the file gets its name, so a damaged download never shows up
-  in LM Studio; at the end TensorTailor reads the file back from disk and checks it again. If it differs,
-  **Download again** deletes the damaged file (after you confirm) and downloads it anew. Another file with the same
-  name is never overwritten.
+  in LM Studio; at the end TensorTailor reads the file back from disk and checks it again, and only then removes the
+  parts. If the joined file differs, it is removed and joined once more from the checked parts, so a damaged file
+  never stays in LM Studio's folder. For a file that was already there and differs, **Download again** deletes it
+  (after you confirm) and downloads it anew. Another file with the same name is never overwritten.
 - **Load it in LM Studio.** Tab **Run** shows the LM Studio load settings for your PC. **Load in LM Studio with
   these settings** loads the model for you. You see what will be sent first.
 - **Check your own models.** **My models** lists the models in LM Studio, how well they run here, the speed of
