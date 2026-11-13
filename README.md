@@ -12,7 +12,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 ## What you can do with it
 
 - **See what fits.** Every model gets a verdict for your PC: *Runs well*, *Runs, but tight*, *Runs, but
-  slower* or *Won't fit*, with the expected speed in tokens per second and the memory it needs. Repos with
+  slower* or *Won't fit*, with the expected speed in tokens per second and the memory it needs. The memory bar
+  shows the part in VRAM in grey (with an amber end when VRAM is almost full) and the part that has to go to the
+  slower system RAM as orange stripes. Repos with
   already-compressed weights in another format (EXL3, bnb-4bit, AWQ, GPTQ, MLX …) get the label *size uncertain*:
   LM Studio cannot load them as they are, and llmfit counts them too small.
 - **Pick the right file.** Tab **Files** shows the real GGUF files on Hugging Face, with size and SHA-256.
@@ -176,6 +178,8 @@ use made-up demo data.
 | `tools/test-sha256.mjs` | Checks the page's SHA-256 against Node's crypto and measures its speed |
 | `tools/test-downloads.json` | Download test: pause, reload, resume, join, SHA-256, damaged file, Download again, parts check, no overwrite, remove (run with `CDP_SERVE_DIR`) |
 | `tools/test-review2.json` | The fixes of the second review: GGUF header values as data, release dates, memory labels at every width, config.json requests, hardware import, Run commands, KV choice, file matching, Measure |
+| `tools/test-name-words.json` | Words in model names: which names get a "Name says" line, the filter "Hide uncensored versions", the Help link |
+| `tools/test-help-audit.json` | The Help audit of 2026-11-13: memory bar to scale with orange stripes, and the Help texts that were fixed or added |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
 | `tools/test-key.json` | The token key in the header: grey without a token, green with one, a click opens the token window |
