@@ -32,11 +32,13 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 130
-    env:
-      GH_TOKEN: ${{ github.token }}
+    # The write token is given only to the steps that call gh (not to llmfit's scraper or tests), and
+    # checkout does not keep it in .git/config.
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Get llmfit at the engine's tag
         id: llmfit
@@ -50,6 +52,8 @@ jobs:
       - name: Start from our previous catalog (or llmfit's)
         id: base
         working-directory: vendor/llmfit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p data
@@ -129,7 +133,9 @@ jobs:
           python3 scripts/test_preserve_catalog_metadata.py
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch, 2026-11-13
+        with:
+          toolchain: stable
 
       - name: llmfit's checks - catalog schema and known hybrid KV
         working-directory: vendor/llmfit
@@ -151,6 +157,7 @@ jobs:
         if: inputs.publish != false
         working-directory: vendor/llmfit
         env:
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.llmfit.outputs.tag }}
           BASE: ${{ steps.base.outputs.base }}
           N: ${{ steps.size.outputs.models }}

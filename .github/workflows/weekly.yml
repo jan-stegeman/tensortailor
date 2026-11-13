@@ -31,17 +31,19 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      GH_TOKEN: ${{ github.token }}
+    # The write token is given only to the steps that call gh or push (not to the build, which runs
+    # upstream llmfit code and its tests), and checkout does not keep it in .git/config.
     steps:
       - name: Checkout (with tags)
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Look for a new llmfit release
         id: llmfit
         env:
+          GH_TOKEN: ${{ github.token }}
           WANT: ${{ inputs.llmfit_tag }}
           DRY_INPUT: ${{ inputs.dry_run }}
         run: |
@@ -74,7 +76,9 @@ jobs:
 
       - name: Set up Rust (for the lock file update)
         if: steps.llmfit.outputs.update == 'true'
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable branch, 2026-11-13
+        with:
+          toolchain: stable
 
       - name: Switch the engine to the new llmfit tag (local commit, pushed only after all checks)
         if: steps.llmfit.outputs.update == 'true'
@@ -99,6 +103,8 @@ jobs:
       # else llmfit's own catalog of the tag.
       - name: Choose the model catalog
         id: cat
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p catalog
@@ -126,6 +132,8 @@ jobs:
       # vYYYY.MM.DD, or vYYYY.MM.DD-2, -3 … when that day already has a release.
       - name: Choose the version
         id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           DAY=$(date -u +%Y.%m.%d)
@@ -142,6 +150,12 @@ jobs:
         with:
           catalog_file: ${{ steps.cat.outputs.file }}
           version: ${{ steps.ver.outputs.tag }}
+
+      # The commit the page was built from: the release points at it (the README picture commit that may
+      # follow changes only docs/).
+      - name: Remember the built commit
+        id: built
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Check that the build did not change the lock file
         run: |
@@ -161,6 +175,7 @@ jobs:
       - name: Decide on a release
         id: decide
         env:
+          GH_TOKEN: ${{ github.token }}
           UPDATE: ${{ steps.llmfit.outputs.update }}
           DRY: ${{ steps.llmfit.outputs.dry }}
           CATALOG_SHA: ${{ steps.cat.outputs.sha }}
@@ -206,15 +221,30 @@ jobs:
           fi
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
+      # No rebase: a rebase would put commits into main that are not in the built page, and the next run would
+      # then see "nothing new". If main moved during this run, an engine update fails the run (nothing is
+      # released); only new README pictures are skipped with a warning (the next run makes them again).
       - name: Push weekly updates to main
         if: (steps.llmfit.outputs.update == 'true' || steps.shots.outputs.changed == 'true') && steps.llmfit.outputs.dry != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPDATE: ${{ steps.llmfit.outputs.update }}
         run: |
-          git pull --rebase origin main
-          git push origin HEAD:main
+          set -uo pipefail
+          if git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main; then
+            echo "Pushed to main." | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "$UPDATE" = "true" ]; then
+            echo "::error::main moved during this run, so the engine update could not be pushed. Nothing is released; start the run again."
+            exit 1
+          else
+            echo "::warning::main moved during this run; the new README pictures are not pushed (the next run makes them again)."
+          fi
 
       - name: Publish the release
         if: steps.decide.outputs.release == 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
+          BUILT: ${{ steps.built.outputs.sha }}
           CATALOG_WHY: ${{ steps.cat.outputs.why }}
           CATALOG_SHA: ${{ steps.cat.outputs.sha }}
           TAG: ${{ steps.ver.outputs.tag }}
@@ -235,13 +265,13 @@ jobs:
           - Engine: llmfit [$LLMFIT](https://github.com/AlexsJones/llmfit/releases/tag/$LLMFIT) by Alex Jones (MIT), compiled to WebAssembly.
             This build gave exactly the same answers as native llmfit.
           - Model list: $CATALOG_WHY.${CATALOG_SHA:+ Catalog SHA-256: \`$CATALOG_SHA\`}
-          - Commit: $(git rev-parse --short HEAD)
+          - Commit: ${BUILT:0:7}
           - SHA-256 of tensortailor.html: \`$SHA\` (also in tensortailor.html.sha256)
           - Licenses: TensorTailor and llmfit are MIT. The Rust crates inside the engine and their licenses are in
             THIRD-PARTY-NOTICES.txt (also in the page: About → Show the licenses).
           EOF
           gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 dist/THIRD-PARTY-NOTICES.txt \
-            --target "$(git rev-parse HEAD)" \
+            --target "$BUILT" \
             --title "TensorTailor ${TAG#v} (llmfit $LLMFIT)" \
             --notes-file release-notes.md
           echo "Published release $TAG" | tee -a "$GITHUB_STEP_SUMMARY"
