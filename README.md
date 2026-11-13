@@ -38,6 +38,10 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
   estimates of other models for your PC ("your PC: ~A–B" in the detail panel). Measure never loads a model.
 - **Keep favorites.** Click the star ☆ next to a model (or press `W`). **Only my favorites** shows just those,
   and My models shows the same stars.
+- **Know what a name means.** Many models are changed copies of a known model: *abliterated*, *Heretic*,
+  *uncensored*, *base*, *distill*, *merge* … The Overview tab says what such a word in the name means (**Name
+  says**), and the Help part **Words in model names** explains them all, with the good and bad sides of the
+  "uncensored" versions. The filter **Hide uncensored versions** hides models whose name says so.
 - **Compare.** Tick 2 to 4 models and press **Compare**, or let them fight in **Battle**.
 - **Stay up to date.** **Tools** (top right) → **Catalog** → **Fetch new models** adds the newest models from
   Hugging Face. Or paste any Hugging Face link in the search box and press Enter.
