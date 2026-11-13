@@ -157,11 +157,13 @@ jobs:
         id: built
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Check that the build did not change the lock file
+      # The build action restores Cargo.lock after its patched builds (they add the web-time crate), so a
+      # "did not change" check here would prove nothing. What counts: Cargo.lock names the tag, and the build
+      # stopped if the cloned llmfit is not the commit Cargo.lock names (patch-llmfit.sh).
+      - name: Check that Cargo.lock names the llmfit tag
         run: |
           TAG=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
           grep -q "llmfit?tag=$TAG#" engine/Cargo.lock
-          git diff --exit-code -- engine/Cargo.lock
 
       - name: Keep the page
         uses: actions/upload-artifact@v7

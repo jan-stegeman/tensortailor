@@ -1361,10 +1361,10 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (× removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
-      <dt>Tools (top right)</dt><dd>The button with three lines. <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
+      <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
       <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help.</dd>
     </dl>
   </div>
@@ -4061,7 +4061,24 @@ async function idbDo(store, mode, fn) {
     tx.oncomplete = () => resolve(req ? req.result : undefined); tx.onerror = () => reject(tx.error);
   });
 }
-const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note", "rename", "why"];
+const DL_KEEP = ["id", "repo", "path", "bytes", "sha256", "partBytes", "status", "error", "added", "finished", "gotSha", "note", "rename", "why", "folder"];
+// A job remembers the name of the folder it was downloaded into. After "Change folder", Check again, Download
+// again and Resume stop with a message instead of looking at (or deleting) a file of the same name elsewhere.
+function dlOtherFolder(job) {
+  if (!job.folder || !state.dl.root || state.dl.root.name === job.folder) return false;
+  toast(`This file belongs to the folder "${job.folder}", but the chosen folder is now "${state.dl.root.name}". Choose "${job.folder}" again (Downloads → Change folder) to go on with it.`);
+  return true;
+}
+// The file's size and SHA-256 on Hugging Face now (null when Hugging Face cannot tell).
+async function hfFileNow(repo, path) {
+  try {
+    const body = new URLSearchParams(); body.append("paths", path);
+    const res = await fetch(`https://huggingface.co/api/models/${repo}/paths-info/main`, { method: "POST", body, headers: hfHeaders() });
+    if (!res.ok) return null;
+    const t = (await res.json()).find((x) => x.type === "file" && x.path === path);
+    return t ? { bytes: t.lfs ? t.lfs.size : t.size, sha256: t.lfs ? t.lfs.oid : null } : null;
+  } catch (e) { return null; }
+}
 function dlSave(job) { const o = {}; for (const k of DL_KEEP) o[k] = job[k]; return idbDo("jobs", "readwrite", (s) => s.put(o)).catch(() => {}); }
 async function dlLoad() {
   try {
@@ -4112,7 +4129,7 @@ async function dlAdd(repo, file) {
 async function dlQueue(repo, file, note) {
   let job = dlJob(repo, file.path);
   if (job && ["done", "queued", "downloading", "assembling", "verifying"].includes(job.status)) return false;
-  if (!job) { job = { id: repo + "/" + file.path, repo, path: file.path, bytes: file.bytes, sha256: file.sha256 || null, partBytes: state.dl.partBytes, added: new Date().toISOString() }; state.dl.jobs.push(job); }
+  if (!job) { job = { id: repo + "/" + file.path, repo, path: file.path, bytes: file.bytes, sha256: file.sha256 || null, partBytes: state.dl.partBytes, added: new Date().toISOString(), folder: state.dl.root ? state.dl.root.name : "" }; state.dl.jobs.push(job); }
   job.status = "queued"; job.error = ""; job.note = ""; if (note) job.why = note;
   const free = state.hw.freeDisk, drv = state.hw.freeDrive || "D:";
   job.diskNote = "";
@@ -4355,6 +4372,7 @@ function hashFile(file, onProgress, signal) {
 async function dlCheckAgain(job) {
   if (state.dl.active) { toast("Wait until the running download is finished."); return; }
   if (!(await dlFolder(true))) return;
+  if (dlOtherFolder(job)) return;
   // Paused before the end: the job goes back to what it was (a stopped check proves nothing).
   const before = { status: job.status, gotSha: job.gotSha, error: job.error };
   state.dl.active = job; job.ctl = new AbortController(); job.error = "";
@@ -4372,6 +4390,11 @@ async function dlCheckAgain(job) {
 async function dlRedo(job) {
   if (state.dl.active) { toast("Wait until the running download is finished."); return; }
   if (!(await dlFolder(true))) return;
+  if (dlOtherFolder(job)) return;
+  // Hugging Face may have a new version of the file since it was queued: use its size and SHA-256 now, so a
+  // good new download is not called "damaged" against the old values.
+  const now = await hfFileNow(job.repo, job.path);
+  const changed = now && (now.bytes !== job.bytes || (now.sha256 && now.sha256 !== job.sha256));
   const { dir, fileName } = await dlFileDir(job, true);
   let f = null;
   try { f = await (await dir.getFileHandle(fileName)).getFile(); } catch (e) { /* no file: the parts were damaged */ }
@@ -4380,7 +4403,10 @@ async function dlRedo(job) {
     if (!confirm(`Delete the damaged file and download it again?\n\n${where}\n${fmtSize(f.size / 1e9)}`)) return;
     try { await dir.removeEntry(fileName); } catch (e) { toast("Could not delete the file: " + e.message); return; }
   }
-  job.status = "queued"; job.error = ""; job.note = ""; job.gotSha = ""; job.phase = "";
+  if (changed) { await dlRemoveParts(job); job.bytes = now.bytes; job.sha256 = now.sha256 || null; }
+  job.status = "queued"; job.error = ""; job.gotSha = ""; job.phase = "";
+  job.note = changed ? "Hugging Face has a new version of this file: its new size and SHA-256 are used." : "";
+  if (!job.folder && state.dl.root) job.folder = state.dl.root.name;
   await dlSave(job); dlRefresh(true); dlNext();
 }
 async function dlAction(act, id) {
@@ -4389,7 +4415,7 @@ async function dlAction(act, id) {
   // Only the running job has a live controller; a waiting job that ran before still holds its old, stopped one.
   if (act === "pause") { if (state.dl.active === job && job.ctl) job.ctl.abort(); else { job.status = "paused"; dlSave(job); dlRefresh(true); } return; }
   if (act === "redo") return dlRedo(job);
-  if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } job.status = "queued"; job.error = ""; await dlSave(job); dlRefresh(true); dlNext(); return; }
+  if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } if (dlOtherFolder(job)) return; job.status = "queued"; job.error = ""; await dlSave(job); dlRefresh(true); dlNext(); return; }
   if (act === "check") return dlCheckAgain(job);
   if (act === "rename") return dlRenameNow(job);
   if (act === "remove") {
@@ -4864,6 +4890,8 @@ function wire() {
   $("detail").addEventListener("keydown", tabKeys);
   // Tools menu: open/close with its button, close after a choice, a click outside or Esc.
   $("btnTools").addEventListener("click", (e) => { e.stopPropagation(); toggleTools(); });
+  // Tab out of the Tools menu closes it (focus left the menu and its button).
+  $("toolsMenu").addEventListener("focusout", (e) => { const to = e.relatedTarget; if (to && !$("toolsMenu").contains(to) && to !== $("btnTools")) toggleTools(false); });
   $("toolsMenu").addEventListener("click", () => toggleTools(false));
   document.addEventListener("click", (e) => { if (!e.target.closest(".menu-wrap")) toggleTools(false); });
   $("detail").addEventListener("change", (e) => { if (e.target.id === "srcSel") { delete state.srcIdx["repo:" + state.selected]; state.srcIdx[state.selected] = Number(e.target.value); renderDetail(); } });
@@ -4899,6 +4927,13 @@ function wire() {
     const ownArrows = ae.type === "range" || ae.tagName === "SELECT";
     if (document.querySelector("dialog[open]")) return;
     if (e.key === "Escape" && !$("toolsMenu").hidden) { toggleTools(false); $("btnTools").focus(); return; }
+    // An open Tools menu takes the arrow keys (Home, End too); other keys do not reach the list or the views.
+    if (!$("toolsMenu").hidden) {
+      const items = [...$("toolsMenu").querySelectorAll("button:not([disabled])")], i = items.indexOf(document.activeElement);
+      const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[e.key];
+      if (to !== undefined && items.length) { e.preventDefault(); items[(to + items.length) % items.length].focus(); }
+      if (e.key !== "Enter" && e.key !== " " && e.key !== "Tab") return;
+    }
     if (e.key === "/" && !typing) { e.preventDefault(); $("q").focus(); return; }
     if (e.key === "Escape" && typing) { ae.blur(); return; }
     if (e.key === "Escape" && state.view !== "models") { setView("models"); return; }

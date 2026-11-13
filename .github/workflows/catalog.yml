@@ -46,6 +46,9 @@ jobs:
           set -euo pipefail
           TAG=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
           git clone --quiet --depth 1 --branch "$TAG" https://github.com/AlexsJones/llmfit vendor/llmfit
+          # The scraper must come from the commit that engine/Cargo.lock names (a moved tag stops the run).
+          WANT=$(grep -oP "llmfit\?tag=$TAG#\K[0-9a-f]{40}" engine/Cargo.lock)
+          test "$WANT" = "$(git -C vendor/llmfit rev-parse HEAD)"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "llmfit $TAG, scraper SHA-256 $(sha256sum vendor/llmfit/scripts/scrape_hf_models.py | cut -c1-16)…" | tee -a "$GITHUB_STEP_SUMMARY"
 

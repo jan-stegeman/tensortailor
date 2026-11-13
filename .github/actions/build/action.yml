@@ -76,6 +76,9 @@ runs:
         TAG=$(grep -oP 'tag = "\K[^"]+' Cargo.toml)
         rm -rf "$GITHUB_WORKSPACE/vendor/llmfit-golden"
         git clone --quiet --depth 1 --branch "$TAG" https://github.com/AlexsJones/llmfit "$GITHUB_WORKSPACE/vendor/llmfit-golden"
+        # The same commit as in Cargo.lock (a moved tag would change the golden answers silently).
+        WANT=$(grep -oP "llmfit\?tag=$TAG#\K[0-9a-f]{40}" Cargo.lock)
+        test "$WANT" = "$(git -C "$GITHUB_WORKSPACE/vendor/llmfit-golden" rev-parse HEAD)"
         bash tools/strip-benchmark-cache.sh "$GITHUB_WORKSPACE/vendor/llmfit-golden"
 
     - name: Native run (golden answers)

@@ -31,6 +31,12 @@ TAG=$(grep -oP 'tag = "\K[^"]+' Cargo.toml)
 rm -rf "$DEST"
 git clone --quiet --depth 1 --branch "$TAG" https://github.com/AlexsJones/llmfit "$DEST"
 
+# The clone must be the commit that Cargo.lock names: if upstream moved the tag, the engine would change
+# without any change in this repo.
+WANT=$(grep -oP "llmfit\?tag=$TAG#\K[0-9a-f]{40}" Cargo.lock)
+GOT=$(git -C "$DEST" rev-parse HEAD)
+if [ "$WANT" != "$GOT" ]; then echo "::error::llmfit $TAG is commit $GOT now, but Cargo.lock says $WANT (did the tag move?)"; exit 1; fi
+
 FIT="$DEST/llmfit-core/src/fit.rs"
 CARGO="$DEST/llmfit-core/Cargo.toml"
 
