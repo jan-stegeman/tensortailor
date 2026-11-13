@@ -111,6 +111,10 @@ change in the page).
   keeps its own setting for those two. The Run tab tells you what to set by hand.
 - Models are never part of TensorTailor. Each model has its own license; some need you to accept terms on
   Hugging Face first.
+- **No warranty.** The verdicts, speeds and settings are estimates, and you download and run models at your own
+  risk. What a model writes, and how you use it, is your own responsibility (also for "uncensored" versions).
+  See `LICENSE` (MIT).
+- Found a security problem? See [SECURITY.md](SECURITY.md).
 
 ## For developers
 
@@ -193,6 +197,8 @@ use made-up demo data.
 | `.github/workflows/engine.yml` | GitHub build on every push: native and WebAssembly runs must give the same answers |
 | `.github/workflows/weekly.yml` | Tuesday build: follows new llmfit releases and publishes a GitHub Release |
 | `.github/workflows/catalog.yml` | Monday: fresh model catalog with llmfit's scraper (needs the `HF_TOKEN` secret, read only) |
+| `.github/dependabot.yml` | Monthly updates of the GitHub Actions (those of other authors are pinned to a commit) |
+| `SECURITY.md` | How to report a security problem privately |
 
 ## Credits and license
 

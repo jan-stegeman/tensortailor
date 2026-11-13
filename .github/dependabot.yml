@@ -1,0 +1,13 @@
+# Dependabot keeps the GitHub Actions up to date: the actions of other authors are pinned to a commit
+# (deep review 2026-11-13, P4), and Dependabot proposes a new commit when a new version comes out.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+      - "/.github/actions/build"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
