@@ -1260,6 +1260,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip lock">license</span> (amber)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
+      <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
@@ -1310,12 +1311,12 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>RAM speed</dt><dd>How fast system RAM is (GB/s). Sets the speed of the part that runs from RAM.</dd>
       <dt>CPU cores</dt><dd>Used for the CPU part of a model.</dd>
       <dt>Detect · Import…</dt><dd><b>Detect in browser</b> fills in the GPU name the browser shows and its VRAM from a table (and sets Number of GPUs to 1 when it was 0); the browser cannot tell RAM or CPU cores, so those stay as they are. <b>Import…</b> gives a PowerShell line that reads your real hardware: GPU and VRAM (also without nvidia-smi), RAM, CPU cores, the VRAM in use now (for "Kept for Windows") and the free space on the drive with LM Studio's models folder.</dd>
-      <dt>What if I upgrade?</dt><dd>One more GPU, or 128 GB more RAM. Switch one on and the whole list, the tiles and the detail panel are calculated for the upgraded PC; models that fit fully in VRAM only with the upgrade get the label "upgrade".</dd>
+      <dt>What if I upgrade?</dt><dd>One more GPU of the same kind (only with a GPU), or 128 GB more RAM. Switch one on and the whole list, the tiles and the detail panel are calculated for the upgraded PC; models that fit fully in VRAM only with the upgrade get the label "upgrade".</dd>
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. The list always counts with F16. In the detail panel, Memory, the math line, the bar, "Which file fits?" (with its note) and the Files tab's "Fits here" use your choice, and the Plan tab counts with it; the verdict and the speed stay those of the list (F16), and one line under the math says so. When the smaller cache would let the model fit fully in VRAM (or fit at all), the numbers stay F16 and that line says what your choice gives.</dd>
       <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
-      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model.</dd>
+      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model (the line above the list reminds you).</dd>
     </dl>
 
     <h3>Filters (left)</h3>
@@ -1358,7 +1359,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Updates</dt><dd>After TensorTailor has read your models folder, it asks Hugging Face about each model file and its vision projector (the folder name is the repo; once a day, or <b>Check again</b>; a check that got no answer is tried again after 10 minutes). The card says "All up to date" only when every file was checked and is the same; else "No update found". <span class="tag warnish">update available</span>: the file on Hugging Face now has another size or SHA-256; <b>What changed ↗</b> opens its history. <span class="tag">maybe changed</span>: same size, but changed there after your file's date. "✓ up to date (size and date)": same size, not changed since. <b>Check SHA-256</b> reads your whole file from disk (about a minute per 10 GB) and compares it exactly; then it says "(SHA-256, checked here)". Files you got with Downloads were already checked at the end of the download: "(SHA-256, checked at download)", no button needed. The update check never replaces or deletes a file.</dd>
       <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model: before each request it asks LM Studio again whether the model is still loaded, and stops if not. With GPU measurements of models in llmfit's list (MTP off: speculative decoding is faster than any estimate), other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
-      <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named.</dd>
+      <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (× removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
@@ -1777,6 +1778,10 @@ function renderUsable() {
     `Usable for models: <b>${h.vram * h.gpus} GB − ${h.reserve} GB = ${gb(usableVram(false))}</b> VRAM` +
     (state.upg.gpu || state.upg.ram ? `<br>With upgrade: <b>${gb(usableVram(true))}</b> VRAM · <b>${hwInput(true).ram_gb} GB</b> RAM` : "");
   $("hwSummary").textContent = `${h.ram} GB RAM · ${h.cores} CPU cores` + (h.gpus > 1 ? ` · ${h.gpus} GPUs` : h.gpus === 0 ? " · no GPU" : "");
+  // "+1 same GPU" needs a GPU to copy: with Number of GPUs 0 it is off and cannot be switched on.
+  const gpuBtn = document.querySelector('[data-upg="gpu"]');
+  if (gpuBtn) { gpuBtn.disabled = h.gpus === 0; gpuBtn.title = h.gpus === 0 ? "Needs a GPU to copy: set Number of GPUs to 1 or more first." : "What if you add one more GPU of the same kind?"; }
+  if (h.gpus === 0 && state.upg.gpu) state.upg.gpu = false;
   const on = state.upg.gpu || state.upg.ram;
   $("upgTag").textContent = on ? "on" : "off"; $("upgTag").className = "tag" + (on ? " okay" : "");
   document.querySelectorAll("[data-upg]").forEach((b) => b.setAttribute("aria-pressed", String(state.upg[b.dataset.upg])));
@@ -1991,10 +1996,14 @@ function restoreFocus(sel) { if (!sel) return; const el = document.querySelector
 // The line under the list head while you search: what the filters hide, and a search on Hugging Face.
 function renderSearchBar() {
   const el = $("searchBar"), s = searchText(), raw = state.search.trim();
+  // A pasted link is not a search: say how to check it (until its live check shows).
+  const link = /^https?:/i.test(raw) ? hfRepoId(raw) : null;
+  if (link && !(state.lookup && state.lookup.id === link)) { el.hidden = false; el.innerHTML = `<span>Press <kbd>Enter</kbd> to check <b>${esc(link)}</b> live on Hugging Face.</span>`; return; }
   if (!s || s.length < 2) { el.hidden = true; return; }
-  const total = state.results.filter((r) => searchMatch(r, s)).length;
+  // Counted with the verdict tiles, so "Show all N" shows N rows.
+  const total = state.results.filter((r) => searchMatch(r, s) && state.show[r.best.plain]).length;
   const save = state.searchAll; state.searchAll = false;
-  const withFilters = state.results.filter(passFilters).length;
+  const withFilters = state.results.filter((r) => passFilters(r) && state.show[r.best.plain]).length;
   state.searchAll = save;
   const hidden = total - withFilters;
   const hub = state.hubSearch && state.hubSearch.q.toLowerCase() === s ? state.hubSearch : null;
@@ -2519,13 +2528,24 @@ async function headLoad(id) {
   if (state.lmsPlans.has(id)) openLmsLoad(id);
   else toast("The settings are not ready yet. Press Load in LM Studio at the top of the Run tab.");
 }
-function openLmsLoad(id) {
+// The loaded instances the window shows: of this model, and of the other models.
+function lmsLoadedIds(key) {
+  const self = [], others = [];
+  for (const o of state.lms.models) if (o.loaded) (o.id === key ? self : others).push(...o.instances);
+  return { self, others };
+}
+async function openLmsLoad(id) {
   const plan = state.lmsPlans.get(id);
   if (!plan) return;
   if (state.lmsLoad && state.lmsLoad.phase === "busy") { $("dlgLmsLoad").showModal(); return; }
-  state.lmsLoad = { plan, phase: "ask" };
+  // Ask LM Studio first, so the window shows what is loaded NOW (it may have changed since the last check).
+  const j = state.lmsLoad = { plan, phase: "busy", step: "Asking LM Studio which models are loaded…" };
   renderLmsLoad();
   $("dlgLmsLoad").showModal();
+  await checkLms();
+  if (state.lmsLoad !== j) return;
+  j.phase = "ask"; j.shown = lmsLoadedIds(plan.key);
+  renderLmsLoad();
 }
 function renderLmsLoad() {
   const j = state.lmsLoad;
@@ -2545,6 +2565,7 @@ function renderLmsLoad() {
     html = `<p style="margin-top:0">TensorTailor asks LM Studio's server (127.0.0.1:1234) to load <b>${esc(p.name)}</b> (${esc(p.quant)}) with:</p>
       <table class="lmsend">${tr("Context Length", b.context_length.toLocaleString("en"))}${tr("Flash Attention", "On")}${tr("KV cache on the GPU", "On")}${tr("Speculative decoding with MTP", b.speculative_draft_mtp ? "On" : "not changed")}</table>
       <p class="hint">LM Studio's API cannot set <b>GPU Offload</b> and <b>K/V cache quantization</b>: LM Studio uses its own setting for this model there (the one you saved with "Remember settings", else its default).</p>
+      ${j.changed ? `<div class="warn-box">The loaded models changed since this window opened, so nothing was unloaded or loaded. Check the list below and press Load again.</div>` : ""}
       ${p.notes.map((n) => `<div class="warn-box">${esc(n)}</div>`).join("")}
       ${x.loaded ? `<div class="warn-box">It is loaded now${x.loadedCtx ? " with context " + x.loadedCtx.toLocaleString("en") : ""}. TensorTailor unloads it first, then loads it again with these settings.</div>` : ""}
       ${others.length ? `<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px"><input type="checkbox" id="lmsUnloadOthers"><span>Unload the other loaded models first, so this one has all the VRAM: ${others.map((o) => `<b>${esc(o.name)}</b>`).join(", ")}</span></label>` : ""}
@@ -2570,6 +2591,13 @@ async function runLmsLoad() {
     if (!x) throw new Error(`LM Studio does not list ${p.key} any more.`);
     const ids = [...x.instances];
     if (unloadOthers) for (const o of state.lms.models) if (o.loaded && o.id !== p.key) ids.push(...o.instances);
+    // Never unload a model the window did not show: if the loaded models changed, show the new list first.
+    const shown = j.shown ? [...j.shown.self, ...(unloadOthers ? j.shown.others : [])] : [];
+    if (ids.some((id) => !shown.includes(id))) {
+      j.phase = "ask"; j.changed = true; j.shown = lmsLoadedIds(p.key);
+      renderLmsLoad(); renderView(); renderDetail();
+      return;
+    }
     for (const id of ids) { j.step = `Unloading ${id}…`; renderLmsLoad(); await lmsPost("/api/v1/models/unload", { instance_id: id }); }
     j.step = `Loading ${p.name} with context ${p.body.context_length.toLocaleString("en")}…`; renderLmsLoad();
     j.result = await lmsPost("/api/v1/models/load", p.body);
@@ -2638,6 +2666,7 @@ function tabRun(r) {
   const opencode = JSON.stringify({ provider: { local: { npm: "@ai-sdk/openai-compatible", options: { baseURL: base }, models: { [lmsId]: {} } } } }, null, 2);
   const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = "${lmsId}"`;
   return `${state.engine === "lms" && b.plain !== "nofit" ? lmsSettingsCard(r, setRepo, file) : ""}<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
+    ${state.upg.gpu || state.upg.ram ? `<div class="warn-box" style="margin:0 0 10px"><b>With upgrade.</b> "What if I upgrade?" is on, so these commands are for the upgraded PC (for example all layers on the GPU). Switch it off for commands that fit your PC as it is now.</div>` : ""}
     <p class="hint" style="margin-top:0">${own ? `Your file in LM Studio · quant <b>${esc(ownQ)}</b>` : `${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)}`} · context ${fmtCtx(ctxShown)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>
   <section class="card"><div class="card-head"><h2>Use it in an AI agent</h2></div>
     <p class="hint" style="margin-top:0">Base address <code>${base}</code> · model <code>${esc(lmsId)}</code></p>
@@ -2730,7 +2759,7 @@ function renderDetail() {
   $("detail").innerHTML = `<section class="card dhead">
     <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face"}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
     <div class="d-facts">${capIcons(m.caps)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
-    <div class="d-answer v-${b.plain}">${verdict(b.plain)}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
+    <div class="d-answer v-${b.plain}">${verdict(b.plain)}${state.upg.gpu || state.upg.ram ? `<span class="chip upg" title="What if I upgrade? is on: this verdict, the numbers and the commands are for the upgraded PC, not for your PC as it is now.">with upgrade</span>` : ""}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
   restoreFocus(focusKey);
 }
@@ -3096,12 +3125,14 @@ function ggufLine(repo, path) {
 // search documents you add to a chat. It shows under "Text Embedding" in LM Studio, not under "LLMs".
 const LMS_BUNDLED = /^text-embedding-nomic-embed-text-v1\.5$/i;
 const LMS_BUNDLED_TIP = "Comes with LM Studio itself (not in your models folder). LM Studio uses it to search documents you add to a chat. In LM Studio it is listed under Text Embedding, not under LLMs. Keep it: an update of LM Studio would bring it back anyway.";
+const lmsNum = (v) => { const n = Number(v); return typeof v !== "boolean" && isFinite(n) && n >= 0 ? n : 0; };
 function normLms(x) {
   const inst = (x.loaded_instances || [])[0];
   const p = /([\d.]+)\s*([BM])/i.exec(x.params_string || "");
   return { id: x.key, name: x.display_name || x.key, publisher: x.publisher || "", arch: x.architecture || "", quantization: x.quantization && x.quantization.name ? x.quantization.name : "",
-    sizeGB: (x.size_bytes || 0) / 1e9, sizeBytes: x.size_bytes || 0, params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? inst.config.context_length || 0 : 0,
-    max_context_length: x.max_context_length || 0, type: x.type || "llm", vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use),
+    // Numbers from LM Studio's answer are kept only when they are real numbers (they reach the page's HTML).
+    sizeGB: lmsNum(x.size_bytes) / 1e9, sizeBytes: lmsNum(x.size_bytes), params: p ? Number(p[1]) / (p[2].toUpperCase() === "M" ? 1000 : 1) : 0, loaded: !!inst, loadedCtx: inst && inst.config ? lmsNum(inst.config.context_length) : 0,
+    max_context_length: lmsNum(x.max_context_length), type: String(x.type || "llm"), vision: !!(x.capabilities && x.capabilities.vision), tools: !!(x.capabilities && x.capabilities.trained_for_tool_use),
     reasoning: !!(x.capabilities && x.capabilities.reasoning),
     // LM Studio's own setting for a loaded model (speculative decoding with the model's MTP layers).
     mtp: inst && inst.config && typeof inst.config.speculative_draft_mtp === "boolean" ? inst.config.speculative_draft_mtp : null,
@@ -3965,7 +3996,10 @@ function viewBattle() {
   const fighters = rs.map((r) => ({ r, p: battlePoints(r) })), alive = fighters.filter((f) => f.p);
   const ranked = alive.slice().sort((a, b) => b.p.total - a.p.total), win = ranked[0];
   const rounds = [["quality", 45], ["speed", 30], ["memory", 15], ["context", 10]];
-  const led = win ? rounds.map(([k]) => k).filter((k) => alive.every((f) => win.p[k] >= f.p[k] - 0.5)) : [];
+  // "Best (or equal best)" only where the winner's SHOWN (rounded) points are the highest, so the text agrees
+  // with the numbers on the cards.
+  const led = win ? rounds.map(([k]) => k).filter((k) => alive.every((f) => Math.round(win.p[k]) >= Math.round(f.p[k]))) : [];
+  const second = ranked[1], tie = win && second && Math.round(win.p.total) === Math.round(second.p.total);
   const card = (f) => {
     const rank = f.p ? ranked.indexOf(f) : -1, isWin = win && f === win;
     return `<section class="card fighter ${isWin ? "win" : ""} ${f.p ? "" : "out"}">${isWin ? '<span class="crown">Winner</span>' : ""}<span class="place">${rank >= 0 ? ORDINAL[rank] + " place" : "Knocked out"}</span>
@@ -3973,12 +4007,14 @@ function viewBattle() {
     ${f.p ? `<div class="pts num">${f.p.total.toFixed(0)}<small> / 100</small></div>${rounds.map(([k, max]) => `<div class="round"><span>${k}</span><div class="bar"><span style="width:${(f.p[k] / max * 100).toFixed(0)}%;background:${ROUND_COL[k]}"></span></div><span class="r num">${f.p[k].toFixed(0)}</span></div>`).join("")}` : `<div class="warn-box">Knocked out: it does not fit on this PC.</div>`}</section>`;
   };
   const ledStr = led.length <= 1 ? led.join("") : led.slice(0, -1).join(", ") + " and " + led[led.length - 1];
-  const why = !win ? "No model fits on this PC." : `${esc(win.r.m.name)} wins with ${win.p.total.toFixed(0)} points` + (ledStr ? `: best (or equal best) in ${ledStr}.` : ".");
+  const why = !win ? "No model fits on this PC."
+    : tie ? `A tie at ${win.p.total.toFixed(0)} points: ${esc(win.r.m.name)} wins on the decimals (${win.p.total.toFixed(1)} against ${second.p.total.toFixed(1)})` + (ledStr ? `; it is best (or equal best) in ${ledStr}.` : ".")
+    : `${esc(win.r.m.name)} wins with ${win.p.total.toFixed(0)} points` + (ledStr ? `: best (or equal best) in ${ledStr}.` : ".");
   // A podium: the winner in the middle (2nd left, 3rd right); with 2 or 4 fighters, by rank.
   const order = alive.length === 3 && fighters.length === 3 ? [ranked[1], ranked[0], ranked[2]] : ranked.concat(fighters.filter((f) => !f.p));
   const legend = rounds.map(([k, max]) => `<span style="--c:${ROUND_COL[k]}">${k[0].toUpperCase() + k.slice(1)} ${max}</span>`).join("");
   return `<div class="view-head"><h1>Battle</h1><span class="status-line klegend" title="Points: quality 45 · speed 30 · memory 15 · context 10 (llmfit numbers)">${legend}</span><span class="spacer"></span>${win ? `<button class="btn small" id="btnBattlePng">Save as picture</button><button class="btn small primary" data-show="${esc(win.r.m.id)}" data-gotab="files">Get the winner</button>` : ""}</div>
-    <div class="fighters" style="grid-template-columns:repeat(${fighters.length}, minmax(0, 1fr))">${order.map(card).join("")}</div><section class="card battle-why"><span class="bw-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></span><div><b>${why}</b><p class="hint">Speed gets full points at 20 tok/s and 60% at reading pace (7 tok/s). Memory gets full points at half of the usable memory. Context gets full points at 32K usable context.</p></div></section>`;
+    <div class="fighters" style="grid-template-columns:repeat(${fighters.length}, minmax(0, 1fr))">${order.map(card).join("")}</div><section class="card battle-why"><span class="bw-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg></span><div><b>${why}</b><p class="hint">Speed gets full points at 20 tok/s and 60% at reading pace (7 tok/s). Memory gets full points at half of the usable memory. Context gets full points at 32K usable context. These battle points are not llmfit's Score (in the list and in Compare), so the order can differ.</p></div></section>`;
 }
 function battlePng() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean).map((r) => ({ r, p: battlePoints(r) }));
@@ -4097,11 +4133,20 @@ function dlNext() {
   if (job) dlRun(job);
 }
 let dlPaint = 0;
+// While a mouse button is down on a Downloads button, the progress repaint waits: a button replaced between
+// press and release would lose the click.
+let dlPointer = false;
+document.addEventListener("pointerdown", (e) => { dlPointer = !!(e.target.closest && e.target.closest("[data-dlact]")); }, true);
+document.addEventListener("pointerup", () => setTimeout(() => { dlPointer = false; }, 0), true);
 function dlRefresh(force) {
   const now = Date.now();
-  if (!force && now - dlPaint < 400) return;
+  if (!force && (now - dlPaint < 400 || dlPointer)) return;
   dlPaint = now; renderNav();
-  if (state.view === "downloads") renderView();
+  if (state.view === "downloads") {
+    // Keep the keyboard focus on the same button after the repaint.
+    const a = document.activeElement, key = a && a.dataset && a.dataset.dlact ? `[data-dlact="${CSS.escape(a.dataset.dlact)}"][data-dlid="${CSS.escape(a.dataset.dlid || "")}"]` : null;
+    renderView(); restoreFocus(key);
+  }
 }
 async function dlRun(job) {
   const d = state.dl;
@@ -4223,6 +4268,7 @@ async function dlRun(job) {
     if (job.removing) await dlRemoveParts(job); // Remove was pressed while it ran
     if (job.status !== "removed" && !job.removing) dlSave(job);
     dlRefresh(true); renderDetail(); dlNext();
+    if (job.status === "done") lmsRefreshSoon(); // LM Studio now lists the new file
   }
 }
 // Remove a job's temporary parts (and the parts folder when it is empty). A finished model file stays.
@@ -4402,6 +4448,15 @@ function setView(v) {
   state.view = v; $("layout").classList.toggle("wide", v !== "models"); $("layout").classList.toggle("full", v === "downloads");
   document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
   if (v !== "models") renderView(); else renderRowsWindow();
+  if (v === "mine") lmsRefreshSoon();
+}
+// Ask LM Studio again (at most once per 5 s, never during a load): when My models or the Run tab opens, after
+// a download, and when you come back to this browser tab. So "loaded", "In LM Studio" and Load stay current.
+let lmsLastCheck = 0;
+function lmsRefreshSoon() {
+  if (!state.ready || Date.now() - lmsLastCheck < 5000 || (state.lmsLoad && state.lmsLoad.phase === "busy")) return;
+  lmsLastCheck = Date.now();
+  checkLms().then(() => { if (state.view === "mine") renderView(); renderDetail(); });
 }
 function renderNav() { const set = (id, n) => { const el = $(id); el.hidden = !n; el.textContent = n; }; set("navMine", state.lms.online ? state.lms.models.length : 0); set("navBattle", state.compare.length); set("navDl", state.dl.jobs.filter((j) => !["done"].includes(j.status)).length); }
 
@@ -4593,7 +4648,16 @@ function selectModel(id, scroll) {
 function showModel(id, tab) {
   if (state.ready && !state.results.some((r) => r.m.id === id)) { toast("llmfit does not analyse this model on this PC, so there are no details to show."); return; }
   setView("models");
-  if (!state.visible.some((r) => r.m.id === id)) { state.search = ""; $("q").value = ""; state.show.nofit = true; renderList(); }
+  // Not in the list: first without a search; a model that won't fit needs its tile on; when the filters still
+  // hide it, search for it with the filters off for this search (the line above the list says so, with
+  // "Filters on again").
+  if (!state.visible.some((r) => r.m.id === id)) {
+    const hit = state.results.find((r) => r.m.id === id);
+    state.search = ""; $("q").value = ""; state.searchAll = false;
+    if (hit && hit.best.plain === "nofit") state.show.nofit = true;
+    renderList();
+    if (!state.visible.some((r) => r.m.id === id)) { state.search = id; $("q").value = id; state.searchAll = true; renderList(); }
+  }
   if (tab) state.tab = tab;
   selectModel(id, "center");
 }
@@ -4693,6 +4757,12 @@ function wireSplit() {
     if (state.tab === "files") renderDetail();
   });
   sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); if (state.tab === "files") renderDetail(); });
+  // A smaller window: the saved width is limited again, so the list keeps its room. A taller list: draw the
+  // rows that came into view (the list only draws the rows you can see).
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lmsRefreshSoon(); });
+  let resizeT = 0;
+  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { const w = Number(safeGet("localStorage", DETAIL_W_KEY)); if (w > 0) setDetailWidth(w, false); renderRowsWindow(); }, 120); });
+  if (window.ResizeObserver) new ResizeObserver(() => renderRowsWindow()).observe($("rows"));
   // The detail header shrinks to one line while you scroll (with a gap, so it does not flicker).
   $("detail").addEventListener("scroll", () => { const d = $("detail"), t = d.scrollTop; if (t > 90) d.classList.add("scrolled"); else if (t < 20) d.classList.remove("scrolled"); });
 }
@@ -4759,7 +4829,7 @@ function wire() {
     if (t.closest("[data-view-dl]")) { setView("downloads"); return; }
     if (t.id === "btnDlFolder") { dlFolder(true, true).then((ok) => { if (ok) { toast("Folder chosen: " + state.dl.root.name); Object.assign(state.localGguf, { done: false, needClick: false, error: "", byId: new Map() }); } renderView(); }, (e) => { if (e.name !== "AbortError") toast(e.message); }); return; }
     const ab = t.closest("[data-addbattle]"); if (ab) { toggleCompare(ab.dataset.addbattle, true); toast("Added to the battle."); return; }
-    const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); return; }
+    const tab = t.closest("[data-tab]"); if (tab) { state.tab = tab.dataset.tab; renderDetail(); if (state.tab === "run") lmsRefreshSoon(); return; }
     const eng = t.closest("[data-engine]"); if (eng) { state.engine = eng.dataset.engine; renderDetail(); return; }
     const cp = t.closest("[data-copy]"); if (cp) { copyText(cp.dataset.copy, cp.dataset.what || "Text"); return; }
     if (t.closest("[data-showsha]")) { state.showSha = !state.showSha; renderDetail(); return; }
