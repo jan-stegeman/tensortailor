@@ -1305,7 +1305,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
-      <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp; LM Studio on Windows cannot run it.</dd>
+      <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp (the label names it: vLLM or MLX); LM Studio on Windows cannot run it.</dd>
     </dl>
 
     <h3 id="help-names">Words in model names</h3>
@@ -1358,7 +1358,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. The list always counts with F16. In the detail panel, Memory, the math line, the bar, "Which file fits?" (with its note) and the Files tab's "Fits here" use your choice, and the Plan tab counts with it; the verdict and the speed stay those of the list (F16), and one line under the math says so. When the smaller cache would let the model fit fully in VRAM (or fit at all), the numbers stay F16 and that line says what your choice gives.</dd>
       <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
-      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model (the line above the list reminds you).</dd>
+      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). Several words find models that have all of them, in any order: <b>qwen3 14b</b> finds Qwen3-14B. From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model (the line above the list reminds you).</dd>
     </dl>
 
     <h3>Filters (left)</h3>
@@ -1894,6 +1894,10 @@ function avatar(m, big) {
 const verdict = (p) => `<span class="badge ${PLAIN[p].cls}">${PLAIN[p].label}</span>`;
 // From 10,000 tok/s (tiny test models) the range is in thousands, "153k–204k", so it fits every column.
 const speedRange = (b) => (!b || b.tps <= 0 ? "—" : b.hi >= 10000 ? `${Math.round(b.lo / 1000)}k–${Math.round(b.hi / 1000)}k` : `${fmtT(b.lo)}–${fmtT(b.hi)}`);
+// The speed with its unit; "—" alone when there is no speed (not "— tok/s").
+const speedTok = (b) => { const s = speedRange(b); return s === "—" ? s : s + " tok/s"; };
+// llmfit's runtime names as people write them.
+const rtName = (rt) => ({ Vllm: "vLLM", Mlx: "MLX", LlamaCpp: "llama.cpp" })[rt] || rt;
 const isNew = (m) => { if (!m.added) return false; const d = Date.parse(m.added); return isFinite(d) && Date.now() - d < 60 * 86400000; };
 // LM Studio key (e.g. "mistralai/codestral-22b-v0.1") vs catalog name (e.g.
 // "mistralai/Codestral-22B-v0.1"): same name, or the key ends with the model's
@@ -1936,7 +1940,7 @@ function rowHTML(r) {
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
     <div class="m-name"><div class="nm"><span class="t" title="${esc(m.id)}">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"><span class="sep"> · </span><span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", rtName(m.runtime)))}">${esc(rtName(m.runtime))}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"><span class="sep"> · </span><span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
     <div title="Best file: ${esc(b.q)}. The best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant${String(b.q).length > 7 ? " long" : ""}">${esc(b.q).replace(/-/g, "-<wbr>")}</span></div>
     <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 && b.inRam <= 0.05 && b.plain !== "nofit" ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}${b.tps > 0 && b.hi < 1000 ? "<small>tok/s</small>" : ""}</div>
@@ -1960,7 +1964,14 @@ function chosenRepo(m) {
 }
 // Plain search text (not a pasted link). It matches the id (so also the publisher) and the provider.
 function searchText() { const s = state.search.trim().toLowerCase(); return s && !/^https?:/.test(s) ? s : ""; }
-function searchMatch(r, s) { return !s || r.m.id.toLowerCase().includes(s) || (r.m.provider || "").toLowerCase().includes(s); }
+// Search: every word you type must be in the model's name or maker, in any order ("qwen3 14b" finds Qwen3-14B).
+let smKey = null, smWords = [];
+function searchMatch(r, s) {
+  if (!s) return true;
+  if (s !== smKey) { smKey = s; smWords = s.split(/\s+/).filter(Boolean); }
+  const id = r.m.id.toLowerCase(), pv = (r.m.provider || "").toLowerCase();
+  return smWords.every((w) => id.includes(w) || pv.includes(w));
+}
 function passFilters(r) {
   const m = r.m, s = searchText(), f = state.f;
   if (!searchMatch(r, s)) return false;
@@ -2088,7 +2099,8 @@ function renderSearchBar() {
   // Nothing at all matches: the empty state in the list has the same buttons (only a running search stays here).
   if (!total && !hub) { el.hidden = true; return; }
   el.hidden = false;
-  el.innerHTML = `<span><b>${(state.searchAll ? total : withFilters).toLocaleString("en")}</b> models in the list match "${esc(raw)}"${state.searchAll ? " (filters off)" : hidden ? `, <b>${hidden.toLocaleString("en")}</b> more are hidden by your filters` : ""}.</span>
+  const shownN = state.searchAll ? total : withFilters;
+  el.innerHTML = `<span><b>${shownN.toLocaleString("en")}</b> ${shownN === 1 ? "model in the list matches" : "models in the list match"} "${esc(raw)}"${state.searchAll ? " (filters off)" : hidden ? `, <b>${hidden.toLocaleString("en")}</b> more ${hidden === 1 ? "is" : "are"} hidden by your filters` : ""}.</span>
     ${state.searchAll ? `<button class="btn small" data-searchfilters="1">Filters on again</button>` : hidden ? `<button class="btn small" data-searchall="1">Show all ${total.toLocaleString("en")}</button>` : ""}
     <button class="btn small ${total ? "" : "primary"}" data-hubsearch="${esc(raw)}" ${state.liveBusy ? "disabled" : ""} title="Look on Hugging Face for models of this publisher and models with this text in their name, and check them with llmfit's own code">Search Hugging Face for "${esc(raw)}"</button>
     ${hub ? `<span class="msg">${hub.busy ? '<span class="dot warn"></span> ' : ""}${esc(hub.msg)}</span>` : ""}`;
@@ -2136,14 +2148,14 @@ function renderSuggest() {
   if (!bestOverall && !smartest && !fastest) { el.hidden = true; return; }
   // Closed: one slim strip with the three names (click one to open it). Open: three cards.
   if (!state.picksOpen) {
-    const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedRange(r.best) + " tok/s\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(pickName(r.m.name))}</b></button>` : "";
+    const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedTok(r.best) + "\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(pickName(r.m.name))}</b></button>` : "";
     el.className = "suggest strip";
     el.innerHTML = `<span class="pk-lbl"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Top picks</span>${pill("Best", bestOverall, "Highest score that still gives 12+ tok/s.")}${pill("Quality", smartest, "Best quality score at reading pace or faster.")}${pill("Fastest", fastest, "Quickest model whose quality score is 60 or more.")}<span class="spacer"></span><button class="btn ghost icon small" id="btnOpenPicks" aria-label="Show the top picks as cards" title="Show the top picks as cards"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`;
     el.hidden = false;
     return;
   }
   el.className = "suggest";
-  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedRange(r.best)} tok/s</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedTok(r.best)}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
     : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
   el.innerHTML = `<div class="sug-head"><b>Top picks for this PC</b><span>They follow your filters. Point at a label for the rule.</span><span class="spacer"></span><button class="btn ghost small" id="btnCloseSuggest" title="Hide the top picks (the button Top picks shows them again)">Hide</button></div>` + card("Best overall", bestOverall, "Highest score that still gives 12+ tok/s.") + card("Highest quality", smartest, "Best quality score at reading pace or faster.") + card("Fastest", fastest, "Quickest model whose quality score is 60 or more.");
   el.hidden = false;
@@ -2180,7 +2192,7 @@ function notesFor(r, d) {
   if (b.mode === "MoE offload") n.push(`Mixture of experts: memory follows all ${fmtParams(m.params)} parameters, speed follows the active ones. Unused experts wait in RAM.`);
   if (b.mode === "CPU+GPU") n.push(`Too big for VRAM. ${gb(b.inRam)} goes to system RAM, which is much slower than VRAM.`);
   if (b.tps > 0 && b.lo < READING_PACE) n.push(`Slower than reading pace (${READING_PACE} tok/s). Fine for jobs that may run in the background.`);
-  if (m.runtime && m.runtime !== "LlamaCpp") n.push(`This model needs ${m.runtime}, not llama.cpp. LM Studio on Windows cannot run it.`);
+  if (m.runtime && m.runtime !== "LlamaCpp") n.push(`This model needs ${rtName(m.runtime)}, not llama.cpp. LM Studio on Windows cannot run it.`);
   const g = gatedOf(m.id);
   if (g) n.push(`Gated on Hugging Face: accept the terms on the model page, then set your token (the key button at the top right, or Tools → Hugging Face token) to download.`);
   else if (g === false && m.gated) n.push(`License "${m.license}" has its own terms: read them on the model page. Not gated: the files download without a token.`);
@@ -4094,7 +4106,7 @@ function viewBattle() {
   const card = (f) => {
     const rank = f.p ? ranked.indexOf(f) : -1, isWin = win && f === win;
     return `<section class="card fighter ${isWin ? "win" : ""} ${f.p ? "" : "out"}">${isWin ? '<span class="crown">Winner</span>' : ""}<span class="place">${rank >= 0 ? ORDINAL[rank] + " place" : "Knocked out"}</span>
-    <div class="fhead">${avatar(f.r.m, isWin)}<div class="fname-b"><h3 title="${esc(f.r.m.id)}">${esc(f.r.m.name)}</h3><div class="hash">${esc(f.r.best.q)} · ${speedRange(f.r.best)} tok/s</div></div></div>
+    <div class="fhead">${avatar(f.r.m, isWin)}<div class="fname-b"><h3 title="${esc(f.r.m.id)}">${esc(f.r.m.name)}</h3><div class="hash">${esc(f.r.best.q)} · ${speedTok(f.r.best)}</div></div></div>
     ${f.p ? `<div class="pts num">${f.p.total.toFixed(0)}<small> / 100</small></div>${rounds.map(([k, max]) => `<div class="round"><span>${k}</span><div class="bar"><span style="width:${(f.p[k] / max * 100).toFixed(0)}%;background:${ROUND_COL[k]}"></span></div><span class="r num">${f.p[k].toFixed(0)}</span></div>`).join("")}` : `<div class="warn-box">Knocked out: it does not fit on this PC.</div>`}</section>`;
   };
   const ledStr = led.length <= 1 ? led.join("") : led.slice(0, -1).join(", ") + " and " + led[led.length - 1];
@@ -4667,7 +4679,7 @@ function toggleTheme() { const next = currentTheme() === "dark" ? "light" : "dar
 function exportCsv() {
   const head = ["model", "provider", "params_b", "best_quant", "verdict", "runs_on", "memory_gb", "tok_s_low", "tok_s_high", "usable_context", "score", "license", "runtime"];
   const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
-  const lines = state.visible.map((r) => [r.m.id, r.m.provider, r.m.params.toFixed(2), r.best.q, PLAIN[r.best.plain].label, r.best.mode, r.best.need.toFixed(1), fmtT(r.best.lo), fmtT(r.best.hi), r.ctxFit, r.best.score.toFixed(0), r.m.license, r.m.runtime].map(q).join(","));
+  const lines = state.visible.map((r) => [r.m.id, r.m.provider, r.m.params.toFixed(2), r.best.q, PLAIN[r.best.plain].label, r.best.mode, r.best.need.toFixed(1), fmtT(r.best.lo), fmtT(r.best.hi), r.ctxFit, r.best.score.toFixed(0), r.m.license, rtName(r.m.runtime)].map(q).join(","));
   saveFile("tensortailor-models.csv", new Blob([head.join(",") + "\r\n" + lines.join("\r\n")], { type: "text/csv" }));
   toast(`Saved ${lines.length.toLocaleString("en")} models to tensortailor-models.csv in your Downloads folder.`);
 }
