@@ -234,7 +234,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .suggest[hidden] { display: none; }
 .sug { border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); display: flex; flex-direction: column; min-width: 0; }
 .sug .k { font-weight: 650; }
-.sug .n { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Up to 2 lines for a long name (one line cut "Gemma4 12B QAT U…" on a 1366 px screen). */
+.sug .n { font-weight: 650; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; word-break: break-word; }
 .sug .m { font-size: 12.5px; color: var(--muted); }
 .sug .acts { display: flex; gap: 6px; margin-top: 6px; }
 
@@ -744,6 +745,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .dh-top { align-items: center; gap: 12px; }
 .dh-name { flex: 1; min-width: 0; }
 .dh-name .d-title { font-size: 21px; line-height: 1.15; }
+.dh-name .d-title.long { font-size: 18px; }
 .d-id { display: inline-block; margin-top: 3px; font-size: 12px; color: var(--muted); }
 .d-id:hover { color: var(--accent); text-decoration: none; }
 .btn.fav { width: 34px; height: 34px; font-size: 16px; color: var(--muted); }
@@ -827,6 +829,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .mm { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .mm-n { min-width: 0; }
 .mm-t { display: flex; align-items: center; gap: 6px; }
+/* A long model name takes at most 2 lines (the full name is in the link's tooltip and on Hugging Face). */
+.mm-t .d-id { display: inline-flex; align-items: flex-start; gap: 4px; min-width: 0; }
+.mm-t .d-id b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mm .star { flex: none; }
 .mtable .quant { font-size: 11.5px; }
 .kpi b.num { text-align: left; }
@@ -1742,7 +1747,11 @@ async function recompute() {
   const seq = ++computeSeq;
   const ctx = CTX_STEPS[state.ctxIdx];
   const upgOn = state.upg.gpu || state.upg.ram;
-  banner(`Calculating ${state.catalog.length.toLocaleString("en")} models for this hardware…`, "busy");
+  // The first calculation shows the banner at once; a new one (LM Studio models added, a filter on hardware)
+  // only when it takes longer than 0.6 s, so the page does not flash a blue bar.
+  const calcMsg = `Calculating ${state.catalog.length.toLocaleString("en")} models for this hardware…`;
+  clearTimeout(state.bannerT);
+  if (state.results.length) state.bannerT = setTimeout(() => banner(calcMsg, "busy"), 600); else banner(calcMsg, "busy");
   const t0 = performance.now();
   try {
     const now = await call("fitLite", JSON.stringify(hwInput(upgOn)), ctx);
@@ -1755,10 +1764,11 @@ async function recompute() {
     if (seq !== computeSeq) return;
     state.results = results;
     state.detail.clear();
-    banner("");
+    clearTimeout(state.bannerT); banner("");
     state.lastMs = Math.round(performance.now() - t0);
     renderList();
   } catch (e) {
+    clearTimeout(state.bannerT);
     banner("The engine could not calculate: " + e.message, "err");
   }
 }
@@ -2044,6 +2054,9 @@ function renderList() {
 }
 
 /* ===================== Suggest ===================== */
+// Top picks have little room: leave out what every such name ends with ("-GGUF", "-Instruct", "-it", "-Chat").
+// The full name stays in the tooltip and in the detail panel.
+const pickName = (n) => String(n).replace(/[-_.]gguf$/i, "").replace(/[-_](instruct|it|chat)$/i, "") || String(n);
 function renderSuggest() {
   const el = $("suggest");
   if (!state.ready) { el.hidden = true; return; }
@@ -2055,14 +2068,14 @@ function renderSuggest() {
   if (!bestOverall && !smartest && !fastest) { el.hidden = true; return; }
   // Closed: one slim strip with the three names (click one to open it). Open: three cards.
   if (!state.picksOpen) {
-    const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedRange(r.best) + " tok/s\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(r.m.name)}</b></button>` : "";
+    const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedRange(r.best) + " tok/s\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(pickName(r.m.name))}</b></button>` : "";
     el.className = "suggest strip";
     el.innerHTML = `<span class="pk-lbl"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></svg>Top picks</span>${pill("Best", bestOverall, "Highest score that still gives 12+ tok/s.")}${pill("Quality", smartest, "Best quality score at reading pace or faster.")}${pill("Fastest", fastest, "Quickest model whose quality score is 60 or more.")}<span class="spacer"></span><button class="btn ghost icon small" id="btnOpenPicks" aria-label="Show the top picks as cards" title="Show the top picks as cards"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>`;
     el.hidden = false;
     return;
   }
   el.className = "suggest";
-  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(r.m.name)}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedRange(r.best)} tok/s</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedRange(r.best)} tok/s</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
     : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
   el.innerHTML = `<div class="sug-head"><b>Top picks for this PC</b><span>They follow your filters. Point at a label for the rule.</span><span class="spacer"></span><button class="btn ghost small" id="btnCloseSuggest" title="Hide the top picks (the button Top picks shows them again)">Hide</button></div>` + card("Best overall", bestOverall, "Highest score that still gives 12+ tok/s.") + card("Highest quality", smartest, "Best quality score at reading pace or faster.") + card("Fastest", fastest, "Quickest model whose quality score is 60 or more.");
   el.hidden = false;
@@ -2757,7 +2770,7 @@ function renderDetail() {
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
     : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
   $("detail").innerHTML = `<section class="card dhead">
-    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face"}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
+    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title${m.name.length > 26 ? " long" : ""}">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face"}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
     <div class="d-facts">${capIcons(m.caps)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
     <div class="d-answer v-${b.plain}">${verdict(b.plain)}${state.upg.gpu || state.upg.ram ? `<span class="chip upg" title="What if I upgrade? is on: this verdict, the numbers and the commands are for the upgraded PC, not for your PC as it is now.">with upgrade</span>` : ""}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
@@ -3954,7 +3967,7 @@ function viewMine() {
     // The same favorite star as in the Models list (stars belong to models in llmfit's list).
     const star = cat ? `<button class="star" data-watch="${esc(cat.m.id)}" aria-pressed="${state.watch.has(cat.m.id)}" title="${esc("Favorite (same star as in Models): " + cat.m.id)}" aria-label="Favorite ${esc(x.name)}">${state.watch.has(cat.m.id) ? "★" : "☆"}</button>` : `<span class="star" style="opacity:.35;cursor:default" title="Not matched to a model in llmfit's list, so it has no favorite star">☆</span>`;
     const ownQ = lmsOwnQuant(x);
-    return `<tr><td><div class="mm">${star}${avatar({ name: x.name, provider: x.publisher, id: x.id })}<div class="mm-n"><div class="mm-t"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}${isEmb ? "" : grpTag(x)}</div>${isEmb ? "" : updLine(x)}</div></div></td>
+    return `<tr><td><div class="mm">${star}${avatar({ name: x.name, provider: x.publisher, id: x.id })}<div class="mm-n"><div class="mm-t"><a class="d-id" href="${esc(link)}" target="_blank" rel="noopener" title="${esc(x.name)}"><b>${esc(x.name)}</b> ↗</a>${capIcons(lmsCaps)}</div><div class="hash">${esc(x.publisher)}${bundled ? ` <span class="tag" title="${esc(LMS_BUNDLED_TIP)}">bundled with LM Studio</span>` : ""}${isEmb ? "" : grpTag(x)}</div>${isEmb ? "" : updLine(x)}</div></div></td>
       <td style="white-space:nowrap">${x.arch ? `<span class="tag" title="Architecture: the model design that llama.cpp (inside LM Studio) uses to run it, read from the model file by LM Studio.">${esc(x.arch)}</span>` : "—"}${mtpArch ? ` <span class="tag okay" title="${esc(MTP_WHAT + "\n" + mtpWhy)}">MTP</span>` : ""}${locLine}</td>
       <td class="r">${esc(x.paramsStr || (x.params ? fmtParams(x.params) : "—"))}</td>
       <td><span class="quant">${esc(ownQ || "—")}</span></td><td class="r">${x.sizeGB ? gb(x.sizeGB) : "—"}</td>
@@ -4471,7 +4484,8 @@ function viewDownloads() {
 }
 function renderView() { const fn = { mine: viewMine, battle: viewBattle, downloads: viewDownloads }[state.view]; if (fn) $("viewPane").innerHTML = fn(); }
 function setView(v) {
-  state.view = v; $("layout").classList.toggle("wide", v !== "models"); $("layout").classList.toggle("full", v === "downloads");
+  // Downloads and Battle use the whole width (they do not need the hardware and filter column).
+  state.view = v; $("layout").classList.toggle("wide", v !== "models"); $("layout").classList.toggle("full", v === "downloads" || v === "battle");
   document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
   if (v !== "models") renderView(); else renderRowsWindow();
   if (v === "mine") lmsRefreshSoon();
@@ -4507,9 +4521,9 @@ function openCompare() {
   const rs = state.compare.map((id) => state.results.find((r) => r.m.id === id)).filter(Boolean);
   if (rs.length < 2) { toast("Pick at least 2 models."); return; }
   const rows = [["Verdict", (r) => verdict(r.best.plain), null], ["Runs on", (r) => r.best.mode, null], ["Best file", (r) => `<span class="quant">${esc(r.best.q)}</span>`, null],
-    ["Memory", (r) => gb(r.best.need), (r) => -r.best.need], ["Speed", (r) => speedRange(r.best) + " tok/s", (r) => r.best.tps], ["Usable context", (r) => fmtCtxUnit(r.ctxFit), (r) => r.ctxFit],
+    ["Memory", (r) => gb(r.best.need), (r) => -r.best.need], ["Speed", (r) => speedRange(r.best) + (r.best.tps > 0 ? " tok/s" : ""), (r) => r.best.tps], ["Usable context", (r) => fmtCtxUnit(r.ctxFit), (r) => r.ctxFit],
     ["Score", (r) => r.best.score.toFixed(0), (r) => r.best.score], ["Quality", (r) => r.best.parts.quality.toFixed(0), (r) => r.best.parts.quality], ["Parameters", (r) => fmtParams(r.m.params), null], ["License", (r) => esc(r.m.license), null]];
-  $("cmpBody").innerHTML = `<table class="cmp-table"><tr><th></th>${rs.map((r) => `<td><b>${esc(r.m.name)}</b></td>`).join("")}</tr>${rows.map(([label, cell, rank]) => { const bv = rank ? Math.max(...rs.map(rank)) : null; return `<tr><th>${label}</th>${rs.map((r) => `<td class="${rank && rank(r) === bv ? "best" : ""}">${cell(r)}</td>`).join("")}</tr>`; }).join("")}</table>`;
+  $("cmpBody").innerHTML = `<table class="cmp-table"><tr><th></th>${rs.map((r) => `<td><b>${esc(r.m.name)}</b></td>`).join("")}</tr>${rows.map(([label, cell, rank]) => { const bv = rank ? Math.max(...rs.map(rank)) : null; return `<tr><th>${label}</th>${rs.map((r) => `<td class="${rank && rank(r) === bv ? "best" : ""}">${cell(r)}</td>`).join("")}</tr>`; }).join("")}</table><p class="hint" style="margin:10px 0 0">Green = the best value in that row. Score is llmfit's match for this PC (as in the list); Battle uses its own points, so its winner can differ.</p>`;
   $("dlgCompare").showModal();
 }
 
