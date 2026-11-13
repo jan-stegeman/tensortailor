@@ -1054,6 +1054,18 @@ details.by-hand .hint { margin-top: 6px; }
 .act-line > .btn { flex: none; }
 /* L6: the PowerShell line scrolls in a short box, so the paste box is in view at once. */
 #psSnippet { max-height: 120px; overflow: auto; }
+/* Small laptops (1180-1300 px): tighter columns so Score still fits; below about 570 px the Score column
+   goes (the verdict stays; the detail panel shows the score). */
+@container center (max-width: 700px) {
+  .cols, .row { grid-template-columns: 22px 30px minmax(120px, 2.3fr) minmax(84px, 1.2fr) 78px 104px 40px; gap: 8px; }
+  .sk-row { grid-template-columns: 30px minmax(120px, 2.3fr) minmax(84px, 1.2fr) 78px 104px 40px; gap: 8px; }
+}
+@container center (max-width: 570px) {
+  .cols, .row { grid-template-columns: 22px 30px minmax(104px, 2.3fr) minmax(78px, 1.2fr) 76px 104px; }
+  .cols > :nth-child(8), .row > :nth-child(8) { display: none; }
+  .sk-row { grid-template-columns: 30px minmax(104px, 2.3fr) minmax(78px, 1.2fr) 76px 104px; }
+  .sk-row > :nth-child(7) { display: none; }
+}
 /* L8: the list is one Tab stop; the arrow keys move in it. */
 #rows:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 </style>
@@ -1305,7 +1317,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Memory</dt><dd>The memory bar (see above), with the memory the model needs.</dd>
       <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace. A model that won't fit shows "—": it has no speed on this PC. Very fast small models (1,000 tok/s and more) show only the numbers, from 10,000 tok/s in thousands ("13k–17k"), so they fit the column.</dd>
       <dt>Verdict</dt><dd>How well it runs here. Under it, where it runs: CPU+GPU, MoE offload or CPU. No line means GPU (everything in VRAM).</dd>
-      <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context.</dd>
+      <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context. On a very narrow list (below about 570 px, a small laptop screen) this column is left out; the verdict stays.</dd>
       <dt>Chosen row</dt><dd>The model you clicked (or opened with <b>Show</b> or <b>View details</b>) has a purple tint and a glowing purple bar at its left edge; its details are on the right.</dd>
     </dl>
 
@@ -1325,7 +1337,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip lock">license</span> (amber)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
-      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW, then the small icons (vision, tool use, reasoning). Point at the line to see which; the detail panel shows them all. Warnings (gated, size uncertain, vLLM, in LM Studio) and the number of parameters always stay; the maker's name may end in "…", and in a very full line it is left out too. A memory label that does not fit leaves out its words: "23.0 GB + 63.8 GB".</dd>
+      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW, then the small icons (vision, tool use, reasoning). Point at the line to see which; the detail panel shows them all. The number of parameters always stays. The maker's name may end in "…"; in a very full line it is left out, and on a very narrow list the warnings (in LM Studio, gated, vLLM, size uncertain) go last. A memory label that does not fit leaves out its words: "23.0 GB + 63.8 GB".</dd>
       <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
@@ -1431,7 +1443,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
-      <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help. With <kbd>Tab</kbd> the list is one stop: then the arrow keys move in it, and the next <kbd>Tab</kbd> goes on to the detail panel.</dd>
+      <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help. With <kbd>Tab</kbd> the list is one stop: then the arrow keys move in it, <kbd>Enter</kbd> jumps to the detail panel and <kbd>Space</kbd> selects for compare (like <kbd>C</kbd>). The next <kbd>Tab</kbd> goes on to the <b>Selected:</b> strip (when you picked models) and then the detail panel. A screen reader hears the chosen row, and what C and W did.</dd>
     </dl>
   </div>
 </dialog>
@@ -1958,9 +1970,9 @@ function catalogFor(x) {
   const pub = String(x.publisher || "").toLowerCase();
   return cands.find((r) => pub && r.m.id.toLowerCase().startsWith(pub + "/")) || cands[0] || null;
 }
-function rowHTML(r) {
+function rowHTML(r, idx) {
   const m = r.m, b = r.best, lms = state.lms.online ? inLms(m) : null;
-  return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
+  return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" id="opt-${idx}" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" tabindex="-1" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" tabindex="-1" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
     <div class="m-name"><div class="nm"><span class="t" title="${esc(m.id)}">${esc(m.name)}</span><a class="hf-link" tabindex="-1" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
@@ -1993,8 +2005,8 @@ let smKey = null, smWords = [];
 function searchMatch(r, s) {
   if (!s) return true;
   if (s !== smKey) { smKey = s; smWords = s.split(/\s+/).filter(Boolean); }
-  const id = r.m.id.toLowerCase(), pv = (r.m.provider || "").toLowerCase();
-  return smWords.every((w) => id.includes(w) || pv.includes(w));
+  const id = r.m.id.toLowerCase(), pv = (r.m.provider || "").toLowerCase(), nm = (r.m.name || "").toLowerCase();
+  return smWords.every((w) => id.includes(w) || pv.includes(w) || nm.includes(w));
 }
 function passFilters(r) {
   const m = r.m, s = searchText(), f = state.f;
@@ -2049,15 +2061,21 @@ function fitSubs() {
     // The size never shrinks: the maker's name keeps at least about 1.5 characters next to it.
     const idt = sub.querySelector(".idt"), prm = idt && idt.querySelector(".prm");
     if (prm) idt.style.minWidth = Math.ceil(prm.getBoundingClientRect().width) + 22 + "px";
-    if (sub.scrollWidth <= sub.clientWidth + 1) continue;
+    if (sub.scrollWidth <= sub.clientWidth) continue;
     const gone = [];
     const caps = sub.querySelector(".caps");
     const order = [...sub.querySelectorAll(".chip[data-p]")].sort((a, b) => a.dataset.p - b.dataset.p).concat(caps && caps.children.length ? [caps] : []);
     for (const c of order) {
       c.style.display = "none"; gone.push(c === caps ? "the icons (" + [...caps.children].map((i) => (i.getAttribute("title") || "").split(":")[0]).filter(Boolean).join(", ") + ")" : c.textContent);
-      if (sub.scrollWidth <= sub.clientWidth + 1) break;
+      if (sub.scrollWidth <= sub.clientWidth) break;
     }
-    if (idt && sub.scrollWidth > sub.clientWidth + 1) { idt.classList.add("nopub"); idt.style.minWidth = ""; gone.push("the maker (" + idt.querySelector(".pub").textContent + ")"); }
+    if (idt && sub.scrollWidth > sub.clientWidth) { idt.classList.add("nopub"); idt.style.minWidth = Math.ceil(prm.getBoundingClientRect().width) + 2 + "px"; gone.push("the maker (" + idt.querySelector(".pub").textContent + ")"); }
+    // Last resort on a very narrow list: the warnings go too (in LM Studio, gated, the runtime, then size
+    // uncertain); the tooltip and the detail panel still name them, and the size stays.
+    for (const sel of [".chip.lms", ".chip:not(.vllm):not(.lock):not([data-p])", ".chip.vllm", ".chip.lock"]) {
+      if (sub.scrollWidth <= sub.clientWidth) break;
+      for (const c of sub.querySelectorAll(sel)) { if (c.style.display === "none") continue; c.style.display = "none"; gone.push(c.textContent); if (sub.scrollWidth <= sub.clientWidth) break; }
+    }
     if (gone.length) sub.title = "Not shown here for lack of room: " + gone.join(", ") + ". The detail panel shows them.";
   }
   for (const s of document.querySelectorAll("#rows .memlabel > span:first-child")) if (s.scrollWidth > s.clientWidth + 1) s.classList.add("short");
@@ -2069,7 +2087,10 @@ function renderRowsWindow() {
   const focusKey = focusKeyOf(el);
   const top = el.scrollTop, h = el.clientHeight || 600;
   const start = Math.max(0, Math.floor(top / ROW_H) - 8), end = Math.min(n, Math.ceil((top + h) / ROW_H) + 8);
-  el.innerHTML = `<div style="height:${n * ROW_H}px;position:relative"><div style="position:absolute;top:${start * ROW_H}px;left:0;right:0">${state.visible.slice(start, end).map(rowHTML).join("")}</div></div>`;
+  el.innerHTML = `<div style="height:${n * ROW_H}px;position:relative"><div style="position:absolute;top:${start * ROW_H}px;left:0;right:0">${state.visible.slice(start, end).map((r, i) => rowHTML(r, start + i)).join("")}</div></div>`;
+  // The list is one Tab stop: a screen reader hears the chosen row through aria-activedescendant.
+  const cur = el.querySelector('.row[aria-selected="true"]');
+  if (cur) el.setAttribute("aria-activedescendant", cur.id); else el.removeAttribute("aria-activedescendant");
   fitSubs();
   restoreFocus(focusKey);
 }
@@ -4611,7 +4632,8 @@ function setView(v) {
   // Downloads and Battle use the whole width (they do not need the hardware and filter column).
   state.view = v; $("layout").classList.toggle("wide", v !== "models"); $("layout").classList.toggle("full", v === "downloads" || v === "battle");
   document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
-  if (v !== "models") renderView(); else renderRowsWindow();
+  // Back in Models: the Files tab fits its file names again (the panel had no width while it was hidden).
+  if (v !== "models") renderView(); else { renderRowsWindow(); if (state.tab === "files") renderDetail(); }
   if (v === "mine") lmsRefreshSoon();
 }
 // Ask LM Studio again (at most once per 5 s, never during a load): when My models or the Run tab opens, after
@@ -4633,10 +4655,13 @@ function toggleCompare(id, forceOn) {
   const i = state.compare.indexOf(id);
   if (i >= 0 && !forceOn) state.compare.splice(i, 1);
   else if (i < 0) { if (state.compare.length >= 4) { toast("You can pick at most 4 models."); return; } state.compare.push(id); }
+  // Said to a screen reader too (the list keeps the focus, so the box itself is not announced).
+  $("srStatus").textContent = state.compare.includes(id) ? `Selected for Compare: ${shortName(id)} (${state.compare.length} of 4).` : `Not selected any more: ${shortName(id)}.`;
   renderTray(); renderNav(); renderRowsWindow(); if (state.view === "battle") renderView();
 }
 function toggleWatch(id) {
   if (state.watch.has(id)) state.watch.delete(id); else state.watch.add(id);
+  $("srStatus").textContent = state.watch.has(id) ? `Favorite: ${shortName(id)}.` : `Not a favorite any more: ${shortName(id)}.`;
   safeSet("localStorage", "tt-watch", JSON.stringify([...state.watch]));
   renderRowsWindow(); renderDetail();
   if (state.view === "mine") renderView();
@@ -4921,12 +4946,12 @@ function wireSplit() {
     setDetailWidth(now + (e.key === "ArrowLeft" ? 24 : -24), true);
     if (state.tab === "files") renderDetail();
   });
-  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); if (state.tab === "files") renderDetail(); });
+  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); sp.setAttribute("aria-valuenow", String(Math.round($("detail").getBoundingClientRect().width))); renderRowsWindow(); if (state.tab === "files") renderDetail(); });
   // A smaller window: the saved width is limited again, so the list keeps its room. A taller list: draw the
   // rows that came into view (the list only draws the rows you can see).
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lmsRefreshSoon(); });
   let resizeT = 0;
-  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { const w = Number(safeGet("localStorage", DETAIL_W_KEY)); if (w > 0) setDetailWidth(w, false); renderRowsWindow(); }, 120); });
+  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { const w = Number(safeGet("localStorage", DETAIL_W_KEY)); if (w > 0) setDetailWidth(w, false); renderRowsWindow(); if (state.view === "models" && state.tab === "files") renderDetail(); }, 120); });
   if (window.ResizeObserver) new ResizeObserver(() => renderRowsWindow()).observe($("rows"));
   // The detail header shrinks to one line while you scroll (with a gap, so it does not flicker).
   $("detail").addEventListener("scroll", () => { const d = $("detail"), t = d.scrollTop; if (t > 90) d.classList.add("scrolled"); else if (t < 20) d.classList.remove("scrolled"); });
@@ -5082,6 +5107,9 @@ function wire() {
     if (e.key === "t" || e.key === "T") { toggleTheme(); return; }
     if (state.view !== "models") return;
     if ((e.key === "ArrowDown" || e.key === "ArrowUp") && ownArrows) return;
+    // On the focused list: Enter goes to the detail panel (its open tab), Space selects for Compare (like C).
+    if (ae === $("rows") && e.key === "Enter" && state.selected) { e.preventDefault(); const t = $("tab-" + state.tab); if (t) t.focus(); return; }
+    if (ae === $("rows") && e.key === " " && state.selected) { e.preventDefault(); toggleCompare(state.selected); return; }
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); moveSelection(1); }
     else if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); moveSelection(-1); }
     else if ((e.key === "c" || e.key === "C") && state.selected) toggleCompare(state.selected);

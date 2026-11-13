@@ -4,7 +4,11 @@ param([switch]$Readme)
 # "Continue": Windows PowerShell 5.1 turns a native program's stderr note into an error under "Stop".
 $ErrorActionPreference = "Continue"
 Set-Location (Split-Path $PSScriptRoot -Parent)
-$env:CDP_PROFILE_DIR = "D:\AI\temp"
+# A new, empty folder for the browser profiles of this run (an old profile can hold old settings and make a test
+# fail by chance); removed again at the end.
+$profiles = Join-Path "D:\AI\temp" ("tt-profiles-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+New-Item -ItemType Directory -Force $profiles | Out-Null
+$env:CDP_PROFILE_DIR = $profiles
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 $page = "file:///" + ((Resolve-Path "dist\tensortailor.html").Path -replace '\\', '/')
 node web/build.mjs engine/pkg-nomod dist/tensortailor.html D:\AI\temp\hf_models_v1.1.20.json *> D:\AI\temp\build.log
@@ -30,3 +34,5 @@ if ($Readme) {
   "README pictures: exit $LASTEXITCODE, " + ([regex]::Matches($out, "screenshot: docs")).Count + " pictures"
 }
 "tests with a problem: $bad"
+Start-Sleep -Seconds 2
+Remove-Item -Recurse -Force $profiles -ErrorAction SilentlyContinue
