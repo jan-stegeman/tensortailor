@@ -267,9 +267,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .m-name .nm { font-weight: 600; display: flex; gap: 5px; align-items: center; white-space: nowrap; overflow: hidden; }
 .m-name .nm .t { overflow: hidden; text-overflow: ellipsis; }
 .m-name .sub { white-space: nowrap; overflow: hidden; display: flex; gap: 4px; align-items: center; margin-top: 2px; }
-.m-name .sub .idt { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 5.5em; }
+/* Publisher · parameters: the publisher may shorten ("pilcoth…"), the number of parameters always shows. */
+.m-name .sub .idt { display: inline-flex; overflow: hidden; flex: 0 1 auto; min-width: 5.5em; }
+.m-name .sub .idt .pub { cursor: default; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 1.5em; }
+.m-name .sub .idt .prm { flex: none; white-space: pre; }
 /* When a row has many labels, the labels give way before the maker and size do. */
-.m-name .sub .chip { flex-shrink: 3; min-width: 0; overflow: hidden; }
+/* Labels never shrink into cut words; when the line is too full, fitSubs() leaves out whole low-priority labels. */
+.m-name .sub .chip { flex-shrink: 0; }
 .hf-link { color: var(--faint); text-decoration: none; font-size: 12px; padding: 0 3px; border-radius: 4px; flex: none; }
 .hf-link:hover { color: var(--accent); background: var(--accent-soft); }
 .chip { font-weight: 650; padding: 0 6px; border-radius: 5px; line-height: 17px; white-space: nowrap; flex: none; }
@@ -381,7 +385,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .fname { font: 12px var(--mono); word-break: break-all; }
 .hash { font: 11px var(--mono); color: var(--faint); word-break: break-all; }
 .cmd { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 10px; margin-top: 8px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
-.cmd code { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A command is shown whole (it wraps), so you can read what you copy. */
+.cmd code { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .cmd .who { color: var(--faint); min-width: 60px; }
 pre.block { margin: 8px 0 0; padding: 10px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); font: 12px/1.5 var(--mono); white-space: pre; overflow: auto; }
 .seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
@@ -692,6 +697,14 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 /* Rows: monogram, star and compare box on hover, memory with GB and %, speed on one line, a small score ring. */
 .cols, .row { grid-template-columns: 24px 30px minmax(170px, 2.3fr) 70px minmax(112px, 1.2fr) 92px 118px 54px; gap: 12px; padding: 0 16px 0 10px; }
 .cols { height: 36px; border-bottom: 1px solid var(--line); }
+/* The list has a scroll bar, the head row has none: the head gets the same room at its right (--sbw, set by
+   syncColsGutter), so every head stands exactly above its column. */
+.cols { padding-right: calc(16px + var(--sbw, 0px)); }
+/* A long best-file name (AutoRound-2bit, GPTQ-Int4, AWQ-8bit) is smaller and breaks after its "-" instead of
+   running over the Memory column. */
+.row .quant.long { display: inline-block; max-width: 100%; white-space: normal; font-size: 10px; line-height: 1.25; padding: 2px 4px; }
+.stat .v.wide-num { font-size: 16px; }
+.stat .v.long { white-space: normal; overflow: visible; text-overflow: clip; font-size: 11.5px !important; line-height: 1.25; overflow-wrap: break-word; }
 .row { border-bottom: 0; position: relative; transition: background .15s; }
 .row::before { content: ""; position: absolute; left: 16px; right: 16px; top: 0; height: 1px; background: var(--line); }
 .row:hover { background: var(--hover); }
@@ -860,7 +873,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px 
 .place { font: 650 12px var(--font); color: var(--faint); }
 .fhead { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .fname-b { min-width: 0; }
-.fhead h3 { margin: 0; font: 650 16px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fhead h3 { margin: 0; font: 650 16px var(--display); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .fighter .hash { font-family: var(--font); font-size: 12px; color: var(--muted); }
 .pts { font: 700 44px/1 var(--display); letter-spacing: -.04em; margin: 16px 0 12px; }
 .pts small { font: 600 13px var(--font); color: var(--muted); letter-spacing: 0; }
@@ -1140,7 +1153,7 @@ details.by-hand .hint { margin-top: 6px; }
     <div class="filter-row"><div class="active-filters" id="activeFilters"></div><div class="count" id="countText"></div></div>
     <div class="search-bar" id="searchBar" hidden></div>
     <div class="table">
-      <div class="cols" aria-hidden="true"><span></span><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Grey = in VRAM (amber end: little room left). Orange stripes = in system RAM (slower); then the bar is everything the model needs, to scale. Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span title="llmfit's match score, 0–100">Score</span></div>
+      <div class="cols" id="cols" aria-hidden="true"><span></span><span></span><span title="Model name, its labels, who made it and its size (B = billion parameters)">Model</span><span title="The quantization llmfit picks for this PC">Best file</span><span title="Grey = in VRAM (amber end: little room left). Orange stripes = in system RAM (slower); then the bar is everything the model needs, to scale. Point at a bar for its numbers.">Memory</span><span class="r" title="Tokens per second">Speed</span><span title="How well it runs on this PC">Verdict</span><span class="r" title="llmfit's match score, 0–100">Score</span></div>
       <div class="rows" id="rows" role="listbox" aria-label="Models"><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:45%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:62%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:79%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:56%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:73%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:50%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:67%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:84%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:61%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div></div>
     </div>
     <div class="tray" id="tray" hidden>
@@ -1243,7 +1256,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Model</dt><dd>The name (↗ opens it on Hugging Face), its labels and icons (see below), the publisher and the number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower. The star makes it a favorite; the box selects it for compare or battle. Both show when you point at a row, and stay on the chosen row, on a starred model and on a ticked box.</dd>
       <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size. When the list area is narrow (below about 780 px: a laptop screen, or a wide detail panel), this column is left out; the detail panel shows it.</dd>
       <dt>Memory</dt><dd>The memory bar (see above), with the memory the model needs.</dd>
-      <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace. A model that won't fit shows "—": it has no speed on this PC.</dd>
+      <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace. A model that won't fit shows "—": it has no speed on this PC. Very fast small models (1,000 tok/s and more) show only the numbers, from 10,000 tok/s in thousands ("13k–17k"), so they fit the column.</dd>
       <dt>Verdict</dt><dd>How well it runs here. Under it, where it runs: CPU+GPU, MoE offload or CPU. No line means GPU (everything in VRAM).</dd>
       <dt>Score</dt><dd>llmfit's match for this PC, 0 to 100, built from quality, speed, fit and context.</dd>
       <dt>Chosen row</dt><dd>The model you clicked (or opened with <b>Show</b> or <b>View details</b>) has a purple tint and a glowing purple bar at its left edge; its details are on the right.</dd>
@@ -1265,6 +1278,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip lock">license</span> (amber)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
+      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW. Point at the line to see which; the detail panel shows them all. Warnings (gated, size uncertain, vLLM, in LM Studio) and the number of parameters always stay.</dd>
       <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
@@ -1855,7 +1869,8 @@ function avatar(m, big) {
   return `<span class="av${big ? " lg" : ""}" style="--h:${avatarHue(m.provider || m.id.split("/")[0])}" aria-hidden="true">${letter}</span>`;
 }
 const verdict = (p) => `<span class="badge ${PLAIN[p].cls}">${PLAIN[p].label}</span>`;
-const speedRange = (b) => (!b || b.tps <= 0 ? "—" : `${fmtT(b.lo)}–${fmtT(b.hi)}`);
+// From 10,000 tok/s (tiny test models) the range is in thousands, "153k–204k", so it fits every column.
+const speedRange = (b) => (!b || b.tps <= 0 ? "—" : b.hi >= 10000 ? `${Math.round(b.lo / 1000)}k–${Math.round(b.hi / 1000)}k` : `${fmtT(b.lo)}–${fmtT(b.hi)}`);
 const isNew = (m) => { if (!m.added) return false; const d = Date.parse(m.added); return isFinite(d) && Date.now() - d < 60 * 86400000; };
 // LM Studio key (e.g. "mistralai/codestral-22b-v0.1") vs catalog name (e.g.
 // "mistralai/Codestral-22B-v0.1"): same name, or the key ends with the model's
@@ -1897,11 +1912,11 @@ function rowHTML(r) {
   return `<div class="row ${b.plain === "nofit" ? "is-tight" : ""}" role="option" aria-selected="${m.id === state.selected}" data-id="${esc(m.id)}">
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
-    <div class="m-name"><div class="nm"><span class="t">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt">${esc(m.provider)} · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></div></div>
-    <div title="Best file: the best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant">${esc(b.q)}</span></div>
+    <div class="m-name"><div class="nm"><span class="t" title="${esc(m.id)}">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"> · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
+    <div title="Best file: ${esc(b.q)}. The best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant${String(b.q).length > 7 ? " long" : ""}">${esc(b.q).replace(/-/g, "-<wbr>")}</span></div>
     <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 && b.inRam <= 0.05 && b.plain !== "nofit" ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
-    <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}${b.tps > 0 ? "<small>tok/s</small>" : ""}</div>
+    <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}${b.tps > 0 && b.hi < 1000 ? "<small>tok/s</small>" : ""}</div>
     <div title="${esc(VERDICT_TIP[b.plain] + "\nRuns on: " + b.mode + ".")}">${verdict(b.plain)}${b.mode !== "GPU" ? `<div class="mode">${b.mode}</div>` : ""}</div>
     <div title="${esc(`Score ${Math.round(b.score || 0)} of 100: llmfit's match for this PC.\nQuality ${Math.round(b.parts.quality)} · speed ${Math.round(b.parts.speed)} · fit ${Math.round(b.parts.fit)} · context ${Math.round(b.parts.context)} (each 0–100).`)}">${ring(b.score)}</div></div>`;
 }
@@ -1961,13 +1976,34 @@ function renderTiles(base) {
   base.forEach((r) => { counts[r.best.plain]++; if (r.upgradeOnly) extra[r.best.plain]++; });
   $("tiles").innerHTML = ["well", "tight", "slower", "nofit"].map((k) => `<button class="tile ${PLAIN[k].cls}" data-plain="${k}" aria-pressed="${state.show[k]}" title="Show or hide: ${PLAIN[k].label}"><span class="n">${counts[k].toLocaleString("en")}${extra[k] ? `<small>+${extra[k]} by upgrade</small>` : ""}</span><span class="l">${PLAIN[k].label}${state.show[k] ? "" : ` · <span class="off">hidden</span>`}</span></button>`).join("");
 }
+// The width of the list's scroll bar, given to the head row (see .cols), so heads and columns line up exactly.
+function syncColsGutter() {
+  const r = $("rows"), c = $("cols");
+  if (r && c) { const w = Math.max(0, r.offsetWidth - r.clientWidth); if (c.style.getPropertyValue("--sbw") !== w + "px") c.style.setProperty("--sbw", w + "px"); }
+}
+// A row's label line that is too full leaves out whole labels, least important first (data-p 1 license,
+// 2 live / from LM Studio, 3 measured, 4 NEW), instead of cutting words. Warnings (gated, size uncertain, vLLM,
+// in LM Studio) and the number of parameters stay. The row's tooltip names what was left out.
+function fitSubs() {
+  for (const sub of document.querySelectorAll("#rows .m-name .sub")) {
+    if (sub.scrollWidth <= sub.clientWidth + 1) continue;
+    const gone = [];
+    for (const c of [...sub.querySelectorAll(".chip[data-p]")].sort((a, b) => a.dataset.p - b.dataset.p)) {
+      c.style.display = "none"; gone.push(c.textContent);
+      if (sub.scrollWidth <= sub.clientWidth + 1) break;
+    }
+    if (gone.length) sub.title = "Not shown here for lack of room: " + gone.join(", ") + ". The detail panel shows them.";
+  }
+}
 function renderRowsWindow() {
+  syncColsGutter();
   const el = $("rows"), n = state.visible.length;
   if (!n) return;
   const focusKey = focusKeyOf(el);
   const top = el.scrollTop, h = el.clientHeight || 600;
   const start = Math.max(0, Math.floor(top / ROW_H) - 8), end = Math.min(n, Math.ceil((top + h) / ROW_H) + 8);
   el.innerHTML = `<div style="height:${n * ROW_H}px;position:relative"><div style="position:absolute;top:${start * ROW_H}px;left:0;right:0">${state.visible.slice(start, end).map(rowHTML).join("")}</div></div>`;
+  fitSubs();
   restoreFocus(focusKey);
 }
 // Keep keyboard focus on "the same" control when a part of the page is drawn again.
@@ -2216,9 +2252,9 @@ function tabOverview(r, d) {
     ${about.length ? `<div class="ov-about">${about.map(esc).join(" · ")}</div>` : ""}
     ${nameLine(r.m)}
     <div class="stats">
-      <div class="stat" title="Speed in tokens per second"><div class="k">Speed</div><div class="v">${speedRange(b)}${b.tps > 0 ? " <small>tok/s</small>" : ""}</div>${measLine(r)}</div>
+      <div class="stat" title="Speed in tokens per second"><div class="k">Speed${b.hi >= 1000 ? " (tok/s)" : ""}</div><div class="v${b.hi >= 1000 ? " wide-num" : ""}">${speedRange(b)}${b.tps > 0 && b.hi < 1000 ? " <small>tok/s</small>" : ""}</div>${measLine(r)}</div>
       <div class="stat" title="${bk.mode === "MoE offload" ? `Total: ${gb(bk.inGpu)} in VRAM + ${gb(bk.inRam)} of experts in system RAM` : "Model file + KV cache + engine"}"><div class="k">Memory</div><div class="v">${(bk.mode === "MoE offload" ? bk.inGpu + bk.inRam : bk.need).toFixed(1)} <small>GB</small></div></div>
-      <div class="stat"><div class="k">Best file</div><div class="v" style="font-size:14px" title="${esc(b.q)}">${esc(b.q)}</div></div>
+      <div class="stat"><div class="k">Best file</div><div class="v${String(b.q).length > 7 ? " long" : ""}" style="font-size:14px" title="${esc(b.q)}">${esc(b.q).replace(/-/g, "-<wbr>")}</div></div>
       <div class="stat" title="Context that still fits in this memory pool (llmfit: usable context)"><div class="k">Context</div><div class="v">${r.ctxFit > 0 && r.ctxFit < 1024 ? `${r.ctxFit} <small>tok</small>` : fmtCtx(r.ctxFit)}</div></div>
     </div>
     <div class="math">${mathLine(bk)}</div>
@@ -2293,8 +2329,9 @@ function needsToken(m) { const g = gatedOf(m.id); return g === undefined ? m.gat
 function licenseChip(m) {
   const g = gatedOf(m.id), lic = m.license ? CHIP_TIP.license.replace("{lic}", m.license) : "", src = gatedSource(m.id);
   if (g) return `<span class="chip lock" title="${esc(GATED_TIP.yes.replace("{src}", src) + (lic ? "\n\n" + lic : ""))}">gated</span>`;
-  if (g === false) return m.gated ? `<span class="chip" title="${esc(GATED_TIP.no.replace("{src}", src) + "\n\n" + lic)}">license</span>` : "";
-  return m.gated ? `<span class="chip lock" title="${esc(lic + "\n\n" + GATED_TIP.unknown)}">license</span>` : "";
+  // data-p="1": in a full list row, "license" is the first label left out (see fitSubs).
+  if (g === false) return m.gated ? `<span class="chip" data-p="1" title="${esc(GATED_TIP.no.replace("{src}", src) + "\n\n" + lic)}">license</span>` : "";
+  return m.gated ? `<span class="chip lock" data-p="1" title="${esc(lic + "\n\n" + GATED_TIP.unknown)}">license</span>` : "";
 }
 function hfHeaders() { return state.token ? { Authorization: "Bearer " + state.token } : {}; }
 async function hfJson(url) {
