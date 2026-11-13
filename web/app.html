@@ -978,8 +978,9 @@ details.by-hand .hint { margin-top: 6px; }
 .sug .acts { margin-top: auto; flex-wrap: wrap; }
 /* Score: just the number (a small ring looked like a loading spinner, a short bar like a minus sign). */
 .score i { display: none; }
-/* A narrow list leaves out the Best file column (the detail panel shows it) and tightens the others. */
-@container center (max-width: 780px) {
+/* A narrow list leaves out the Best file column (the detail panel shows it) and tightens the others. Measured:
+   with the Best file column all cells fit from about 820 px. */
+@container center (max-width: 830px) {
   .cols, .row { grid-template-columns: 24px 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
   .cols > :nth-child(4), .row > :nth-child(4) { display: none; }
   .sk-row { grid-template-columns: 30px minmax(150px, 2.3fr) minmax(96px, 1.2fr) 84px 108px 48px; gap: 10px; }
@@ -1009,6 +1010,28 @@ details.by-hand .hint { margin-top: 6px; }
 /* The Measure button on its own line under the speed (it touched "32–43 tok/s"). */
 .mtable [data-measure] { display: block; margin: 6px 0 0 auto; }
 @container view (max-width: 1150px) { .mine-card .mtable th:nth-child(2), .mine-card .mtable td:nth-child(2) { display: none; } }
+/* ==== Screen review 2026-11-13: layout ==== */
+/* S1: below 1500 px the drag line sits at the panel's own default width (it was 46 px inside the list). */
+@media (max-width: 1500px) { .split { right: calc(var(--dw, 400px) - 4px); } }
+/* S3: in My models the measure lines under a speed wrap in a narrow block (they made the Speed column so wide
+   that Best setting and Show went off the screen). */
+.mtable td.r .hash { white-space: normal; max-width: 190px; margin-left: auto; overflow-wrap: anywhere; }
+/* S4: when even the icons do not fit, the maker's name goes and the size stays (fitSubs). */
+.m-name .sub .idt.nopub .pub, .m-name .sub .idt.nopub .sep { display: none; }
+/* S5: a memory label that does not fit drops the words VRAM, RAM and "of 23.0 GB" (fitSubs). */
+.memlabel > span.short .wide { display: none; }
+/* T1 + T5: a head above numbers is right-aligned like its numbers, and a number with its unit never breaks. */
+.ladder th.r, .ftable th.r, .mtable th.r, .ptable th.r { text-align: right; }
+.ladder td.r, .ftable td.r, .ptable td.r { white-space: nowrap; }
+/* T3: a very long name takes at most 3 lines and its link 1 line (both have the full text as a tooltip). */
+.dh-name .d-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.dhead .dh-name .d-id { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* T4: in the "Selected:" tray every name stays on one line (a long one ends in "…", the full name is the
+   tooltip), so 4 models take at most 2 short rows. */
+#trayChips { display: flex; flex-wrap: wrap; gap: 6px; flex: 0 1 auto; min-width: 0; }
+.tray-chip { flex: 0 1 auto; min-width: 0; max-width: 220px; }
+.tray-chip .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tray-chip button { flex: none; }
 </style>
 </head>
 <body>
@@ -1157,7 +1180,7 @@ details.by-hand .hint { margin-top: 6px; }
       <div class="rows" id="rows" role="listbox" aria-label="Models"><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:45%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:62%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:79%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:56%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:73%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:50%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:67%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:84%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div><div class="sk-row" aria-hidden="true"><i class="sk" style="width:30px;height:30px;border-radius:9px"></i><span><i class="sk" style="width:61%;height:12px"></i><i class="sk" style="width:34%;height:9px;margin-top:7px"></i></span><i class="sk" style="height:20px"></i><i class="sk" style="height:6px"></i><i class="sk" style="height:12px"></i><i class="sk" style="height:20px;border-radius:99px"></i><i class="sk" style="height:12px"></i></div></div>
     </div>
     <div class="tray" id="tray" hidden>
-      <span class="lbl">Selected:</span><span id="trayChips" style="display:flex;gap:6px;flex-wrap:wrap"></span><span class="spacer"></span>
+      <span class="lbl">Selected:</span><span id="trayChips"></span><span class="spacer"></span>
       <button class="btn small ghost" id="btnClearCmp">Clear</button><button class="btn small" id="btnCompare">Compare</button><button class="btn small primary" id="btnToBattle">Battle</button>
     </div>
   </section>
@@ -1254,7 +1277,7 @@ details.by-hand .hint { margin-top: 6px; }
     <h3>The columns</h3>
     <dl>
       <dt>Model</dt><dd>The name (↗ opens it on Hugging Face), its labels and icons (see below), the publisher and the number of parameters: B = billion, M = million. More parameters usually means smarter, but bigger and slower. The star makes it a favorite; the box selects it for compare or battle. Both show when you point at a row, and stay on the chosen row, on a starred model and on a ticked box.</dd>
-      <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size. When the list area is narrow (below about 780 px: a laptop screen, or a wide detail panel), this column is left out; the detail panel shows it.</dd>
+      <dt>Best file</dt><dd>The quantization (file version) llmfit picks for this PC. Q8_0 is close to the original quality; Q6, Q5, Q4, Q3, Q2 are smaller and faster, but less precise. F16/BF16 = original size. When the list area is narrow (below about 830 px: a laptop screen, or a wide detail panel), this column is left out; the detail panel shows it.</dd>
       <dt>Memory</dt><dd>The memory bar (see above), with the memory the model needs.</dd>
       <dt>Speed</dt><dd>Tokens per second (a token is about ¾ of a word). A range, because it is an estimate. About 7 tok/s is reading pace. A model that won't fit shows "—": it has no speed on this PC. Very fast small models (1,000 tok/s and more) show only the numbers, from 10,000 tok/s in thousands ("13k–17k"), so they fit the column.</dd>
       <dt>Verdict</dt><dd>How well it runs here. Under it, where it runs: CPU+GPU, MoE offload or CPU. No line means GPU (everything in VRAM).</dd>
@@ -1278,7 +1301,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip lock">license</span> (amber)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
-      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW. Point at the line to see which; the detail panel shows them all. Warnings (gated, size uncertain, vLLM, in LM Studio) and the number of parameters always stay.</dd>
+      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW, then the small icons (vision, tool use, reasoning). Point at the line to see which; the detail panel shows them all. Warnings (gated, size uncertain, vLLM, in LM Studio) and the number of parameters always stay; the maker's name may end in "…", and in a very full line it is left out too. A memory label that does not fit leaves out its words: "23.0 GB + 63.8 GB".</dd>
       <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
@@ -1356,8 +1379,8 @@ details.by-hand .hint { margin-top: 6px; }
 
     <h3>The detail panel (right)</h3>
     <dl>
-      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and the two key facts (parameters and maximum context). The license (with "(gated)" or "(not gated)"), release date and downloads are at the top of the Overview tab, and a line <b>Name says</b> when the name has a word like abliterated, Heretic, base or distill (see "Words in model names"). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs.</dd>
-      <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width (a little narrower on screens below 1500 px). The width is remembered in this browser.</dd>
+      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and the two key facts (parameters and maximum context). The license (with "(gated)" or "(not gated)"), release date and downloads are at the top of the Overview tab, and a line <b>Name says</b> when the name has a word like abliterated, Heretic, base or distill (see "Words in model names"). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs. A very long name takes at most 3 lines and its Hugging Face link 1 line; point at them for the full text.</dd>
+      <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width (a little narrower on screens below 1500 px). The width is remembered in this browser. The list always keeps room for all its columns, so on a small screen (1366 px) the panel can grow only a little.</dd>
       <dt>Overview</dt><dd>One quiet line (runs on, estimated or measured), then speed, memory, best file and context, and "Which file fits?" for the quantizations Q8_0 to Q2_K (the verdict itself is at the top of the panel). When llmfit's planner (more safety room) gives the best file another verdict or another way to run than the list, an amber note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" starts with llmfit's own level (Perfect, Good, Marginal or Too tight) and lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face, one line per file (point at a long name for the full name; the copy button copies the download link), the file "best for this PC" first, and the verdict per file. <b>Download</b> saves a file into your folder and checks its SHA-256 at the end. <b>Show SHA-256 of each file</b> (under the table) shows the codes; click one to copy it. <b>GGUF source</b> (at the top) picks which Hugging Face copy you look at; when llmfit knows none, <b>Find GGUF copies</b> searches Hugging Face and <b>Use</b> takes one. The file list is kept 12 hours ("kept 12 h"). "Fits here" uses llmfit's planner with extra safety room, in short words: <b>Tight</b> = runs, but tight; <b>Slower</b> = runs, but slower. Tags per file: <b>vision projector</b> (needed for images), <b>draft head</b> (optional speed-up), <b>part 2 of 3</b> (a split model: all parts are needed, Download takes them all), <b>pickle file — can run code</b> (.bin/.pt: use the GGUF instead); a line under the table says whether the repo has pickle files.</dd>
@@ -1379,7 +1402,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Measure</dt><dd>Next to a model that is loaded in LM Studio. LM Studio writes about 256 tokens (10–30 seconds) and TensorTailor keeps the real speed next to the estimate: "measured 27 · est. 30–40 for your Q4_K_M", also in the detail panel's Speed. Point at it for the details (date, context, first token, the estimate then). The estimate is llmfit's, scaled to your own file when llmfit counts another quant. Measure never loads or unloads a model: before each request it asks LM Studio again whether the model is still loaded, and stops if not. With GPU measurements of models in llmfit's list (MTP off: speculative decoding is faster than any estimate), other models show "your PC: ~A–B" in the detail panel: llmfit's range times your measured share (the median).</dd>
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
-      <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (× removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
+      <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (a long name ends in "…"; point at it for the full name; × removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
@@ -1913,7 +1936,7 @@ function rowHTML(r) {
     <div class="row-acts"><button class="star" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favorite (W): star the models you like; see them all with 'Only my favorites'" aria-label="Favorite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
     <div class="m-name"><div class="nm"><span class="t" title="${esc(m.id)}">${esc(m.name)}</span><a class="hf-link" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"> · <span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
+      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", m.runtime))}">${esc(m.runtime)}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"><span class="sep"> · </span><span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
     <div title="Best file: ${esc(b.q)}. The best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant${String(b.q).length > 7 ? " long" : ""}">${esc(b.q).replace(/-/g, "-<wbr>")}</span></div>
     <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 && b.inRam <= 0.05 && b.plain !== "nofit" ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}${b.tps > 0 && b.hi < 1000 ? "<small>tok/s</small>" : ""}</div>
@@ -1982,18 +2005,27 @@ function syncColsGutter() {
   if (r && c) { const w = Math.max(0, r.offsetWidth - r.clientWidth); if (c.style.getPropertyValue("--sbw") !== w + "px") c.style.setProperty("--sbw", w + "px"); }
 }
 // A row's label line that is too full leaves out whole labels, least important first (data-p 1 license,
-// 2 live / from LM Studio, 3 measured, 4 NEW), instead of cutting words. Warnings (gated, size uncertain, vLLM,
-// in LM Studio) and the number of parameters stay. The row's tooltip names what was left out.
+// 2 live / from LM Studio, 3 measured, 4 NEW, then the small icons), instead of cutting words. Warnings (gated,
+// size uncertain, vLLM, in LM Studio) and the number of parameters stay; the maker's name may shorten to "…",
+// and goes as the very last thing. The row's tooltip names what was left out.
+// A memory label that does not fit drops its words ("23.0 GB + 63.8 GB") instead of ending in "…".
 function fitSubs() {
   for (const sub of document.querySelectorAll("#rows .m-name .sub")) {
+    // The size never shrinks: the maker's name keeps at least about 1.5 characters next to it.
+    const idt = sub.querySelector(".idt"), prm = idt && idt.querySelector(".prm");
+    if (prm) idt.style.minWidth = Math.ceil(prm.getBoundingClientRect().width) + 22 + "px";
     if (sub.scrollWidth <= sub.clientWidth + 1) continue;
     const gone = [];
-    for (const c of [...sub.querySelectorAll(".chip[data-p]")].sort((a, b) => a.dataset.p - b.dataset.p)) {
-      c.style.display = "none"; gone.push(c.textContent);
+    const caps = sub.querySelector(".caps");
+    const order = [...sub.querySelectorAll(".chip[data-p]")].sort((a, b) => a.dataset.p - b.dataset.p).concat(caps && caps.children.length ? [caps] : []);
+    for (const c of order) {
+      c.style.display = "none"; gone.push(c === caps ? "the icons (" + [...caps.children].map((i) => (i.getAttribute("title") || "").split(":")[0]).filter(Boolean).join(", ") + ")" : c.textContent);
       if (sub.scrollWidth <= sub.clientWidth + 1) break;
     }
+    if (idt && sub.scrollWidth > sub.clientWidth + 1) { idt.classList.add("nopub"); idt.style.minWidth = ""; gone.push("the maker (" + idt.querySelector(".pub").textContent + ")"); }
     if (gone.length) sub.title = "Not shown here for lack of room: " + gone.join(", ") + ". The detail panel shows them.";
   }
+  for (const s of document.querySelectorAll("#rows .memlabel > span:first-child")) if (s.scrollWidth > s.clientWidth + 1) s.classList.add("short");
 }
 function renderRowsWindow() {
   syncColsGutter();
@@ -2379,6 +2411,14 @@ function fileKind(path) {
 }
 // A long file name keeps its start and its end (the quant and the extension), with … in the middle.
 function midShort(s, max) { s = String(s); if (s.length <= max) return s; const tail = Math.ceil((max - 1) * 0.62), head = max - 1 - tail; return s.slice(0, head) + "\u2026" + s.slice(s.length - tail); }
+// Files tab: a file name that still does not fit is shortened in the middle until it does (never a second "\u2026" at
+// the end). The full path is the tooltip.
+function fitFileNames() {
+  for (const el of document.querySelectorAll("#detail .fline .fname")) {
+    const full = el.title; if (!full) continue;
+    for (let max = el.textContent.length; el.scrollWidth > el.clientWidth + 1 && max > 10; ) { max -= 2; el.textContent = midShort(full, max); }
+  }
+}
 function tabFiles(r) {
   const m = r.m, b = r.best;
   const sources = ggufSources(m);
@@ -2807,10 +2847,11 @@ function renderDetail() {
     ? `<button class="btn primary small" data-headload="${esc(m.id)}" title="Opens the Run tab and shows what will be sent to LM Studio first">Load in LM Studio…</button>`
     : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
   $("detail").innerHTML = `<section class="card dhead">
-    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title${m.name.length > 26 ? " long" : ""}">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face"}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
+    <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title${m.name.length > 26 ? " long" : ""}" title="${esc(m.name)}">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face: huggingface.co/" + esc(m.id)}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favorite" title="Favorite (W): see all favorites with 'Only my favorites'">${fav ? "★" : "☆"}</button></div>
     <div class="d-facts">${capIcons(m.caps)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
     <div class="d-answer v-${b.plain}">${verdict(b.plain)}${state.upg.gpu || state.upg.ram ? `<span class="chip upg" title="What if I upgrade? is on: this verdict, the numbers and the commands are for the upgraded PC, not for your PC as it is now.">with upgrade</span>` : ""}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
+  if (state.tab === "files") fitFileNames();
   restoreFocus(focusKey);
 }
 
@@ -4540,7 +4581,7 @@ function renderNav() { const set = (id, n) => { const el = $(id); el.hidden = !n
 /* ===================== Compare, watch ===================== */
 function renderTray() {
   $("tray").hidden = state.compare.length === 0;
-  $("trayChips").innerHTML = state.compare.map((id) => `<span class="tray-chip">${esc(shortName(id))}<button data-uncmp="${esc(id)}" aria-label="Remove ${esc(shortName(id))}">×</button></span>`).join("");
+  $("trayChips").innerHTML = state.compare.map((id) => `<span class="tray-chip" title="${esc(id)}"><span class="t">${esc(shortName(id))}</span><button data-uncmp="${esc(id)}" aria-label="Remove ${esc(shortName(id))}">×</button></span>`).join("");
 }
 function toggleCompare(id, forceOn) {
   const i = state.compare.indexOf(id);
@@ -4809,8 +4850,9 @@ function resetFilters() {
 }
 // The detail panel's width: drag the line at its left edge (or arrow keys on it); remembered in this browser.
 const DETAIL_W_KEY = "tt-detail-w";
+// The list keeps at least 690 px, so Model, Memory, Speed, Verdict and Score always fit (measured: about 666 px).
 function setDetailWidth(w, save) {
-  const lay = $("layout"), max = Math.max(380, Math.min(800, lay.clientWidth - 264 - 520));
+  const lay = $("layout"), max = Math.max(380, Math.min(800, lay.clientWidth - 264 - 690));
   const v = clamp(Math.round(w), 380, max);
   lay.style.setProperty("--dw", v + "px");
   $("split").setAttribute("aria-valuenow", String(v));

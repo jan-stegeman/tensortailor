@@ -185,6 +185,7 @@ use made-up demo data.
 | `tools/test-review2.json` | The fixes of the second review: GGUF header values as data, release dates, memory labels at every width, config.json requests, hardware import, Run commands, KV choice, file matching, Measure |
 | `tools/test-name-words.json` | Words in model names: which names get a "Name says" line, the filter "Hide uncensored versions", the Help link |
 | `tools/test-help-audit.json` | The Help audit of 2026-11-13: memory bar to scale with orange stripes, and the Help texts that were fixed or added |
+| `tools/test-screen-review.json` | The screen review before going public (1366 × 768): the panel's drag line on its edge, the list keeps all its columns, sizes and memory labels never cut, long names, file names, the "Selected:" strip, My models while measuring, Downloads sizes |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
 | `tools/test-key.json` | The token key in the header: grey without a token, green with one, a click opens the token window |
