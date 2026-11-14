@@ -14,4 +14,4 @@
 - [ ] The README text and pictures still match the page.
 - [ ] No token, password, own paths or own model names in the change.
 
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for the details.
+See [CONTRIBUTING.md](https://github.com/jan-stegeman/tensortailor/blob/main/CONTRIBUTING.md) for the details.
