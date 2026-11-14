@@ -47,6 +47,33 @@ for (const p of profiles) {
   }
 }
 
+// The detail of one model (fitDetail) must show the same speed as the list (fitAll): the same measured
+// speed, calibration, basis and confidence (llmfit's annotate_measured runs on the whole list). The RTX 2080
+// profile is the PC of llmfit's community results, so it must have rows with a measured speed.
+for (const p of profiles) {
+  for (const ctx of [undefined, 8192]) {
+    const hwText = JSON.stringify(p.hardware);
+    const all = JSON.parse(engine.fitAll(hwText, ctx));
+    const measured = all.filter((f) => f.measured_tps);
+    const step = Math.max(1, Math.floor(all.length / 40));
+    const pick = measured.concat(all.filter((f, i) => i % step === 0 && !f.measured_tps));
+    let diff = 0;
+    for (const f of pick) {
+      const d = JSON.parse(engine.fitDetail(hwText, ctx, f.name)).fit;
+      const same = close(d.estimated_tps, f.estimated_tps) && d.estimate_confidence === f.estimate_confidence &&
+        JSON.stringify(d.measured_tps ?? null) === JSON.stringify(f.measured_tps ?? null) &&
+        JSON.stringify(d.estimate_basis) === JSON.stringify(f.estimate_basis);
+      if (!same) {
+        if (diff < 3) console.log(`  detail diff ${p.id} ${f.name}: list ${f.estimated_tps} ${f.estimate_confidence} ${JSON.stringify(f.measured_tps)} | detail ${d.estimated_tps} ${d.estimate_confidence} ${JSON.stringify(d.measured_tps)}`);
+        diff++;
+      }
+    }
+    const none = p.id === "rtx2080-community" && measured.length === 0;
+    console.log(`${diff || none ? "FAIL" : "OK  "} detail = list ${p.id}@${ctx ?? "default"}: ${pick.length} models checked, ${measured.length} with a measured speed, ${diff} different`);
+    problems += diff + (none ? 1 : 0);
+  }
+}
+
 // What the page will see: the best picks for the RTX 3090 profile.
 const p0 = profiles[0];
 t0 = performance.now();

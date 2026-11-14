@@ -25,6 +25,19 @@
     }
   },
   {
+    "id": "rtx2080-community",
+    "note": "The PC of llmfit's community results for the RTX 2080 (data/community): rows get measured speeds",
+    "hardware": {
+      "gpu_name": "NVIDIA GeForce RTX 2080",
+      "vram_gb": 8,
+      "gpu_count": 1,
+      "ram_gb": 64,
+      "cpu_cores": 20,
+      "cpu_name": "Intel(R) Core(TM) i9-10900X CPU @ 3.70GHz",
+      "backend": "cuda"
+    }
+  },
+  {
     "id": "cpu-only",
     "hardware": {
       "vram_gb": 0,

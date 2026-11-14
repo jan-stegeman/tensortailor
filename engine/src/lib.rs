@@ -7,7 +7,8 @@
 //! made callable by tools/patch-llmfit.sh.
 
 use llmfit_core::analysis::{analyze_with_optional_config, build_model_fits_with_config};
-use llmfit_core::fit::CalcConfig;
+use llmfit_core::benchmarks::MeasuredTps;
+use llmfit_core::fit::{CalcConfig, EstimateBasis, EstimateConfidence};
 use llmfit_core::hardware::GpuInfo;
 use llmfit_core::models::{KvQuant, QUANT_HIERARCHY};
 use llmfit_core::{
@@ -16,6 +17,7 @@ use llmfit_core::{
 };
 use serde::Deserialize;
 use serde_json::{Map, Value, json};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// The llmfit release this engine is built from. Must match the tag in Cargo.toml.
@@ -152,13 +154,80 @@ fn database() -> Arc<ModelDatabase> {
 /// Every catalog model analysed for this hardware, in catalog order (unsorted).
 pub fn fit_all(hw: &HardwareInput, context_limit: Option<u32>) -> Vec<ModelFit> {
     let specs = specs_from(hw);
-    build_model_fits_with_config(
+    let fits = build_model_fits_with_config(
         &database(),
         &specs,
         &InstalledIndex::empty(),
         context_limit,
         config_from(hw),
-    )
+    );
+    remember_speeds(speed_key(hw, context_limit), &fits);
+    fits
+}
+
+/// What llmfit's measured-speed step (`annotate_measured`, run by `build_model_fits_with_config` on the
+/// whole list) set on one row: the measured speed, the speed after calibration, its basis and the
+/// confidence. That step needs the whole list (the calibration factor is a median over it), so the
+/// detail of one model takes these fields from the list of the same hardware and context, and the
+/// detail panel shows what the list shows. Nothing is computed here: the values are llmfit's own.
+#[derive(Clone)]
+struct SpeedParts {
+    estimated_tps: f64,
+    measured_tps: Option<MeasuredTps>,
+    estimate_basis: EstimateBasis,
+    estimate_confidence: EstimateConfidence,
+}
+
+type Speeds = Arc<HashMap<String, SpeedParts>>;
+
+/// The last two lists (the page computes two with "What if I upgrade?"), by hardware and context.
+/// Emptied when the model list changes.
+static SPEEDS: RwLock<Vec<(String, Speeds)>> = RwLock::new(Vec::new());
+
+fn speed_key(hw: &HardwareInput, context_limit: Option<u32>) -> String {
+    format!("{hw:?}|{context_limit:?}")
+}
+
+fn remember_speeds(key: String, fits: &[ModelFit]) {
+    let map: HashMap<String, SpeedParts> = fits
+        .iter()
+        .map(|f| {
+            let parts = SpeedParts {
+                estimated_tps: f.estimated_tps,
+                measured_tps: f.measured_tps.clone(),
+                estimate_basis: f.estimate_basis.clone(),
+                estimate_confidence: f.estimate_confidence,
+            };
+            (f.model.name.clone(), parts)
+        })
+        .collect();
+    let mut all = SPEEDS.write().unwrap_or_else(|e| e.into_inner());
+    all.retain(|(k, _)| *k != key);
+    all.push((key, Arc::new(map)));
+    if all.len() > 2 {
+        all.remove(0);
+    }
+}
+
+#[cfg_attr(not(feature = "live"), allow(dead_code))]
+fn forget_speeds() {
+    SPEEDS.write().unwrap_or_else(|e| e.into_inner()).clear();
+}
+
+/// The remembered list for this key. The read lock ends with this function, before anything writes.
+fn remembered_speeds(key: &str) -> Option<Speeds> {
+    let all = SPEEDS.read().unwrap_or_else(|e| e.into_inner());
+    all.iter().find(|(k, _)| k == key).map(|(_, map)| Arc::clone(map))
+}
+
+fn speeds_for(hw: &HardwareInput, context_limit: Option<u32>) -> Speeds {
+    let key = speed_key(hw, context_limit);
+    if let Some(map) = remembered_speeds(&key) {
+        return map;
+    }
+    // Not remembered (other hardware or context): run the list once; fit_all remembers it.
+    fit_all(hw, context_limit);
+    remembered_speeds(&key).unwrap_or_default()
 }
 
 /// One fit as JSON, without the full model record (the page has the catalog).
@@ -266,7 +335,15 @@ pub fn fit_detail_json(
     let model = find_model(&db, name)?;
     let specs = specs_from(&hw);
     let config = config_from(&hw);
-    let fit = analyze_with_optional_config(model, &specs, context_limit, Some(&config));
+    let mut fit = analyze_with_optional_config(model, &specs, context_limit, Some(&config));
+    // The same measured speed and calibration as the list (see SpeedParts). A model llmfit leaves out of
+    // its ranked list has no entry and keeps the plain analysis.
+    if let Some(s) = speeds_for(&hw, context_limit).get(name) {
+        fit.estimated_tps = s.estimated_tps;
+        fit.measured_tps = s.measured_tps.clone();
+        fit.estimate_basis = s.estimate_basis.clone();
+        fit.estimate_confidence = s.estimate_confidence;
+    }
     let out = json!({ "fit": fit_summary(&fit), "model": serde_json::to_value(model).unwrap_or(Value::Null) });
     serde_json::to_string(&out).map_err(|e| e.to_string())
 }
@@ -399,7 +476,7 @@ pub fn engine_info_json() -> String {
 /// is llmfit's own code (patched in by tools/patch-llmfit.sh).
 #[cfg(feature = "live")]
 pub mod live {
-    use super::{Arc, DB, LlmModel, ModelDatabase, database, json};
+    use super::{Arc, DB, HashMap, LlmModel, ModelDatabase, database, forget_speeds, json};
     use llmfit_core::UpdateOptions;
     use llmfit_core::models::AttentionLayout;
     use serde::Deserialize;
@@ -449,6 +526,7 @@ pub mod live {
         let db = Arc::new(ModelDatabase::embedded_with_extra(extra));
         let count = db.get_all_models().len();
         *DB.write().unwrap_or_else(|e| e.into_inner()) = Some(db);
+        forget_speeds();
         Ok(count)
     }
 
@@ -515,16 +593,26 @@ pub mod live {
         let fills: Vec<KvFill> = serde_json::from_str(fills_json).map_err(|e| format!("KV fills: {e}"))?;
         let mut db = ModelDatabase::embedded_with_extra(extra);
         let mut filled = Vec::new();
-        for f in &fills {
-            let key = tt_canonical_slug(&f.name);
-            if let Some(m) = db.tt_models_mut().iter_mut().find(|m| tt_canonical_slug(&m.name) == key) {
-                if fill_kv_fields(m, f) {
-                    filled.push(m.name.clone());
+        {
+            // llmfit's "same model" key of every row, made once (not once per fill: up to 500 fills over
+            // 20,000 rows). The first row with a key wins, as with a search from the top.
+            let rows = db.tt_models_mut();
+            let mut by_key: HashMap<String, usize> = HashMap::with_capacity(rows.len());
+            for (i, m) in rows.iter().enumerate() {
+                by_key.entry(tt_canonical_slug(&m.name)).or_insert(i);
+            }
+            for f in &fills {
+                if let Some(&i) = by_key.get(&tt_canonical_slug(&f.name)) {
+                    let m = &mut rows[i];
+                    if fill_kv_fields(m, f) {
+                        filled.push(m.name.clone());
+                    }
                 }
             }
         }
         let count = db.get_all_models().len();
         *DB.write().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(db));
+        forget_speeds();
         serde_json::to_string(&json!({ "count": count, "filled": filled })).map_err(|e| e.to_string())
     }
 }
