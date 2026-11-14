@@ -115,6 +115,8 @@ change in the page).
 - **No warranty.** The verdicts, speeds and settings are estimates, and you download and run models at your own
   risk. What a model writes, and how you use it, is your own responsibility (also for "uncensored" versions).
   See `LICENSE` (MIT).
+- Found a problem or have an idea? Open a [new issue](https://github.com/jan-stegeman/tensortailor/issues/new/choose)
+  and pick a form. Want to help with the code? See [CONTRIBUTING.md](CONTRIBUTING.md).
 - Found a security problem? See [SECURITY.md](SECURITY.md).
 
 ## For developers
@@ -201,6 +203,7 @@ use made-up demo data.
 | `.github/workflows/catalog.yml` | Monday: fresh model catalog with llmfit's scraper (needs the `HF_TOKEN` secret, read only) |
 | `.github/dependabot.yml` | Monthly updates of the GitHub Actions (those of other authors are pinned to a commit) |
 | `.github/ISSUE_TEMPLATE/` | The forms for a new issue: bug report, wrong fit/speed/memory, feature request |
+| `CONTRIBUTING.md` | How to report a problem and how to send a pull request |
 | `SECURITY.md` | How to report a security problem privately |
 
 ## Credits and license
