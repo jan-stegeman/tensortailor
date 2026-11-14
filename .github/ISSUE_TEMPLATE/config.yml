@@ -1,8 +1,5 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Security problem
-    url: https://github.com/jan-stegeman/tensortailor/security/advisories/new
-    about: Please report security problems privately, not in a public issue. See SECURITY.md.
   - name: The estimate is also wrong in llmfit itself
     url: https://github.com/AlexsJones/llmfit/issues
     about: The verdicts, speeds and memory come from llmfit's formulas. When the llmfit program gives the same numbers, report it there.
