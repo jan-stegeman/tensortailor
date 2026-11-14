@@ -1441,7 +1441,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (a long name ends in "…"; point at it for the full name; × removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file. When a file cannot be deleted because it is in use (LM Studio has the model loaded), the message says so: eject the model in LM Studio, then try again. Two TensorTailor tabs never work on the same file: the second tab leaves it waiting and says so (press <b>Resume</b> there when the first tab is done).</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file. When a file cannot be deleted because it is in use (LM Studio has the model loaded), the message says so: eject the model in LM Studio, then try again. Two TensorTailor tabs never work on the same file: the second tab leaves it waiting and says so (press <b>Resume</b> there when the first tab is done); <b>Remove</b>, <b>Check again</b> and <b>Download again</b> also leave a file alone that another tab works on. Before it starts, a tab reads the download list again, so a file another tab finished or removed is shown as such. <b>Remove</b> waits while Check again or Download again is busy with the same file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
@@ -1813,10 +1813,13 @@ function bestView(row, F, vram) {
   // moe_offloaded_gb (the inactive experts) comes on top of it, in system RAM.
   else if (mode === "MoE offload") { inGpu = need; inRam = row[F.moe_offloaded_gb] || 0; }
   else if (mode === "CPU+GPU") { inGpu = Math.min(need, vram); inRam = Math.max(0, need - vram); }
-  const band = String(conf).startsWith("measured") ? [0.95, 1.05] : mode === "GPU" ? [0.75, 1] : [0.6, 1];
+  const fband = mode === "GPU" ? [0.75, 1] : [0.6, 1], band = String(conf).startsWith("measured") ? [0.95, 1.05] : fband;
+  // llmfit's formula range, also for a measured row: "My models" (measEstimate) and "your PC" (pcFactor, measLine)
+  // compare your own measurements with llmfit's formula, not with someone else's measurement.
+  const ftps = level === "tight" ? 0 : est;
   const sc = row[F.score_components] || [0, 0, 0, 0];
   return {
-    q: row[F.best_quant], need, pool, vram, mode, level, tps, lo: tps * band[0], hi: tps * band[1],
+    q: row[F.best_quant], need, pool, vram, mode, level, tps, lo: tps * band[0], hi: tps * band[1], flo: ftps * fband[0], fhi: ftps * fband[1],
     util: (row[F.utilization_pct] || 0) / 100, inGpu, inRam, score: row[F.score], conf, measured: mt ? measured : null, est,
     parts: { quality: sc[0], speed: sc[1], fit: sc[2], context: sc[3] }, plain: plainOf(level, mode)
   };
@@ -2984,8 +2987,10 @@ async function keepReadableLive() {
   };
   const all = state.live.models;
   await split(all.slice(0, all.length >> 1)); await split(all.slice(all.length >> 1));
-  // A failed call leaves the engine as it was, so it now has exactly the rows in "ok".
-  state.live.models = ok; state.live.held = held; state.kvFilled = new Set();
+  // A failed call leaves the engine as it was, so it now has exactly the rows in "ok". Then the saved KV fields
+  // (tt-kv-fills) once more, with the readable rows; if that fails too, the engine keeps "ok" without them.
+  state.live.models = ok; state.live.held = held;
+  try { await setExtraAndFills(); } catch (e) { state.kvFilled = new Set(); }
   saveLiveStore();
   return held;
 }
@@ -3324,7 +3329,8 @@ async function loadGgufHeader(m, repo, path) {
     // A row of llmfit's list without layer data gets the KV cache fields of this real file.
     if (entry.kvf && addKvFill(m.id, entry.kvf, repo + "/" + path)) setTimeout(applyKvFills, 0);
   } catch (e) {
-    if (e && e.name === "AbortError") { if (state.gguf.get(key) === entry) state.gguf.delete(key); return; }
+    // Drawn again: the model you chose now may use the same file (then it starts its own read).
+    if (e && e.name === "AbortError") { if (state.gguf.get(key) === entry) state.gguf.delete(key); renderDetail(); return; }
     Object.assign(entry, { loading: false, error: e.message });
   }
   renderDetail();
@@ -3777,6 +3783,17 @@ function simGroupsCard(totalGB) {
 // Remembered in localStorage "tt-kv-fills" (max 500); "none" = the engine did not need it (the row was exact).
 const KVFILL_KEY = "tt-kv-fills";
 const kvFills = loadJsonStore(KVFILL_KEY);
+// Checked once after loading (other local pages can share this storage): an entry is { none: true } or
+// { f: { whole numbers 0 … 2^32-1 for the KV fields } }; anything else is dropped, so it cannot stop the start.
+(() => {
+  const U32 = (v) => v === null || v === undefined || (Number.isInteger(v) && v >= 0 && v <= 4294967295);
+  for (const [k, v] of Object.entries(kvFills)) {
+    const ok = v && typeof v === "object" && (v.none === true || (v.f && typeof v.f === "object" &&
+      ["num_hidden_layers", "num_attention_heads", "num_key_value_heads", "head_dim", "hidden_size"].every((x) => U32(v.f[x])) &&
+      ["object", "string", "undefined"].includes(typeof v.f.attention_layout)));
+    if (!ok) delete kvFills[k];
+  }
+})();
 let kvFillEngine = true;   // false when the engine is older than setExtraModelsAndFills
 function kvFillsJson() { return JSON.stringify(Object.entries(kvFills).filter(([, v]) => !v.none).map(([name, v]) => ({ name, ...v.f }))); }
 // Give the engine the fetched models and the KV fields. An older engine gets the fetched models only.
@@ -3791,8 +3808,10 @@ async function setExtraAndFills() {
       if (changed) safeSet("localStorage", KVFILL_KEY, JSON.stringify(kvFills));
       return;
     } catch (e) {
-      if (!/not a function/i.test(String((e && e.message) || e))) throw e;
-      kvFillEngine = false;
+      // An older engine has no setExtraModelsAndFills. Any other error (a KV field the engine cannot read):
+      // go on without the KV fields, so fetching and removing models keep working; the rows then use
+      // llmfit's own estimate. If the models themselves are the problem, setExtraModels below fails too.
+      if (/not a function/i.test(String((e && e.message) || e))) kvFillEngine = false;
     }
   }
   state.kvFilled = new Set();
@@ -3846,20 +3865,31 @@ function kvFillNote(m) {
 // tokens_per_second is kept next to llmfit's estimate of that moment (localStorage "tt-measured"). Measurements of
 // models that run fully on the GPU give a factor for this PC: measured / middle of llmfit's range (the median).
 const MEAS_KEY = "tt-measured";
-const measStore = loadJsonStore(MEAS_KEY);
+const measStore = cleanMeas(loadJsonStore(MEAS_KEY));
+// Your saved measurements, checked once after loading (other local pages can share this storage): only entries
+// with a real speed and time stay, and the numbers the page formats must be numbers.
+function cleanMeas(s) {
+  const o = {}, fin = (v) => typeof v === "number" && isFinite(v);
+  for (const [k, m] of Object.entries(s || {})) {
+    if (!m || typeof m !== "object" || !(fin(m.tps) && m.tps > 0) || !fin(m.t)) continue;
+    const est = m.est && typeof m.est === "object" && fin(m.est.lo) && fin(m.est.hi) ? m.est : null;
+    o[k] = Object.assign({}, m, { ttft: fin(m.ttft) ? m.ttft : 0, out: fin(m.out) ? m.out : 0, ctx: fin(m.ctx) ? m.ctx : 0, name: typeof m.name === "string" ? m.name : "", est });
+  }
+  return o;
+}
 const measState = { busy: null, step: "", error: null };
 const MEAS_PROMPT = "Write a story of about 250 words about a lighthouse keeper who finds a message in a bottle.";
 // llmfit's estimate for YOUR file: llmfit counts its best file (b.q); the speed goes with the bytes read per
 // token, so the range is scaled by (size of llmfit's file) / (size of your file).
 function measEstimate(x) {
   const cat = catalogFor(x), loc = state.localGguf.byId.get(x.id);
-  if (cat && cat.best.tps > 0) {
+  if (cat && cat.best.fhi > 0) {
     const b = cat.best, ownQ = lmsOwnQuant(x), P = cat.m.params || 0;  // billions
     const ownGB = loc && loc.size ? loc.size / 1e9 : x.sizeGB;
     let k = 1;
     // Also scaled when LM Studio names no quant: the size of your file is known.
     if ((!ownQ || ownQ !== String(b.q).toUpperCase()) && P > 0 && ownGB > 0) k = clamp(P * (LMS_BPP[planQuant(b.q)] || 0.58) / ownGB, 0.5, 2);
-    return { lo: b.lo * k, hi: b.hi * k, mode: b.mode, src: "llmfit", id: cat.m.id, q: b.q, ownQ: ownQ || "", scaled: k !== 1 };
+    return { lo: b.flo * k, hi: b.fhi * k, mode: b.mode, src: "llmfit", id: cat.m.id, q: b.q, ownQ: ownQ || "", scaled: k !== 1 };
   }
   const r = x.sizeGB > 0 ? roughFromFile(x, Math.min(CTX_STEPS[state.ctxIdx], x.max_context_length || 32768), "fp16") : null;
   return r && r.tps > 0 ? { lo: r.lo, hi: r.hi, mode: r.mode, src: "rough", id: null } : null;
@@ -3929,8 +3959,8 @@ function measLine(r) {
   const lms = inLms(r.m), ms = lms ? measStore[lms.id] : null;
   if (ms) return `<div class="hash" title="${esc(measTip(ms))}"><span style="color:var(--perfect)">measured ${fmtT(ms.tps)}</span>${ms.est && ms.est.scaled ? ` · est. ${fmtT(ms.est.lo)}–${fmtT(ms.est.hi)} for your ${esc(ms.est.ownQ || "file")}`: lms && lmsOwnQuant(lms) && lmsOwnQuant(lms) !== String(r.best.q).toUpperCase() ? ` (your ${esc(lmsOwnQuant(lms))})` : ""}</div>`;
   const pf = pcFactor(), b = r.best;
-  if (!pf || b.mode !== "GPU" || !(b.tps > 0)) return "";
-  return `<div class="hash" title="${esc(`llmfit's estimate × ${pf.f.toFixed(2)}: on this PC your measurements were ${pctOf(pf.f)} of llmfit's estimate on the GPU (median of ${pf.n}). Not measured for this model.`)}">your PC: ~${fmtT(b.lo * pf.f)}–${fmtT(b.hi * pf.f)}</div>`;
+  if (!pf || b.mode !== "GPU" || !(b.fhi > 0)) return "";
+  return `<div class="hash" title="${esc(`llmfit's estimate × ${pf.f.toFixed(2)}: on this PC your measurements were ${pctOf(pf.f)} of llmfit's estimate on the GPU (median of ${pf.n}). Not measured for this model.`)}">your PC: ~${fmtT(b.flo * pf.f)}–${fmtT(b.fhi * pf.f)}</div>`;
 }
 /* ---------- LM Studio models that llmfit's list does not have ---------- */
 // So "Already in LM Studio" in Models shows every LM Studio model: (1) the model's folder name is its Hugging Face
@@ -4389,17 +4419,37 @@ function dlRefresh(force) {
 // file waiting and says why. Reserved at once (state.dl.active), before the wait for the lock.
 async function dlRun(job) {
   if (!navigator.locks) return dlRunNow(job);
-  state.dl.active = job;
+  // No live controller until dlRunNow makes one: Pause and Remove in the short wait for the lock then mark the
+  // job (status "paused", job.removing), and the lock's callback below respects that.
+  state.dl.active = job; job.ctl = null;
   return navigator.locks.request("tt-dl:" + job.id, { ifAvailable: true }, async (lock) => {
+    const skip = async () => { state.dl.active = null; dlRefresh(true); dlNext(); };
     if (!lock) {
       // Not saved: the other tab owns this job's stored state now.
-      state.dl.active = null; job.status = "paused";
-      job.note = "Another TensorTailor tab is working on this file. Wait until it is done there (or close that tab), then press Resume here.";
-      dlRefresh(true); dlNext();
-      return;
+      job.status = "paused"; job.note = DL_OTHER_TAB.replace("try again here", "press Resume here");
+      return skip();
     }
+    if (job.removing) { await dlRemoveParts(job); return skip(); }
+    if (job.status !== "queued" || !(await dlFresh(job))) return skip();
     return dlRunNow(job);
   });
+}
+// Under the file's lock, the stored job (IndexedDB, shared by every tab) is the truth: another tab may have
+// finished it, removed it, or switched it to a new version on Hugging Face since this tab read the list.
+// False when it is gone or already finished there (this tab then shows that and does nothing).
+async function dlFresh(job) {
+  let rec;
+  try { rec = await idbDo("jobs", "readonly", (s) => s.get(job.id)); } catch (e) { return true; } // no IndexedDB: this tab's copy
+  if (!rec) {
+    state.dl.jobs = state.dl.jobs.filter((j) => j !== job);
+    toast("This download was removed in another TensorTailor tab."); return false;
+  }
+  if (rec.status === "done" && job.status !== "done") {
+    for (const k of DL_KEEP) job[k] = rec[k];
+    toast("This file was finished and checked in another TensorTailor tab."); return false;
+  }
+  for (const k of ["bytes", "sha256", "partBytes", "folder", "added"]) if (rec[k] !== undefined) job[k] = rec[k];
+  return true;
 }
 async function dlRunNow(job) {
   const d = state.dl;
@@ -4605,13 +4655,28 @@ function hashFile(file, onProgress, signal) {
     hashWorker.postMessage({ id, file });
   });
 }
+// Every action on a file or its parts takes the same lock per file as dlRun: when another TensorTailor tab is
+// downloading, checking or joining this file, this tab leaves it alone and says so.
+const DL_OTHER_TAB = "Another TensorTailor tab is working on this file. Wait until it is done there (or close that tab), then try again here.";
+// fresh: first read the stored job again (dlFresh); Remove does not need that.
+async function withFileLock(job, fn, fresh = true) {
+  if (!navigator.locks) return fn();
+  let got = false, out;
+  await navigator.locks.request("tt-dl:" + job.id, { ifAvailable: true }, async (lock) => { if (!lock) return; got = true; if (fresh && !(await dlFresh(job))) { dlRefresh(true); return; } out = await fn(); });
+  if (!got) toast(DL_OTHER_TAB);
+  return out;
+}
 async function dlCheckAgain(job) {
   if (state.dl.active || state.dl.claim) { toast("Wait until the running download is finished."); return; }
-  // Claimed before the first wait, so no queued download starts in between (see dlNext).
+  // Claimed before the first wait, so no queued download starts in between (see dlNext); the claim ends when
+  // the check itself starts (it sets state.dl.active) or when it does not start.
   state.dl.claim = job;
-  let go = false;
-  try { go = (await dlFolder(true)) && !dlOtherFolder(job); } finally { state.dl.claim = null; }
-  if (!go) { dlNext(); return; }
+  try {
+    if (!(await dlFolder(true)) || dlOtherFolder(job)) return;
+    await withFileLock(job, () => { state.dl.claim = null; return dlCheckAgainNow(job); });
+  } finally { if (state.dl.claim === job) { state.dl.claim = null; dlNext(); } }
+}
+async function dlCheckAgainNow(job) {
   // Paused before the end: the job goes back to what it was (a stopped check proves nothing).
   const before = { status: job.status, gotSha: job.gotSha, error: job.error };
   state.dl.active = job; job.ctl = new AbortController(); job.error = "";
@@ -4637,7 +4702,7 @@ async function dlRedo(job) {
   if (state.dl.active || state.dl.claim) { toast("Wait until the running download is finished."); return; }
   // Claimed before the first wait, so no queued download starts while you answer or the file is deleted.
   state.dl.claim = job;
-  try { await dlRedoNow(job); } finally { state.dl.claim = null; dlNext(); }
+  try { await withFileLock(job, () => dlRedoNow(job)); } finally { state.dl.claim = null; dlNext(); }
 }
 async function dlRedoNow(job) {
   if (!(await dlFolder(true))) return;
@@ -4666,18 +4731,24 @@ async function dlAction(act, id) {
   // Only the running job has a live controller; a waiting job that ran before still holds its old, stopped one.
   if (act === "pause") { if (state.dl.active === job && job.ctl) job.ctl.abort(); else { job.status = "paused"; dlSave(job); dlRefresh(true); } return; }
   if (act === "redo") return dlRedo(job);
-  if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } if (dlOtherFolder(job)) return; job.status = "queued"; job.error = ""; await dlSave(job); dlRefresh(true); dlNext(); return; }
+  if (act === "resume") { if (!(await dlFolder(true))) { toast("TensorTailor needs the folder permission to go on."); return; } if (dlOtherFolder(job)) return; job.status = "queued"; job.error = ""; dlRefresh(true); dlNext(); return; } // saved when it starts (dlRunNow), under the file's lock
   if (act === "check") return dlCheckAgain(job);
   if (act === "rename") return dlRenameNow(job);
   if (act === "remove") {
     // Removes the entry and its temporary parts. A finished model file stays on disk.
-    job.removing = true;
-    state.dl.jobs = state.dl.jobs.filter((j) => j !== job);
-    await idbDo("jobs", "readwrite", (s) => s.delete(id)).catch(() => {});
-    // A running job: stop it; dlRun removes its parts when it has really stopped (its part files are still
-    // open right after abort(), and removing them then fails). Otherwise remove the parts now.
-    if (state.dl.active === job && job.ctl) job.ctl.abort();
-    else await dlRemoveParts(job);
+    const drop = async () => {
+      job.removing = true;
+      state.dl.jobs = state.dl.jobs.filter((j) => j !== job);
+      await idbDo("jobs", "readwrite", (s) => s.delete(id)).catch(() => {});
+    };
+    // A running job of this tab: stop it; dlRun removes its parts when it has really stopped (its part files
+    // are still open right after abort(), and removing them then fails). Otherwise remove the parts now, but
+    // only when no other tab is working on this file (its lock).
+    // Check again or Download again is busy with this file (it may be waiting for your answer): first that.
+    if (state.dl.claim === job) { toast("Wait until Check again or Download again is finished."); return; }
+    // This tab's own download (also in the short wait for the lock: dlRun then removes the parts itself).
+    if (state.dl.active === job) { await drop(); if (job.ctl) job.ctl.abort(); }
+    else await withFileLock(job, async () => { await drop(); await dlRemoveParts(job); }, false);
     dlRefresh(true); renderDetail();
   }
 }
@@ -4734,7 +4805,7 @@ function setView(v) {
   state.view = v; $("layout").classList.toggle("wide", v !== "models"); $("layout").classList.toggle("full", v === "downloads" || v === "battle");
   document.querySelectorAll("#nav [data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
   // Back in Models: the Files tab fits its file names again (the panel had no width while it was hidden).
-  if (v !== "models") renderView(); else { renderRowsWindow(); if (state.tab === "files") renderDetail(); }
+  if (v !== "models") renderView(); else { renderRowsWindow(); splitAriaNow(); if (state.tab === "files") renderDetail(); }
   if (v === "mine") lmsRefreshSoon();
 }
 // Ask LM Studio again (at most once per 5 s, never during a load): when My models or the Run tab opens, after
@@ -4788,12 +4859,14 @@ function cleanHw(h) {
   const num = (v) => typeof v === "number" && isFinite(v);
   if (typeof h.gpuName === "string" && h.gpuName.trim()) o.gpuName = h.gpuName.slice(0, 200);
   if (typeof h.cpuName === "string" && h.cpuName.trim()) o.cpuName = h.cpuName.slice(0, 200);
-  if (num(h.vram)) o.vram = Math.max(0, h.vram);
+  // Upper limits far above any real PC, so the engine can always read the numbers (a CPU core count above
+  // 2^32 or an endless RAM size made every calculation fail).
+  if (num(h.vram)) o.vram = clamp(h.vram, 0, 4096);
   if (num(h.gpus)) o.gpus = clamp(Math.round(h.gpus), 0, 4);
-  if (num(h.ram)) o.ram = Math.max(4, h.ram);
+  if (num(h.ram)) o.ram = clamp(h.ram, 4, 1048576);
   if (num(h.reserve)) o.reserve = clamp(h.reserve, 0, 8);
   if (num(h.ramBw)) o.ramBw = clamp(h.ramBw, 5, 1000);
-  if (num(h.cores)) o.cores = Math.max(1, Math.round(h.cores));
+  if (num(h.cores)) o.cores = clamp(Math.round(h.cores), 1, 65536);
   o.freeDisk = num(h.freeDisk) && h.freeDisk >= 0 ? h.freeDisk : null;
   if (typeof h.freeDrive === "string" && /^[A-Za-z]:$/.test(h.freeDrive)) o.freeDrive = h.freeDrive.toUpperCase();
   return o;
@@ -5055,16 +5128,27 @@ function splitAria(v, max) {
   sp.setAttribute("aria-valuemin", "380"); sp.setAttribute("aria-valuemax", String(max));
   sp.setAttribute("aria-valuenow", String(v)); sp.setAttribute("aria-valuetext", `Detail panel ${v} pixels wide`);
 }
+// The values as they are now (start, double-click reset, a resized window without a saved width).
+// Not while the detail panel is hidden (My models, Battle, Downloads: width 0); setView("models") renews them.
+function splitAriaNow() {
+  const w = $("detail").getBoundingClientRect().width;
+  if (!w) return;
+  const max = Math.max(380, Math.min(800, $("layout").clientWidth - 264 - 690));
+  splitAria(clamp(Math.round(w), 380, max), max);
+}
 function wireSplit() {
   const sp = $("split"), lay = $("layout");
   const saved = Number(safeGet("localStorage", DETAIL_W_KEY));
   if (saved > 0) setDetailWidth(saved, false);
-  else { const max = Math.max(380, Math.min(800, lay.clientWidth - 264 - 690)); splitAria(clamp(Math.round($("detail").getBoundingClientRect().width), 380, max), max); }
+  else splitAriaNow();
   sp.addEventListener("pointerdown", (e) => {
     e.preventDefault(); sp.setPointerCapture(e.pointerId); lay.classList.add("resizing");
     const move = (ev) => setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, false);
-    const up = (ev) => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); lay.classList.remove("resizing"); setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, true); renderRowsWindow(); if (state.tab === "files") renderDetail(); };
-    sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
+    const end = () => { sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up); sp.removeEventListener("pointercancel", cancel); lay.classList.remove("resizing"); };
+    const up = (ev) => { end(); setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, true); renderRowsWindow(); if (state.tab === "files") renderDetail(); };
+    // A cancelled drag (the window lost the pointer): the width it reached stays, without saving it.
+    const cancel = () => { end(); splitAriaNow(); renderRowsWindow(); };
+    sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up); sp.addEventListener("pointercancel", cancel);
   });
   sp.addEventListener("keydown", (e) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
@@ -5073,12 +5157,12 @@ function wireSplit() {
     setDetailWidth(now + (e.key === "ArrowLeft" ? 24 : -24), true);
     if (state.tab === "files") renderDetail();
   });
-  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); sp.setAttribute("aria-valuenow", String(Math.round($("detail").getBoundingClientRect().width))); renderRowsWindow(); if (state.tab === "files") renderDetail(); });
+  sp.addEventListener("dblclick", () => { lay.style.removeProperty("--dw"); safeSet("localStorage", DETAIL_W_KEY, null); splitAriaNow(); renderRowsWindow(); if (state.tab === "files") renderDetail(); });
   // A smaller window: the saved width is limited again, so the list keeps its room. A taller list: draw the
   // rows that came into view (the list only draws the rows you can see).
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") lmsRefreshSoon(); });
   let resizeT = 0;
-  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { const w = Number(safeGet("localStorage", DETAIL_W_KEY)); if (w > 0) setDetailWidth(w, false); renderRowsWindow(); if (state.view === "models" && state.tab === "files") renderDetail(); }, 120); });
+  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { const w = Number(safeGet("localStorage", DETAIL_W_KEY)); if (w > 0) setDetailWidth(w, false); else splitAriaNow(); renderRowsWindow(); if (state.view === "models" && state.tab === "files") renderDetail(); }, 120); });
   if (window.ResizeObserver) new ResizeObserver(() => renderRowsWindow()).observe($("rows"));
   // The detail header shrinks to one line while you scroll (with a gap, so it does not flicker).
   $("detail").addEventListener("scroll", () => { const d = $("detail"), t = d.scrollTop; if (t > 90) d.classList.add("scrolled"); else if (t < 20) d.classList.remove("scrolled"); });

@@ -74,6 +74,26 @@ for (const p of profiles) {
   }
 }
 
+// The same, but the detail comes first (no list for this hardware and context remembered yet: the engine
+// makes it itself). Context 4096 is not used above.
+{
+  const p = profiles.find((x) => x.id === "rtx2080-community") || profiles[0], hwText = JSON.stringify(p.hardware);
+  // The list at 2048 only finds the measured models; the engine then remembers 2048, not 4096.
+  const first = JSON.parse(engine.fitAll(hwText, 2048)).filter((f) => f.measured_tps).slice(0, 10).map((f) => f.name);
+  const details = first.map((n) => JSON.parse(engine.fitDetail(hwText, 4096, n)).fit);
+  const all = JSON.parse(engine.fitAll(hwText, 4096));
+  let diff = 0;
+  details.forEach((d, i) => {
+    const f = all.find((x) => x.name === first[i]);
+    const same = !!f && close(d.estimated_tps, f.estimated_tps) && d.estimate_confidence === f.estimate_confidence &&
+      JSON.stringify(d.measured_tps ?? null) === JSON.stringify(f.measured_tps ?? null);
+    if (!same) diff++;
+  });
+  const bad = diff || first.length === 0;
+  console.log(`${bad ? "FAIL" : "OK  "} detail first (nothing remembered) ${p.id}@4096: ${first.length} measured models, ${diff} different`);
+  problems += bad ? 1 : 0;
+}
+
 // What the page will see: the best picks for the RTX 3090 profile.
 const p0 = profiles[0];
 t0 = performance.now();
