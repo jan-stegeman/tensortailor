@@ -1331,6 +1331,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip lms">in LM Studio</span></dt><dd>You already have this model in LM Studio.</dd>
       <dt><span class="chip live">live</span></dt><dd>Not in llmfit's list: fetched live from Hugging Face (Tools → Catalog, or a pasted link). Models in your LM Studio that llmfit's list does not have are fetched like this by themselves, so the filter "Already in LM Studio" shows all of them. At the top of the detail panel the same label is a green "live from Hugging Face"; "from LM Studio" (below) is green there too.</dd>
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list. Its name is the Hugging Face repo of its folder when there is one; else it starts with <code>lmstudio/</code>: then no Hugging Face page is known, its ↗ link searches Hugging Face for the name, and it is counted apart from the live models (Tools → Catalog).</dd>
+      <dt>Kept, not readable</dt><dd>In Tools → Catalog: fetched models (live or from LM Studio) that this version of the engine could not read, for example after an llmfit update changed the row format. They are not in the list, but they are kept (not deleted) and tried again each time the page opens. <b>Remove fetched models</b> removes them too.</dd>
       <dt><span class="chip lock">size uncertain</span></dt><dd>The name shows already-compressed weights that are not GGUF (EXL2/EXL3, bnb, AWQ, GPTQ, MLX, vllm, "9bit" …), or says far more parameters than llmfit counts (for example 27B in the name, 10.3B counted). llmfit then counted the compressed weights, so its memory and speed are too optimistic. These rows come after all other models that fit (before Won't fit) and are never a top pick; the Overview tab says why. Look for a GGUF copy of the original model instead.</dd>
       <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
       <dt><span class="chip">license</span> (grey)</dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
@@ -1393,7 +1394,8 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. The list always counts with F16. In the detail panel, Memory, the math line, the bar, "Which file fits?" (with its note) and the Files tab's "Fits here" use your choice, and the Plan tab counts with it; the verdict and the speed stay those of the list (F16), and one line under the math says so. When the smaller cache would let the model fit fully in VRAM (or fit at all), the numbers stay F16 and that line says what your choice gives.</dd>
-      <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>.</dd>
+      <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>. A saved hardware value that is not a valid number or name (other local pages can share this browser's storage) is replaced by the start value.</dd>
+      <dt>Storage full</dt><dd>When this browser's storage for TensorTailor is full, a message says that a change was not saved: it works until you close the page. Fetched models take the most room: <b>Tools → Catalog → Remove fetched models</b> frees it.</dd>
       <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). Several words find models that have all of them, in any order: <b>qwen3 14b</b> finds Qwen3-14B. From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model (the line above the list reminds you).</dd>
     </dl>
 
@@ -1439,7 +1441,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (a long name ends in "…"; point at it for the full name; × removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file. When a file cannot be deleted because it is in use (LM Studio has the model loaded), the message says so: eject the model in LM Studio, then try again.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
@@ -1610,7 +1612,19 @@ const fmtT = (t) => (t < 10 ? t.toFixed(1) : t.toFixed(0));
 const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
 const shortName = (id) => String(id).split("/").pop();
 function safeGet(store, key) { try { return window[store].getItem(key); } catch (e) { return null; } }
-function safeSet(store, key, val) { try { if (val === null) window[store].removeItem(key); else window[store].setItem(key, val); } catch (e) { /* storage blocked */ } }
+// True when saved. A full storage (QuotaExceededError) is said once per page visit: until then a failed save
+// was silent, and fetched models or links were gone after a reload.
+let storeFullSaid = false;
+function safeSet(store, key, val) {
+  try { if (val === null) window[store].removeItem(key); else window[store].setItem(key, val); return true; }
+  catch (e) {
+    if (!storeFullSaid && e && (e.name === "QuotaExceededError" || e.code === 22)) {
+      storeFullSaid = true;
+      setTimeout(() => toast("This browser's storage for TensorTailor is full, so a change was not saved: it works until you close the page. Tools → Catalog → Remove fetched models frees the most room."), 0);
+    }
+    return false;
+  }
+}
 let toastTimer = 0;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
 async function copyText(text, what) {
@@ -2923,10 +2937,37 @@ const PAGE_EXPAND = ["downloads", "likes", "gated"]; // for the page only; llmfi
 function loadLiveStore() {
   try {
     const v = JSON.parse(safeGet("localStorage", LIVE_KEY) || "null");
-    if (v && Array.isArray(v.models)) state.live = { models: v.models, meta: v.meta || {}, at: v.at || "" };
+    // "held": rows this engine could not read last time (see keepReadableLive); every start tries them again.
+    // A held row made again since (same name, for example from LM Studio) is not added twice.
+    if (v && Array.isArray(v.models)) {
+      const have = new Set(v.models.map((m) => m && m.name));
+      const held = (Array.isArray(v.held) ? v.held : []).filter((m) => m && !have.has(m.name));
+      state.live = { models: v.models.concat(held), meta: v.meta || {}, at: v.at || "" };
+    }
   } catch (e) { /* ignore a broken store */ }
 }
-function saveLiveStore() { safeSet("localStorage", LIVE_KEY, state.live.models.length ? JSON.stringify(state.live) : null); }
+function saveLiveStore() { safeSet("localStorage", LIVE_KEY, state.live.models.length || (state.live.held || []).length ? JSON.stringify(state.live) : null); }
+// One stored row the engine cannot read (for example after an llmfit update changed the row format) makes it
+// refuse the whole list. Until now the page then erased every fetched model, also the "from LM Studio" rows.
+// Instead: find the readable rows by halves (a few engine calls), give the engine those, and keep the others
+// in the store as "held", so a later version that reads them again gets them back. Returns the held rows.
+async function keepReadableLive() {
+  const ok = [], held = [];
+  const tryRows = async (rows) => { try { await call("setExtraModels", JSON.stringify(rows)); return true; } catch (e) { return false; } };
+  const split = async (rows) => {
+    if (!rows.length) return;
+    if (await tryRows(ok.concat(rows))) { ok.push(...rows); return; }
+    if (rows.length === 1) { held.push(rows[0]); return; }
+    const mid = rows.length >> 1;
+    await split(rows.slice(0, mid)); await split(rows.slice(mid));
+  };
+  const all = state.live.models;
+  await split(all.slice(0, all.length >> 1)); await split(all.slice(all.length >> 1));
+  // A failed call leaves the engine as it was, so it now has exactly the rows in "ok".
+  state.live.models = ok; state.live.held = held; state.kvFilled = new Set();
+  saveLiveStore();
+  return held;
+}
 function liveMetaToPage() {
   for (const [name, x] of state.meta) if (x.live) state.meta.delete(name);
   for (const [name, x] of Object.entries(state.live.meta)) if (!state.meta.has(name)) state.meta.set(name, { downloads: x.downloads || 0, likes: x.likes || 0, langs: x.langs || [], live: true });
@@ -3070,7 +3111,7 @@ async function fetchNewModels() {
   }
 }
 async function clearLive() {
-  if (state.liveBusy || !state.live.models.length) return;
+  if (state.liveBusy || !(state.live.models.length || (state.live.held || []).length)) return;
   state.live = { models: [], meta: {}, at: "" }; state.liveResult = null;
   state.lmsLinks = {}; state.lmsLinkInfo = null; safeSet("localStorage", "tt-lms-links", null);
   saveLiveStore();
@@ -3086,7 +3127,8 @@ function renderCatalogDlg() {
   $("catBody").innerHTML = `<p>The list comes from llmfit ${ref}. llmfit's own updater (<code>llmfit update</code>) adds the newest trending and most downloaded models from Hugging Face. <b>Fetch new models</b> does the same in this page, with llmfit's own code.</p>
     <dl class="lic"><dt>From llmfit ${ref}</dt><dd>${Number(state.info.catalog_models || 0).toLocaleString("en")} models${state.build.catalog_rows ? ` (from ${Number(state.build.catalog_rows).toLocaleString("en")} catalog rows: llmfit merges re-uploads of the same model into one row)` : ""}</dd>
     <dt>Fetched live</dt><dd>${fetched ? `${fetched} model${fetched === 1 ? "" : "s"}` + (L.at ? ` · last fetch ${esc(L.at)}` : " (from checked links and your LM Studio models)") : "none yet"}</dd>
-    ${fromLms.length ? `<dt>From LM Studio</dt><dd>${fromLms.length} model${fromLms.length === 1 ? "" : "s"} (made from LM Studio's data and the file header)</dd>` : ""}</dl>
+    ${fromLms.length ? `<dt>From LM Studio</dt><dd>${fromLms.length} model${fromLms.length === 1 ? "" : "s"} (made from LM Studio's data and the file header)</dd>` : ""}
+    ${(L.held || []).length ? `<dt>Kept, not readable</dt><dd>${L.held.length} fetched model${L.held.length === 1 ? "" : "s"} this version of the engine could not read: kept and tried again each time the page opens (${L.held.map((m) => esc(String((m && m.name) || "?"))).join(", ")})</dd>` : ""}</dl>
     ${state.liveLog ? `<p class="status-line"><span class="dot warn"></span>${esc(state.liveLog)}</p>` : ""}
     ${r && r.error ? `<div class="warn-box">Stopped: ${esc(r.error)}</div>` : ""}
     ${r && !r.error ? `<p><b>Last fetch:</b> ${r.checked} models checked, ${r.known} already in the list, <b>${r.added.length} added</b>${r.added.length ? ` (${r.added.filter((n) => ranked.has(n)).length} analysed for this PC)` : ""}${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}${r.later ? `, ${r.later} not read now (Hugging Face was busy or not reachable; the next fetch tries again)` : ""}.</p>` : ""}
@@ -3097,7 +3139,7 @@ function renderCatalogDlg() {
     <p class="hint">Fetched models get the label <b>live</b> and stay in this browser until you remove them. Most are new, so the filter "Popular (10,000+ downloads)" can hide them. Gated models (such as Llama) need your token for the exact layout; without it they get llmfit's rough estimate, like in llmfit.</p>`;
   $("btnLiveFetch").disabled = state.liveBusy || !state.ready;
   $("btnLiveFetch").textContent = state.liveBusy ? "Fetching…" : "Fetch new models";
-  $("btnLiveClear").disabled = state.liveBusy || !L.models.length;
+  $("btnLiveClear").disabled = state.liveBusy || !(L.models.length || (L.held || []).length);
 }
 function lookupHTML(id) {
   const L = state.lookup && state.lookup.id === id ? state.lookup : null;
@@ -4536,6 +4578,13 @@ async function dlCheckAgain(job) {
     if (e && e.name === "AbortError") Object.assign(job, before); else { job.status = "failed"; job.error = e.name === "NotFoundError" ? "The file is not in the folder any more." : String(e.message || e); }
   } finally { state.dl.active = null; if (!job.removing) dlSave(job); dlRefresh(true); dlNext(); }
 }
+// A file the browser could not delete, in plain words instead of the browser's own error text. Windows locks
+// a file that a program has open (LM Studio with the model loaded); Chrome then reports a modification error.
+function delErrorText(e, fileName) {
+  const n = (e && e.name) || "";
+  if (/NoModificationAllowed|InvalidModification|InvalidState/.test(n)) return `Could not delete ${fileName}: the file is in use. If LM Studio has this model loaded, eject it there (or close LM Studio), then try again.`;
+  return `Could not delete ${fileName}${n ? ` (${n})` : ""}. Close any program that uses the file, then try again.`;
+}
 // "Download again" after a SHA-256 mismatch: delete the damaged file (after your OK) and download it anew.
 async function dlRedo(job) {
   if (state.dl.active) { toast("Wait until the running download is finished."); return; }
@@ -4551,7 +4600,7 @@ async function dlRedo(job) {
   if (f && f.size > 0) {
     const where = `${state.dl.root.name || "the folder"}\\${job.repo.replace("/", "\\")}\\${job.path.replace(/\//g, "\\")}`;
     if (!confirm(`Delete the damaged file and download it again?\n\n${where}\n${fmtSize(f.size / 1e9)}`)) return;
-    try { await dir.removeEntry(fileName); } catch (e) { toast("Could not delete the file: " + e.message); return; }
+    try { await dir.removeEntry(fileName); } catch (e) { toast(delErrorText(e, fileName)); return; }
   }
   if (changed) { await dlRemoveParts(job); job.bytes = now.bytes; job.sha256 = now.sha256 || null; }
   job.status = "queued"; job.error = ""; job.gotSha = ""; job.phase = "";
@@ -4678,6 +4727,25 @@ function openCompare() {
 
 /* ===================== Hardware inputs ===================== */
 function saveHw() { safeSet("localStorage", "tt-hw", JSON.stringify(state.hw)); }
+// The saved hardware (localStorage "tt-hw") is checked before use: other local pages (file://) can share this
+// storage. Only the known fields are kept, numbers only when they are real numbers (with the same limits as
+// applyHardware), names only as text, the drive only as "X:". Anything else falls back to DEFAULT_HW.
+function cleanHw(h) {
+  const o = Object.assign({}, DEFAULT_HW);
+  if (!h || typeof h !== "object") return o;
+  const num = (v) => typeof v === "number" && isFinite(v);
+  if (typeof h.gpuName === "string" && h.gpuName.trim()) o.gpuName = h.gpuName.slice(0, 200);
+  if (typeof h.cpuName === "string" && h.cpuName.trim()) o.cpuName = h.cpuName.slice(0, 200);
+  if (num(h.vram)) o.vram = Math.max(0, h.vram);
+  if (num(h.gpus)) o.gpus = clamp(Math.round(h.gpus), 0, 4);
+  if (num(h.ram)) o.ram = Math.max(4, h.ram);
+  if (num(h.reserve)) o.reserve = clamp(h.reserve, 0, 8);
+  if (num(h.ramBw)) o.ramBw = clamp(h.ramBw, 5, 1000);
+  if (num(h.cores)) o.cores = Math.max(1, Math.round(h.cores));
+  o.freeDisk = num(h.freeDisk) && h.freeDisk >= 0 ? h.freeDisk : null;
+  if (typeof h.freeDrive === "string" && /^[A-Za-z]:$/.test(h.freeDrive)) o.freeDrive = h.freeDrive.toUpperCase();
+  return o;
+}
 function fillHwInputs() {
   const h = state.hw;
   $("gpuName").textContent = h.gpuName; $("vram").value = h.vram; $("gpus").value = String(h.gpus); $("ram").value = h.ram;
@@ -5128,7 +5196,7 @@ function wire() {
   // Closed by default (one slim strip), so a new visitor sees more model rows; the choice is remembered.
   state.picksOpen = safeGet("localStorage", "tt-picks") === "1";
   $("btnSuggest").setAttribute("aria-pressed", String(state.picksOpen));
-  try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = Object.assign({}, DEFAULT_HW, h); } catch (e) { /* ignore */ }
+  try { const h = JSON.parse(safeGet("localStorage", "tt-hw") || "null"); if (h && typeof h === "object") state.hw = cleanHw(h); } catch (e) { /* ignore */ }
   // First visit (no saved hardware yet): show the hardware fields open.
   if (!safeGet("localStorage", "tt-hw")) $("hwEdit").open = true;
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
@@ -5151,9 +5219,12 @@ function wire() {
       if (state.live.models.length || kvFillsJson() !== "[]") {
         try { await setExtraAndFills(); }
         catch (e) {
-          // Without the KV fields first; then without the fetched models.
+          // Without the KV fields first; then only the rows this engine can read (the others are kept).
           try { state.kvFilled = new Set(); await call("setExtraModels", JSON.stringify(state.live.models)); }
-          catch (e2) { state.live = { models: [], meta: {}, at: "" }; saveLiveStore(); }
+          catch (e2) {
+            const held = await keepReadableLive();
+            if (held.length) toast(`${held.length === 1 ? "1 fetched model" : held.length + " fetched models"} could not be read by this version of the engine, so ${held.length === 1 ? "it is" : "they are"} not in the list. ${held.length === 1 ? "It is" : "They are"} kept and tried again each time the page opens (a newer version may read ${held.length === 1 ? "it" : "them"}).`);
+          }
         }
       }
     }
