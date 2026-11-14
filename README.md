@@ -190,6 +190,7 @@ use made-up demo data.
 | `tools/test-help-audit.json` | The Help audit of 2026-11-13: memory bar to scale with orange stripes, and the Help texts that were fixed or added |
 | `tools/test-screen-review.json` | The screen review before going public (1366 × 768): the panel's drag line on its edge, the list keeps all its columns, sizes and memory labels never cut, long names, file names, the "Selected:" strip, My models while measuring, Downloads sizes |
 | `tools/test-store-safety.json` | Saved data in the browser: a fetched model the engine cannot read is kept (not erased) and the others stay in the list; wrong saved hardware values fall back to the start values; a full storage is said; plain words when a file cannot be deleted |
+| `tools/test-review3-w.json` | Points of the third review: a measured speed (llmfit's community results) is the speed shown, the formula estimate stays in the tooltip; the drag line tells screen readers its width; no download starts while Check again or Download again waits, and a file another tab works on is left waiting |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
 | `tools/test-key.json` | The token key in the header: grey without a token, green with one, a click opens the token window |

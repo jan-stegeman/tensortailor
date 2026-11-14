@@ -1341,7 +1341,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW, then the small icons (vision, tool use, reasoning). Point at the line to see which; the detail panel shows them all. The number of parameters always stays. The maker's name may end in "…"; in a very full line it is left out, and on a very narrow list the warnings (in LM Studio, gated, vLLM, size uncertain) go last. A memory label that does not fit leaves out its words: "23.0 GB + 63.8 GB".</dd>
       <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
-      <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
+      <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate: the list and the detail panel show the measured number (point at the speed for the number of runs and llmfit's formula estimate). Only PCs with the same CPU and GPU as a community result get it. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
       <dt><span class="chip vllm">vLLM</span> and others</dt><dd>The model needs another engine than llama.cpp (the label names it: vLLM or MLX); LM Studio on Windows cannot run it.</dd>
     </dl>
 
@@ -1441,7 +1441,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>My models: Similar models and disk space</dt><dd>Below the list: your models that come from the same base model (fine-tunes, uncensored versions, other quants), with their size on disk, verdict, best setting and folder (click to copy). Hugging Face says per repo which model it was made from; TensorTailor follows that up to the first model (remembered 30 days, <b>Check again</b> asks anew). It starts at the repo of the model's folder, else at the matched model (also a "from LM Studio" row named after its repo). Without an answer, the same design in the file header groups them. "Keeping only one of them would free up to …" = the group minus its smallest model. The label <span class="tag">3 similar</span> in the My models table marks them. TensorTailor never deletes anything: remove a model in LM Studio or in File Explorer.</dd>
       <dt>Battle</dt><dd>2 to 4 models (checkbox in the list, or <b>Add to battle</b> in Top picks) compete on this PC in four rounds: quality, speed, memory and context. One winner is named; with the same rounded points it says "a tie" and names the winner on the decimals. These battle points are not llmfit's Score (list, Compare), so the order can differ.</dd>
       <dt>Selected · Compare</dt><dd>Tick the box of a model (or press <kbd>C</kbd>), at most 4. A strip <b>Selected:</b> appears at the bottom with their names (a long name ends in "…"; point at it for the full name; × removes one). <b>Compare</b> opens the window "Compare models" with them side by side (2 or more); <b>Battle</b> opens the Battle view; <b>Clear</b> removes all ticks.</dd>
-      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file. When a file cannot be deleted because it is in use (LM Studio has the model loaded), the message says so: eject the model in LM Studio, then try again.</dd>
+      <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file. When a file cannot be deleted because it is in use (LM Studio has the model loaded), the message says so: eject the model in LM Studio, then try again. Two TensorTailor tabs never work on the same file: the second tab leaves it waiting and says so (press <b>Resume</b> there when the first tab is done).</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
       <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
@@ -1803,8 +1803,10 @@ function bestView(row, F, vram) {
   const mode = MODE[row[F.run_mode]] || row[F.run_mode], level = LEVEL[row[F.fit_level]] || "tight";
   const conf = row[F.estimate_confidence];
   const measured = row[F.measured_tps];
-  // A model that does not fit has no speed (llmfit still gives a formula value): the page shows "—".
-  const tps = level === "tight" ? 0 : row[F.estimated_tps] || 0;
+  // A measured speed (llmfit's community results on matching hardware) comes first, as llmfit itself shows it;
+  // the formula value stays in "est" for the tooltip. A model that does not fit has no speed: the page shows "—".
+  const est = row[F.estimated_tps] || 0, mt = measured && measured.tok_s > 0 ? measured.tok_s : 0;
+  const tps = level === "tight" ? 0 : mt || est;
   let inGpu = need, inRam = 0;
   if (mode === "CPU") { inGpu = 0; inRam = need; }
   // llmfit's MoE offload: memory_required_gb is what stays in VRAM (active experts, KV cache, engine);
@@ -1815,7 +1817,7 @@ function bestView(row, F, vram) {
   const sc = row[F.score_components] || [0, 0, 0, 0];
   return {
     q: row[F.best_quant], need, pool, vram, mode, level, tps, lo: tps * band[0], hi: tps * band[1],
-    util: (row[F.utilization_pct] || 0) / 100, inGpu, inRam, score: row[F.score], conf, measured,
+    util: (row[F.utilization_pct] || 0) / 100, inGpu, inRam, score: row[F.score], conf, measured: mt ? measured : null, est,
     parts: { quality: sc[0], speed: sc[1], fit: sc[2], context: sc[3] }, plain: plainOf(level, mode)
   };
 }
@@ -1909,7 +1911,9 @@ function memTip(b) {
 }
 function speedTip(b) {
   if (!b.tps) return "No speed: the model does not fit.";
-  const how = String(b.conf).startsWith("measured") ? "Measured on similar hardware (llmfit's own community results)." : "Estimated by llmfit from memory speed and model size. The real speed can be lower.";
+  const m = b.measured, runs = m && m.sample_count > 0 ? `median of ${m.sample_count} run${m.sample_count === 1 ? "" : "s"}` : "";
+  const how = m ? `Measured: ${fmtT(m.tok_s)} tok/s (${runs ? runs + " " : ""}on ${m.hardware_label ? String(m.hardware_label) : "matching hardware"}; llmfit's own community results). llmfit's formula estimate: ${fmtT(b.est)} tok/s.`
+    : String(b.conf).startsWith("measured") ? "Measured on similar hardware (llmfit's own community results)." : "Estimated by llmfit from memory speed and model size. The real speed can be lower.";
   return `About ${speedRange(b)} tokens per second (a token is about ¾ of a word).\n${how}\nReading pace is about ${READING_PACE} tok/s.`;
 }
 const VERDICT_TIP = {
@@ -4337,7 +4341,7 @@ function dlProjector(repo) {
   return pick(/(^|[-_.])f16\.gguf$/i) || pick(/bf16\.gguf$/i) || files.slice().sort((a, b) => a.bytes - b.bytes)[0];
 }
 function dlNext() {
-  if (state.dl.active) return;
+  if (state.dl.active || state.dl.claim) return;
   const job = state.dl.jobs.find((j) => j.status === "queued");
   if (job) dlRun(job);
 }
@@ -4357,7 +4361,24 @@ function dlRefresh(force) {
     renderView(); restoreFocus(key);
   }
 }
+// Two TensorTailor tabs share the download list (IndexedDB), so both could start the same file. A lock per file
+// (navigator.locks, shared by every tab of this page) lets only one tab work on it; the other tab leaves the
+// file waiting and says why. Reserved at once (state.dl.active), before the wait for the lock.
 async function dlRun(job) {
+  if (!navigator.locks) return dlRunNow(job);
+  state.dl.active = job;
+  return navigator.locks.request("tt-dl:" + job.id, { ifAvailable: true }, async (lock) => {
+    if (!lock) {
+      // Not saved: the other tab owns this job's stored state now.
+      state.dl.active = null; job.status = "paused";
+      job.note = "Another TensorTailor tab is working on this file. Wait until it is done there (or close that tab), then press Resume here.";
+      dlRefresh(true); dlNext();
+      return;
+    }
+    return dlRunNow(job);
+  });
+}
+async function dlRunNow(job) {
   const d = state.dl;
   d.active = job; job.ctl = new AbortController(); job.error = ""; job.note = ""; job.rename = ""; job.speed = 0;
   try {
@@ -4562,9 +4583,12 @@ function hashFile(file, onProgress, signal) {
   });
 }
 async function dlCheckAgain(job) {
-  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
-  if (!(await dlFolder(true))) return;
-  if (dlOtherFolder(job)) return;
+  if (state.dl.active || state.dl.claim) { toast("Wait until the running download is finished."); return; }
+  // Claimed before the first wait, so no queued download starts in between (see dlNext).
+  state.dl.claim = job;
+  let go = false;
+  try { go = (await dlFolder(true)) && !dlOtherFolder(job); } finally { state.dl.claim = null; }
+  if (!go) { dlNext(); return; }
   // Paused before the end: the job goes back to what it was (a stopped check proves nothing).
   const before = { status: job.status, gotSha: job.gotSha, error: job.error };
   state.dl.active = job; job.ctl = new AbortController(); job.error = "";
@@ -4587,7 +4611,12 @@ function delErrorText(e, fileName) {
 }
 // "Download again" after a SHA-256 mismatch: delete the damaged file (after your OK) and download it anew.
 async function dlRedo(job) {
-  if (state.dl.active) { toast("Wait until the running download is finished."); return; }
+  if (state.dl.active || state.dl.claim) { toast("Wait until the running download is finished."); return; }
+  // Claimed before the first wait, so no queued download starts while you answer or the file is deleted.
+  state.dl.claim = job;
+  try { await dlRedoNow(job); } finally { state.dl.claim = null; dlNext(); }
+}
+async function dlRedoNow(job) {
   if (!(await dlFolder(true))) return;
   if (dlOtherFolder(job)) return;
   // Hugging Face may have a new version of the file since it was queued: use its size and SHA-256 now, so a
@@ -4606,7 +4635,7 @@ async function dlRedo(job) {
   job.status = "queued"; job.error = ""; job.gotSha = ""; job.phase = "";
   job.note = changed ? "Hugging Face has a new version of this file: its new size and SHA-256 are used." : "";
   if (!job.folder && state.dl.root) job.folder = state.dl.root.name;
-  await dlSave(job); dlRefresh(true); dlNext();
+  await dlSave(job); dlRefresh(true);
 }
 async function dlAction(act, id) {
   const job = state.dl.jobs.find((j) => j.id === id);
@@ -4994,13 +5023,20 @@ function setDetailWidth(w, save) {
   const lay = $("layout"), max = Math.max(380, Math.min(800, lay.clientWidth - 264 - 690));
   const v = clamp(Math.round(w), 380, max);
   lay.style.setProperty("--dw", v + "px");
-  $("split").setAttribute("aria-valuenow", String(v));
+  splitAria(v, max);
   if (save) safeSet("localStorage", DETAIL_W_KEY, String(v));
+}
+// A screen reader says the width and its limits (the line is a movable separator).
+function splitAria(v, max) {
+  const sp = $("split");
+  sp.setAttribute("aria-valuemin", "380"); sp.setAttribute("aria-valuemax", String(max));
+  sp.setAttribute("aria-valuenow", String(v)); sp.setAttribute("aria-valuetext", `Detail panel ${v} pixels wide`);
 }
 function wireSplit() {
   const sp = $("split"), lay = $("layout");
   const saved = Number(safeGet("localStorage", DETAIL_W_KEY));
   if (saved > 0) setDetailWidth(saved, false);
+  else { const max = Math.max(380, Math.min(800, lay.clientWidth - 264 - 690)); splitAria(clamp(Math.round($("detail").getBoundingClientRect().width), 380, max), max); }
   sp.addEventListener("pointerdown", (e) => {
     e.preventDefault(); sp.setPointerCapture(e.pointerId); lay.classList.add("resizing");
     const move = (ev) => setDetailWidth(lay.getBoundingClientRect().right - ev.clientX, false);
