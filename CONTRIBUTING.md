@@ -44,5 +44,7 @@ New work must keep these promises:
   `docs: …`.
 - Never commit a token, a password, or your own paths and model names. The README pictures use made-up demo data.
 - The GitHub check `engine.yml` runs on changes to `engine/` and `web/`: it must be green.
+- GitHub's code scanning (CodeQL) checks the JavaScript, the Rust code and the workflows of every push and pull
+  request. A new alert must be fixed, or explained in the pull request.
 
 By sending a pull request you agree that your work is released under the [MIT License](LICENSE) of this project.
