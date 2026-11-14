@@ -5,7 +5,9 @@
 
 import { readFileSync } from "node:fs";
 
-const strip = (s) => s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+// Remove tags until none are left (one pass could leave a tag behind in text like "<<b>b>").
+const stripTags = (s) => { let prev; do { prev = s; s = s.replace(/<[^>]+>/g, ""); } while (s !== prev); return s; };
+const strip = (s) => stripTags(s).replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 
 export function helpCheck(html) {
   const help = (/<dialog id="dlgHelp"[\s\S]*?<\/dialog>/.exec(html) || [""])[0];

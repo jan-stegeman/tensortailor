@@ -49,9 +49,10 @@ let seq = 0; const waiters = new Map();
 ws.addEventListener("message", (ev) => {
   const msg = JSON.parse(ev.data);
   if (msg.id && waiters.has(msg.id)) { waiters.get(msg.id)(msg); waiters.delete(msg.id); return; }
-  if (msg.method === "Runtime.consoleAPICalled") console.log(`[console.${msg.params.type}]`, msg.params.args.map((a) => a.value ?? a.description ?? "").join(" ").slice(0, 400));
+  // The page's text is never the first argument, so a "%s" in it is not read as a format.
+  if (msg.method === "Runtime.consoleAPICalled") console.log("[console.%s]", msg.params.type, msg.params.args.map((a) => a.value ?? a.description ?? "").join(" ").slice(0, 400));
   if (msg.method === "Runtime.exceptionThrown") console.log("[exception]", (msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text || "").slice(0, 600));
-  if (msg.method === "Log.entryAdded") console.log(`[log.${msg.params.entry.level}]`, msg.params.entry.text.slice(0, 300), msg.params.entry.url ? `(${msg.params.entry.url.slice(0, 160)})` : "");
+  if (msg.method === "Log.entryAdded") console.log("[log.%s]", msg.params.entry.level, msg.params.entry.text.slice(0, 300), msg.params.entry.url ? `(${msg.params.entry.url.slice(0, 160)})` : "");
 });
 const send = (method, params = {}) => new Promise((resolve) => { const id = ++seq; waiters.set(id, resolve); ws.send(JSON.stringify({ id, method, params })); });
 const evaluate = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); return r.result?.result?.value ?? r.result?.exceptionDetails?.exception?.description; };
