@@ -203,6 +203,7 @@ use made-up demo data.
 | `.github/workflows/catalog.yml` | Monday: fresh model catalog with llmfit's scraper (needs the `HF_TOKEN` secret, read only) |
 | `.github/dependabot.yml` | Monthly updates of the GitHub Actions (those of other authors are pinned to a commit) |
 | `.github/ISSUE_TEMPLATE/` | The forms for a new issue: bug report, wrong fit/speed/memory, feature request |
+| `.github/pull_request_template.md` | The text a new pull request starts with: what changed, how it was tested, a checklist |
 | `CONTRIBUTING.md` | How to report a problem and how to send a pull request |
 | `SECURITY.md` | How to report a security problem privately |
 
