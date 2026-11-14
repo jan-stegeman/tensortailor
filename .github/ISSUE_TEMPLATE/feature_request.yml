@@ -1,0 +1,28 @@
+name: Feature request
+description: An idea to make TensorTailor more useful.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        TensorTailor is a free project with no fixed planning. Ideas are welcome; there is no promise that each one
+        will be built. TensorTailor stays one offline HTML file without tracking or accounts.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do?
+      description: The task or question you have, not yet the solution.
+      placeholder: I want to see which models fit when I add a second GPU.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How the page could help with it. A sketch or a screenshot of a similar tool is welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else

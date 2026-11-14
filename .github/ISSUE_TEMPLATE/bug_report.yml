@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in the page does not work, looks broken, or does something you did not expect.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a problem.
+        Please never paste your Hugging Face token. A screenshot can show your own model list and folder names:
+        cut those out if you do not want them to be public.
+  - type: input
+    id: version
+    attributes:
+      label: TensorTailor version
+      description: At the top left of the page, under the name.
+      placeholder: v2026.11.17
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      description: The browser version is in the browser's menu, Help, About.
+      placeholder: Chrome on Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to see the problem
+      description: One action per line, with the names of the buttons, tabs and filters you used.
+      placeholder: |
+        1. Open the page.
+        2. Click the model "Qwen/Qwen3-14B".
+        3. Open the tab Files.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: An error text, a screenshot, or what you saw. Errors in the browser console (F12, tab Console) help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Your hardware (if it matters for the problem)
+      description: As set in "Your hardware" on the left of the page.
+      placeholder: RTX 4070 12 GB, 32 GB RAM, 8 CPU cores
+  - type: dropdown
+    id: area
+    attributes:
+      label: Part of the page
+      options:
+        - Models list or filters
+        - Detail panel (Overview, Files, Run, Plan)
+        - Downloads
+        - My models (LM Studio)
+        - Compare or Battle
+        - Help or tooltips
+        - Hardware (Detect, Import)
+        - Other
+    validations:
+      required: true

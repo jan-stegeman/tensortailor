@@ -1,0 +1,59 @@
+name: Wrong fit, speed or memory
+description: The verdict, speed or memory for a model looks wrong for your PC.
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The verdicts, speeds and memory are **estimates** from llmfit's formulas, inside the page as WebAssembly.
+        Every build checks that the page gives the same answers as the llmfit program itself.
+
+        - If the page gives **other numbers than llmfit** for the same model and hardware, that is a TensorTailor
+          problem: please report it here.
+        - If **llmfit gives the same numbers**, the formula itself is the cause: please report it at
+          [llmfit](https://github.com/AlexsJones/llmfit/issues).
+
+        Not sure? Report it here; that is fine.
+  - type: input
+    id: version
+    attributes:
+      label: TensorTailor version
+      description: At the top left of the page, under the name.
+      placeholder: v2026.11.17
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: The Hugging Face name or link.
+      placeholder: Qwen/Qwen3-14B
+    validations:
+      required: true
+  - type: input
+    id: file
+    attributes:
+      label: File or quantization
+      placeholder: Qwen3-14B-Q4_K_M.gguf
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Your hardware
+      description: As set in "Your hardware" on the left of the page. "Import…" copies the exact values from your PC.
+      placeholder: RTX 4070 12 GB VRAM, 32 GB RAM, 8 CPU cores
+    validations:
+      required: true
+  - type: textarea
+    id: shown
+    attributes:
+      label: What TensorTailor shows
+      description: Verdict, speed (tokens per second), memory, and the context length you chose.
+    validations:
+      required: true
+  - type: textarea
+    id: real
+    attributes:
+      label: What you measured or expected
+      description: For example the speed in LM Studio, or the result of "Measure" in My models. Say which program and settings you used.
+    validations:
+      required: true

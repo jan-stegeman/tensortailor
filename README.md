@@ -200,6 +200,7 @@ use made-up demo data.
 | `.github/workflows/weekly.yml` | Tuesday build: follows new llmfit releases and publishes a GitHub Release |
 | `.github/workflows/catalog.yml` | Monday: fresh model catalog with llmfit's scraper (needs the `HF_TOKEN` secret, read only) |
 | `.github/dependabot.yml` | Monthly updates of the GitHub Actions (those of other authors are pinned to a commit) |
+| `.github/ISSUE_TEMPLATE/` | The forms for a new issue: bug report, wrong fit/speed/memory, feature request |
 | `SECURITY.md` | How to report a security problem privately |
 
 ## Credits and license
