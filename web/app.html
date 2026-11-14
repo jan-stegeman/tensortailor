@@ -1977,9 +1977,22 @@ function lmsLinkOk(x) {
   if (resultIdsOf !== state.results) { resultIdsOf = state.results; resultIds = new Set(state.results.map((r) => r.m.id)); }
   return resultIds.has(link);
 }
+// One render asks inLms for every row several times (filters, counts, Top picks, rows): ~120 ms over 14,000 rows.
+// The answers are kept until this task ends, and only while the results, LM Studio's list and the links are the
+// same objects (a change of a link in place empties the memo too: lmsMemoClear).
+let lmsMemo = null, lmsMemoOf = null;
+function lmsMemoClear() { lmsMemo = null; }
 function inLms(m) {
   if (!state.lms.models.length) return null;
-  return state.lms.models.find((x) => lmsLinkOk(x) && state.lmsLinks[x.id] === m.id) || state.lms.models.find((x) => !lmsLinkOk(x) && lmsPairOk(x, m)) || null;
+  const of = lmsMemoOf;
+  if (!lmsMemo || !of || of[0] !== state.results || of[1] !== state.lms.models || of[2] !== state.lmsLinks) {
+    lmsMemo = new Map(); lmsMemoOf = [state.results, state.lms.models, state.lmsLinks];
+    const mine = lmsMemo; setTimeout(() => { if (lmsMemo === mine) lmsMemo = null; }, 0);
+  }
+  if (lmsMemo.has(m.id)) return lmsMemo.get(m.id);
+  const x = state.lms.models.find((y) => lmsLinkOk(y) && state.lmsLinks[y.id] === m.id) || state.lms.models.find((y) => !lmsLinkOk(y) && lmsPairOk(y, m)) || null;
+  lmsMemo.set(m.id, x);
+  return x;
 }
 function catalogFor(x) {
   const link = state.lmsLinks[x.id];
@@ -2899,6 +2912,8 @@ function tabPlan(r, d) {
     <p class="hint">The ${keep} best with the current filters: ${top.map((x) => esc(x.m.name) + " " + esc(x.best.q)).join(", ")}.</p>
   </section>`;
 }
+const HF_SETTLE_MS = 350;
+function hfWhenSettled(id, fn) { setTimeout(() => { if (state.selected === id) fn(); }, HF_SETTLE_MS); }
 function renderDetail() {
   stopTyping();
   const focusKey = focusKeyOf($("detail"));
@@ -2906,10 +2921,12 @@ function renderDetail() {
   if (!r) { $("detail").innerHTML = `<div class="card empty">${state.ready ? emptyState(ES_ICON.search, "Pick a model", "Click a row in the list (or press <kbd>↓</kbd>) to see if it fits, which file to get and how to run it in LM Studio.") : "Starting the engine…"}</div>`; return; }
   const m = r.m, lms = inLms(m), d = state.detail.get(detailKey(m.id));
   if (!d) loadDetail(r);
-  // Gated repos answer 401 without a token: only ask when a token is set.
-  if (!gatedLive(m.id)) setTimeout(() => checkGated(m.id), 0);
+  // Hugging Face is asked only when the model is still chosen after a short pause (HF_SETTLE_MS): moving fast
+  // through the list (arrow keys, j/k) sent two requests per row before. Gated repos answer 401 without a token:
+  // config.json is only asked for when a token is set.
+  if (!gatedLive(m.id)) hfWhenSettled(m.id, () => checkGated(m.id));
   const mx = state.mtp.get(m.id);
-  if (!(mx && (mx.loading || "config" in mx)) && (!needsToken(m) || state.token)) setTimeout(() => loadMtpConfig(m.id), 0);
+  if (!(mx && (mx.loading || "config" in mx)) && (!needsToken(m) || state.token)) hfWhenSettled(m.id, () => loadMtpConfig(m.id));
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
   const body = { overview: () => tabOverview(r, d), files: () => tabFiles(r), run: () => tabRun(r), plan: () => tabPlan(r, d) }[state.tab]();
   // The answer first (verdict, file, one action); model facts as one quiet line; the header stays in view.
@@ -2989,7 +3006,7 @@ async function applyLive() {
     const gone = new Set(merged);
     state.live.models = state.live.models.filter((y) => !gone.has(y.name));
     for (const n of merged) delete state.live.meta[n];
-    for (const [k, n] of Object.entries(state.lmsLinks)) if (gone.has(n)) delete state.lmsLinks[k];
+    for (const [k, n] of Object.entries(state.lmsLinks)) if (gone.has(n)) delete state.lmsLinks[k]; lmsMemoClear();
     saveLiveStore(); safeSet("localStorage", "tt-lms-links", JSON.stringify(state.lmsLinks));
   }
   liveMetaToPage();
@@ -3229,11 +3246,13 @@ function mtpTag(m) {
 // The key/value part of a GGUF file header, read in 4 MB pieces (the tokenizer lists come first, so a
 // key like <arch>.nextn_predict_layers can sit 10 MB or more into the file). src = a Hugging Face URL
 // (Range requests) or a local File from the chosen folder.
-async function ggufHeader(src, maxBytes = 64 * 1024 * 1024) {
+// stop (optional): asked before each piece; true = stop reading (the model is no longer chosen), AbortError.
+async function ggufHeader(src, maxBytes = 64 * 1024 * 1024, stop = null) {
   const CH = 4 * 1024 * 1024, td = new TextDecoder();
   let buf = new Uint8Array(0), view = new DataView(buf.buffer), pos = 0, ended = false;
   const more = async (need) => {
     while (buf.length < need) {
+      if (stop && stop()) throw new DOMException("Stopped: another model was chosen", "AbortError");
       if (ended) throw new Error("the file ended inside the header");
       if (buf.length >= maxBytes) throw new Error(`the header is larger than ${maxBytes / 1048576} MB`);
       let chunk;
@@ -3295,7 +3314,8 @@ async function loadGgufHeader(m, repo, path) {
   const entry = { loading: true };
   state.gguf.set(key, entry); renderDetail();
   try {
-    const h = await ggufHeader(dlUrl(repo, path));
+    // Stops between pieces when another model is chosen; the entry is then removed, so it is read again later.
+    const h = await ggufHeader(dlUrl(repo, path), undefined, () => state.selected !== m.id);
     const { arch, blocks, ctx, layers } = ggufFacts(h.kv);
     Object.assign(entry, { loading: false, arch, layers, blocks, ctx, bytes: h.bytesRead, keys: Object.keys(h.kv).length, kvf: ggufKvFields(h.kv) });
     const x = state.mtp.get(m.id) || {};
@@ -3303,7 +3323,10 @@ async function loadGgufHeader(m, repo, path) {
     state.mtp.set(m.id, x);
     // A row of llmfit's list without layer data gets the KV cache fields of this real file.
     if (entry.kvf && addKvFill(m.id, entry.kvf, repo + "/" + path)) setTimeout(applyKvFills, 0);
-  } catch (e) { Object.assign(entry, { loading: false, error: e.message }); }
+  } catch (e) {
+    if (e && e.name === "AbortError") { if (state.gguf.get(key) === entry) state.gguf.delete(key); return; }
+    Object.assign(entry, { loading: false, error: e.message });
+  }
   renderDetail();
 }
 function ggufLine(repo, path) {
@@ -4012,7 +4035,7 @@ async function linkLmsModels(relink) {
           name = m.name; info.lms.push(x.name); changed = true;
         } else info.failed.push(x.name);
       }
-      if (name) state.lmsLinks[x.id] = name;
+      if (name) { state.lmsLinks[x.id] = name; lmsMemoClear(); }
     }
     // Clean up old "lmstudio/<key>" rows that were replaced by a real repo link or removed in LM Studio.
     const orphans = new Set(lmsOrphanNames());
@@ -4020,7 +4043,7 @@ async function linkLmsModels(relink) {
       state.live.models = state.live.models.filter((y) => !orphans.has(y.name));
       for (const n of orphans) delete state.live.meta[n];
       // Links to those rows go too, so a model you remove and download again gets its row back.
-      for (const [k, n] of Object.entries(state.lmsLinks)) if (orphans.has(n)) delete state.lmsLinks[k];
+      for (const [k, n] of Object.entries(state.lmsLinks)) if (orphans.has(n)) delete state.lmsLinks[k]; lmsMemoClear();
       changed = true;
     }
     info.kv = enrichLmsRows();
