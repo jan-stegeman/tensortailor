@@ -133,7 +133,7 @@ runs:
         wasm-bindgen --target no-modules --out-dir pkg-nomod "$WASM"
 
     - name: Set up Node
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: 22
 
