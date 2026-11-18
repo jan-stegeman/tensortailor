@@ -1389,7 +1389,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Kept for Windows</dt><dd>VRAM that Windows and your screens use. Not available for models.</dd>
       <dt>RAM speed</dt><dd>How fast system RAM is (GB/s). Sets the speed of the part that runs from RAM.</dd>
       <dt>CPU cores</dt><dd>Used for the CPU part of a model.</dd>
-      <dt>Detect · Import…</dt><dd><b>Detect in browser</b> fills in the GPU name the browser shows and its VRAM from a table (and sets Number of GPUs to 1 when it was 0); the browser cannot tell RAM or CPU cores, so those stay as they are. <b>Import…</b> gives a PowerShell line that reads your real hardware: GPU and VRAM (also without nvidia-smi), RAM, CPU cores, the VRAM in use now (for "Kept for Windows") and the free space on the drive with LM Studio's models folder.</dd>
+      <dt>Detect · Import…</dt><dd><b>Detect in browser</b> fills in the GPU name the browser shows and its VRAM from a table (and sets Number of GPUs to 1 when it was 0). Built-in graphics (Intel UHD or Iris Xe, AMD Radeon Graphics) share the system RAM, so they set Number of GPUs and VRAM to 0, as Import… does. The browser often cannot see a second graphics card next to built-in graphics: when WebGPU shows a chip by another maker, it says so and changes nothing; otherwise use Import…. When the browser shows no name (it draws in software, it hides the name, or WebGL is off), it says why and changes nothing. When you import or change the hardware while Detect still waits for the browser, your change wins. The browser cannot tell RAM or CPU cores, so those stay as they are. <b>Import…</b> gives a PowerShell line that reads your real hardware: GPU and VRAM (also without nvidia-smi), RAM, CPU cores, the VRAM in use now (for "Kept for Windows") and the free space on the drive with LM Studio's models folder.</dd>
       <dt>What if I upgrade?</dt><dd>One more GPU of the same kind (only with a GPU), or 128 GB more RAM. Switch one on and the whole list, the tiles and the detail panel are calculated for the upgraded PC; models that fit fully in VRAM only with the upgrade get the label "upgrade".</dd>
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
@@ -4889,19 +4889,92 @@ function applyHardware(src, writeBack = true) {
   saveHw(); renderUsable(); recomputeSoon();
 }
 function setGpuName(name) { state.hw.gpuName = name; $("gpuName").textContent = name; const hit = lookupGpu(name); if (hit) $("vram").value = hit[1]; }
-function detectInBrowser() {
-  let renderer = "";
-  try { const gl = document.createElement("canvas").getContext("webgl"); const ext = gl && gl.getExtension("WEBGL_debug_renderer_info"); renderer = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : ""; } catch (e) { renderer = ""; }
-  const m = /((?:NVIDIA |AMD |Intel\(R\) )?(?:GeForce|Radeon|Arc|Quadro|RTX|Tesla)[^,(]*)/.exec(renderer || "");
-  // The browser's thread count says little about the CPU: Chrome on Windows shows at most one processor
-  // group (64 on a 128-thread CPU), and cores vs threads is not known. So cores and the CPU name stay.
-  const threads = navigator.hardwareConcurrency || 0;
-  if (!m) { toast(`The browser did not show the GPU name${threads ? ` (it only shows ${threads} CPU threads)` : ""}. Nothing changed; use Import… for exact values.`); return; }
-  const gpu = m[1].replace(/\s+Direct3D.*$/, "").trim(), known = lookupGpu(gpu);
-  setGpuName(gpu);
-  if (Number($("gpus").value) === 0) $("gpus").value = "1";
-  toast(known ? `Found ${gpu}: ${known[1]} GB VRAM from the table. Check RAM and CPU cores yourself, or use Import… for exact values.` : `Found ${gpu}, but its VRAM is not in the table. Enter VRAM yourself, or use Import….`);
-  applyHardware("from browser");
+// "Detect in browser". The browser shows only the name of the graphics chip it draws with (WebGL), and through
+// WebGPU only the maker of its chip (no name, no VRAM). readRenderer and webgpuVendor are separate so the tests can
+// stand in for them. readRenderer gives null when there is no WebGL at all, "" when WebGL hides the name.
+function readRenderer() {
+  try { const gl = document.createElement("canvas").getContext("webgl"); if (!gl) return null; const ext = gl.getExtension("WEBGL_debug_renderer_info"); return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || "") : ""; } catch (e) { return null; }
+}
+// The maker of WebGPU's chip, or "" (no WebGPU, or no answer). One 2-second limit covers both calls, so a browser
+// that never answers cannot keep Detect waiting.
+async function webgpuVendor() {
+  const ask = async () => {
+    if (!navigator.gpu) return "";
+    const a = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+    const info = a && (a.info || (a.requestAdapterInfo ? await a.requestAdapterInfo() : null));
+    const v = String((info && info.vendor) || "").toLowerCase();
+    return /nvidia/.test(v) ? "NVIDIA" : /amd|ati/.test(v) ? "AMD" : /intel/.test(v) ? "Intel" : "";
+  };
+  try { return await Promise.race([ask(), new Promise((r) => setTimeout(() => r(""), 2000))]); } catch (e) { return ""; }
+}
+// What kind of chip the WebGL name is. Chrome and Edge on Windows write it as
+// "ANGLE (Intel, Intel(R) UHD Graphics 770 (0x00004680) Direct3D11 vs_5_0 ps_5_0, D3D11)", with the Vulkan backend as
+// "ANGLE (NVIDIA, Vulkan 1.3.280 (NVIDIA GeForce RTX 3090 (0x00002204)), NVIDIA driver)".
+// Built-in graphics share the system RAM, so they count as no GPU, like Import… does: Intel UHD, Iris Xe, HD Graphics
+// and Arc Graphics without a model number (not Arc A/B cards, not the separate Iris Xe MAX); AMD only by the names of
+// processor graphics: "Radeon Graphics", "Radeon Vega 8 Graphics", "Radeon R7 Graphics", "Radeon 780M", "Radeon 8060S
+// Graphics" (not Radeon HD 7970M, RX or Vega Frontier Edition cards).
+// "software": the browser draws without the graphics chip (graphics acceleration off, a remote desktop, no driver).
+function gpuKind(renderer) {
+  if (renderer == null) return { kind: "nowebgl", name: "" };
+  const r = String(renderer);
+  if (!r.trim()) return { kind: "hidden", name: "" };
+  if (/swiftshader|llvmpipe|softpipe|basic render|software/i.test(r)) return { kind: "software", name: "" };
+  const name = r.replace(/^ANGLE \([^,]*,\s*/, "").replace(/^Vulkan [\d.]+ \(/i, "").replace(/\((R|TM)\)/gi, "").replace(/\s*\(0x[0-9a-f]+\).*$/i, "")
+    .replace(/\s+(Direct3D|OpenGL|Vulkan|Metal).*$/i, "").replace(/,.*$/, "").replace(/\/PCIe.*$/i, "").replace(/[)\s]+$/, "").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (/nvidia|geforce|quadro|tesla|\brtx\b/i.test(name)) return { kind: "card", maker: "NVIDIA", name };
+  if (/intel/i.test(name)) return /\barc\b.*\b[ab]\d{3}\b|\barc pro\b|\bxe max\b/i.test(name) ? { kind: "card", maker: "Intel", name } : { kind: "builtin", maker: "Intel", name };
+  if (/radeon/i.test(name)) return /^(AMD )?Radeon( Vega( \d+)?| R\d| \d{3}M| 8\d{3}S)? Graphics$|^(AMD )?Radeon \d{3}M$/i.test(name) ? { kind: "builtin", maker: "AMD", name } : { kind: "card", maker: "AMD", name };
+  return { kind: "other", name };
+}
+// The hardware values as one text: when they changed while Detect waited for WebGPU (an Import… or an edit in that
+// time), that newer choice wins and Detect changes nothing.
+function hwSnap() { return JSON.stringify(state.hw) + "|" + $("gpus").value + "|" + $("vram").value + "|" + $("hwSource").textContent; }
+let detectBusy = false;
+async function detectInBrowser() {
+  if (detectBusy) return;
+  detectBusy = true;
+  try {
+    const g = gpuKind(readRenderer());
+    // The browser's thread count says little about the CPU: Chrome on Windows shows at most one processor
+    // group (64 on a 128-thread CPU), and cores vs threads is not known. So cores and the CPU name stay.
+    const threads = navigator.hardwareConcurrency || 0, thr = threads ? ` (it shows ${threads} CPU threads)` : "";
+    const cpuNote = `The browser cannot tell RAM and CPU cores${thr}: check them, or use Import… for exact values.`;
+    if (g.kind === "card") {
+      const known = lookupGpu(g.name);
+      setGpuName(g.name);
+      if (Number($("gpus").value) === 0) $("gpus").value = "1";
+      toast(known ? `Found ${g.name}: ${known[1]} GB VRAM from the table. ${cpuNote}` : `Found ${g.name}, but its VRAM is not in the table. Enter VRAM yourself, or use Import….`);
+      applyHardware("from browser");
+      return;
+    }
+    const keep = " Nothing changed; use Import… for exact values.";
+    if (g.kind === "software") {
+      toast(`The browser draws in software here, without the graphics chip, so it cannot show the GPU name. Possible causes: graphics acceleration is off (browser settings, System), a remote desktop, or no graphics driver.${keep}`);
+      return;
+    }
+    // The browser may draw with the built-in graphics while the PC also has a graphics card: WebGPU's chip then has
+    // another maker. That is only a hint (name and VRAM stay unknown), so nothing is changed. Note: Chrome on Windows
+    // ignores powerPreference for now (crbug.com/369219127), so there WebGPU often gives the same chip as WebGL.
+    const snap = hwSnap();
+    const extra = await webgpuVendor();
+    if (hwSnap() !== snap) { toast("The hardware values changed while Detect waited for the browser, so Detect changed nothing."); return; }
+    if (extra && g.maker && extra !== g.maker) {
+      toast(`The browser draws with ${g.name}, but WebGPU also shows a graphics chip by ${extra}: this PC may have a graphics card. The browser does not show its name or VRAM.${keep}`);
+      return;
+    }
+    if (g.kind === "builtin") {
+      state.hw.gpuName = g.name;
+      $("gpus").value = "0"; $("vram").value = "0";
+      toast(`Found ${g.name}: built-in graphics that share the system RAM, so models run on the CPU and RAM (Number of GPUs: 0). The browser often cannot see a second graphics card, and it cannot tell RAM and CPU cores${thr}: check them, or use Import… for exact values.`);
+      applyHardware("from browser");
+      return;
+    }
+    const hint = extra ? ` WebGPU shows a graphics chip by ${extra}, but not which one.` : "";
+    toast((g.kind === "other" ? `The browser shows "${g.name}", a graphics chip TensorTailor does not know.`
+      : g.kind === "hidden" ? "The browser hides the GPU name here (a privacy setting or a company policy)."
+      : "WebGL is off or blocked in this browser, so it cannot show the GPU name.") + hint + keep);
+  } finally { detectBusy = false; }
 }
 // The PowerShell line of "Import…". Without nvidia-smi the VRAM comes from the display driver's registry key
 // (HardwareInformation.qwMemorySize, 64-bit; WMI's AdapterRAM stops at 4 GB); a GPU under 2 GB (integrated)

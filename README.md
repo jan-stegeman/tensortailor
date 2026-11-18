@@ -58,8 +58,10 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 3. Open `tensortailor.html` in Edge or Chrome (double-click it, or drag it into the browser). Its version is at the
    top left, under the name (for example `v2026.11.17`; a second release on one day is `v2026.11.17-2`). Compare it
    with the newest release on the Releases page to know that you have the latest.
-4. In **Your hardware** (left), press **Detect in browser**: it fills in your GPU and its VRAM. The browser cannot
-   tell your system RAM and CPU cores, so type those if they are not right. Or use **Import…**: one PowerShell line
+4. In **Your hardware** (left), press **Detect in browser**: it fills in your GPU, and its VRAM when the card is in its table. Built-in graphics
+   (Intel UHD or Iris Xe, AMD Radeon Graphics) use the system RAM, so it sets 0 GPUs. The browser often cannot see a
+   second graphics card next to built-in graphics: then use **Import…**. The browser cannot tell your system RAM and CPU cores, so type
+   those if they are not right. Or use **Import…**: one PowerShell line
    copies the exact values from your PC (also the free space on the drive with LM Studio's models folder).
 5. Choose what the model is for (**What is it for?**, for example *Coding*). The list sorts itself.
 6. Click a model. The panel on the right shows the details, the files, how to run it and a plan.
@@ -191,6 +193,7 @@ use made-up demo data.
 | `tools/test-screen-review.json` | The screen review before going public (1366 × 768): the panel's drag line on its edge, the list keeps all its columns, sizes and memory labels never cut, long names, file names, the "Selected:" strip, My models while measuring, Downloads sizes |
 | `tools/test-store-safety.json` | Saved data in the browser: a fetched model the engine cannot read is kept (not erased) and the others stay in the list; wrong saved hardware values fall back to the start values; a full storage is said; plain words when a file cannot be deleted |
 | `tools/test-review3-w.json` | Points of the third review: a measured speed (llmfit's community results) is the speed shown, the formula estimate stays in the tooltip; the drag line tells screen readers its width; no download starts while Check again or Download again waits, and a file another tab works on is left waiting; the "in LM Studio" check gives the same answers with its short memo; moving fast through the list asks Hugging Face only about the model you stop on, and a GGUF header read stops when you move on; the review of these fixes: Pause, Remove, Check again and Download again respect the lock and each other, a job another tab finished is not downloaded again, "your PC" scales llmfit's formula also for measured rows, the drag line values stay right after a reset or another view |
+| `tools/test-detect.json` | **Detect in browser** with made-up browser answers: 24 real GPU names sorted (built-in Intel and AMD graphics count as 0 GPUs and 0 GB VRAM, also in the saved profile; graphics cards with names like built-in ones stay cards), a chip of another maker in WebGPU is only a hint, software drawing, a hidden name or no WebGL give a plain reason, a WebGPU that never answers stops after 2 s, and an Import… during Detect wins |
 | `tools/test-lms-load.json` | "Load in LM Studio" test: every load and unload is caught, nothing really loads |
 | `tools/run-all-tests.ps1` | Builds the page, checks that the repo is ready to be public (no private text, keys or own paths in the files, their history or the page; every workflow action pinned to a commit), and runs every test above in headless Chrome (`-Readme` also makes the README pictures) |
 | `tools/test-key.json` | The token key in the header: grey without a token, green with one, a click opens the token window |
