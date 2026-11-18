@@ -62,7 +62,9 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
    (Intel UHD or Iris Xe, AMD Radeon Graphics) use the system RAM, so it sets 0 GPUs. The browser often cannot see a
    second graphics card next to built-in graphics: then use **Import…**. The browser cannot tell your system RAM and CPU cores, so type
    those if they are not right. Or use **Import…**: one PowerShell line
-   copies the exact values from your PC (also the free space on the drive with LM Studio's models folder).
+   copies the exact values from your PC (also the free space on the drive with LM Studio's models folder) to the
+   clipboard and says "Copied…" (when it cannot copy, it shows the text to copy yourself); press Ctrl+V in the box
+   of the Import window and click **Use this hardware**.
 5. Choose what the model is for (**What is it for?**, for example *Coding*). The list sorts itself.
 6. Click a model. The panel on the right shows the details, the files, how to run it and a plan.
 7. For LM Studio: start LM Studio and switch its server on (**Developer** tab → server on). TensorTailor then
