@@ -1391,7 +1391,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Kept for Windows</dt><dd>VRAM that Windows and your screens use. Not available for models.</dd>
       <dt>RAM speed</dt><dd>How fast system RAM is (GB/s). Sets the speed of the part that runs from RAM.</dd>
       <dt>CPU cores</dt><dd>Used for the CPU part of a model.</dd>
-      <dt>Detect · Import…</dt><dd><b>Detect in browser</b> fills in the GPU name the browser shows and its VRAM from a table (and sets Number of GPUs to 1 when it was 0). Built-in graphics (Intel UHD or Iris Xe, AMD Radeon Graphics) share the system RAM, so they set Number of GPUs and VRAM to 0, as Import… does. The browser often cannot see a second graphics card next to built-in graphics: when WebGPU shows a chip by another maker, it says so and changes nothing; otherwise use Import…. When the browser shows no name (it draws in software, it hides the name, or WebGL is off), it says why and changes nothing. When you import or change the hardware while Detect still waits for the browser, your change wins. The browser cannot tell RAM or CPU cores, so those stay as they are. <b>Import…</b> gives a PowerShell line that reads your real hardware: GPU and VRAM (also without nvidia-smi), RAM, CPU cores, the VRAM in use now (for "Kept for Windows") and the free space on the drive with LM Studio's models folder. When PowerShell says "Copied…", the values are on the clipboard: click <b>Paste from clipboard</b> in the Import window (when the browser asks to see the clipboard, click Allow; for a file on disk it can ask each time), or press Ctrl+V in its box and click <b>Use this hardware</b>. When it cannot copy, it shows the text so you can copy it yourself. A wrong paste is said in red under the box.</dd>
+      <dt>Detect · Import…</dt><dd><b>Detect in browser</b> fills in the GPU name the browser shows and its VRAM from a table (and sets Number of GPUs to 1 when it was 0). When that card's VRAM is not in the table and VRAM was 0, the VRAM box is selected: type the real number. Built-in graphics (Intel UHD or Iris Xe, AMD Radeon Graphics) share the system RAM, so they set Number of GPUs and VRAM to 0, as Import… does. The browser often cannot see a second graphics card next to built-in graphics: when WebGPU shows a chip by another maker, it says so and changes nothing; otherwise use Import…. When the browser shows no name (it draws in software, it hides the name, or WebGL is off), it says why and changes nothing. When you import or change the hardware while Detect still waits for the browser, your change wins. The browser cannot tell RAM or CPU cores, so those stay as they are. <b>Import…</b> gives a PowerShell line that reads your real hardware: GPU and VRAM (also without nvidia-smi), RAM, CPU cores, the VRAM in use now (for "Kept for Windows") and the free space on the drive with LM Studio's models folder. When PowerShell says "Copied…", the values are on the clipboard: click <b>Paste from clipboard</b> in the Import window (when the browser asks to see the clipboard, click Allow; for a file on disk it can ask each time), or press Ctrl+V in its box and click <b>Use this hardware</b>. When it cannot copy, it shows the text so you can copy it yourself. A wrong paste is said in red under the box.</dd>
       <dt>What if I upgrade?</dt><dd>One more GPU of the same kind (only with a GPU), or 128 GB more RAM. Switch one on and the whole list, the tiles and the detail panel are calculated for the upgraded PC; models that fit fully in VRAM only with the upgrade get the label "upgrade".</dd>
       <dt>What is it for?</dt><dd>Show only models for general use, coding, reasoning, chat, images + text or embedding.</dd>
       <dt>Context length</dt><dd>How much text the model keeps in mind. Longer context = bigger KV cache = more memory.</dd>
@@ -4922,16 +4922,22 @@ function gpuKind(renderer) {
   const r = String(renderer);
   if (!r.trim()) return { kind: "hidden", name: "" };
   if (/swiftshader|llvmpipe|softpipe|basic render|software/i.test(r)) return { kind: "software", name: "" };
+  // Linux (Mesa) adds the driver in brackets: "ANGLE (AMD, AMD Radeon Graphics (radeonsi, renoir, LLVM 15.0.7, ...),
+  // OpenGL 4.6)" and "Mesa Intel(R) UHD Graphics 620 (KBL GT2)"; that part and the word Mesa go.
   const name = r.replace(/^ANGLE \([^,]*,\s*/, "").replace(/^Vulkan [\d.]+ \(/i, "").replace(/\((R|TM)\)/gi, "").replace(/\s*\(0x[0-9a-f]+\).*$/i, "")
-    .replace(/\s+(Direct3D|OpenGL|Vulkan|Metal).*$/i, "").replace(/,.*$/, "").replace(/\/PCIe.*$/i, "").replace(/[)\s]+$/, "").replace(/\s+/g, " ").trim().slice(0, 120);
+    .replace(/\s+(Direct3D|OpenGL|Vulkan|Metal).*$/i, "").replace(/,.*$/, "").replace(/\s*\([^()]*\)?\s*$/, "").replace(/^Mesa\s+/i, "")
+    .replace(/\/PCIe.*$/i, "").replace(/[)\s]+$/, "").replace(/\s+/g, " ").trim().slice(0, 120);
   if (/nvidia|geforce|quadro|tesla|\brtx\b/i.test(name)) return { kind: "card", maker: "NVIDIA", name };
-  if (/intel/i.test(name)) return /\barc\b.*\b[ab]\d{3}\b|\barc pro\b|\bxe max\b/i.test(name) ? { kind: "card", maker: "Intel", name } : { kind: "builtin", maker: "Intel", name };
-  if (/radeon/i.test(name)) return /^(AMD )?Radeon( Vega( \d+)?| R\d| \d{3}M| 8\d{3}S)? Graphics$|^(AMD )?Radeon \d{3}M$/i.test(name) ? { kind: "builtin", maker: "AMD", name } : { kind: "card", maker: "AMD", name };
+  // Arc A/B cards, also the laptop ones (A370M ... A770M); Arc 130V / 140V / 140T are built in.
+  if (/intel/i.test(name)) return /\barc\b.*\b[ab]\d{3}m?\b|\barc pro\b|\bxe max\b/i.test(name) ? { kind: "card", maker: "Intel", name } : { kind: "builtin", maker: "Intel", name };
+  // "RX Vega 11 Graphics" (Ryzen 2400G) is built in; "RX Vega 56/64" (no "Graphics") are cards.
+  if (/radeon/i.test(name)) return /^(AMD )?Radeon( (RX )?Vega( \d+)?| R\d| \d{3}M| 8\d{3}S)? Graphics$|^(AMD )?Radeon (\d{3}M|8\d{3}S|Vega ([1-9]|1[01]))$/i.test(name) ? { kind: "builtin", maker: "AMD", name } : { kind: "card", maker: "AMD", name };
   return { kind: "other", name };
 }
 // The hardware values as one text: when they changed while Detect waited for WebGPU (an Import… or an edit in that
 // time), that newer choice wins and Detect changes nothing.
-function hwSnap() { return JSON.stringify(state.hw) + "|" + $("gpus").value + "|" + $("vram").value + "|" + $("hwSource").textContent; }
+// The boxes count too: an emptied box (a new number is being typed) is not in state.hw yet.
+function hwSnap() { return JSON.stringify(state.hw) + "|" + ["gpus", "vram", "ram", "cores", "reserve", "ramBw"].map((k) => $(k).value).join("|") + "|" + $("hwSource").textContent; }
 let detectBusy = false;
 async function detectInBrowser() {
   if (detectBusy) return;
@@ -4948,6 +4954,8 @@ async function detectInBrowser() {
       if (Number($("gpus").value) === 0) $("gpus").value = "1";
       toast(known ? `Found ${g.name}: ${known[1]} GB VRAM from the table. ${cpuNote}` : `Found ${g.name}, but its VRAM is not in the table. Enter VRAM yourself, or use Import….`);
       applyHardware("from browser");
+      // Unknown VRAM after built-in graphics (VRAM 0): the VRAM box is selected, ready for the real number.
+      if (!known && Number($("vram").value) === 0) { $("vram").focus(); $("vram").select(); }
       return;
     }
     const keep = " Nothing changed; use Import… for exact values.";
@@ -4988,14 +4996,15 @@ function importFail(msg) { const e = $("importErr"); e.textContent = msg; e.hidd
 // "Paste from clipboard": reads the copied hardware text and uses it at once (one click instead of a click in the
 // box, Ctrl+V and Use this hardware). The browser may ask whether this page may see the clipboard (for a file on
 // disk Chrome can ask each time). One read at a time; its answer is ignored when the window was closed, the box was
-// typed in or Use this hardware was clicked in the meantime (pasteSeq goes up on each of those).
-let pasteSeq = 0, pasteBusy = false;
+// typed in or Use this hardware was clicked in the meantime (pasteSeq goes up on each of those). pasteBusy holds the
+// number of the read that runs; closing the window frees the button, so a read that never ends cannot block it.
+let pasteSeq = 0, pasteBusy = 0;
 async function pasteHardware() {
   if (pasteBusy) return;
-  pasteBusy = true;
   const my = ++pasteSeq, box = $("importText");
+  pasteBusy = my;
   let t, refused = false;
-  try { t = await navigator.clipboard.readText(); } catch (e) { refused = true; } finally { pasteBusy = false; }
+  try { t = await navigator.clipboard.readText(); } catch (e) { refused = true; } finally { if (pasteBusy === my) pasteBusy = 0; }
   if (my !== pasteSeq || !$("dlgImport").open) return;
   if (refused) {
     // The box is selected, so Ctrl+V replaces old text instead of adding to it.
@@ -5376,7 +5385,7 @@ function wire() {
   $("btnDetect").addEventListener("click", detectInBrowser);
   // Each opening starts clean: an empty box (no old text for Ctrl+V to add to) and no old error.
   $("btnImport").addEventListener("click", () => { $("psSnippet").textContent = PS_LINE; $("importText").value = ""; $("importErr").hidden = true; $("dlgImport").showModal(); });
-  $("dlgImport").addEventListener("close", () => { pasteSeq++; });
+  $("dlgImport").addEventListener("close", () => { pasteSeq++; pasteBusy = 0; });
   $("importText").addEventListener("input", () => { pasteSeq++; });
   $("btnCopySnippet").addEventListener("click", () => copyText(PS_LINE, "PowerShell line"));
   $("btnImportApply").addEventListener("click", importHardware);

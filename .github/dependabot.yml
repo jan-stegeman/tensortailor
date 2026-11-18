@@ -1,5 +1,6 @@
-# Dependabot keeps the GitHub Actions up to date: the actions of other authors are pinned to a commit
-# (deep review 2026-11-13, P4), and Dependabot proposes a new commit when a new version comes out.
+# Dependabot keeps the GitHub Actions up to date: every action is pinned to a commit (other authors' since the deep
+# review 2026-11-13, P4; GitHub's own actions/* since 2026-11-15), and Dependabot proposes a new commit when a new
+# version comes out.
 version: 2
 updates:
   - package-ecosystem: github-actions
