@@ -1425,7 +1425,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
       <dt>Files</dt><dd>The real files on Hugging Face, one line per file (point at a long name for the full name; the copy button copies the download link), the file "best for this PC" first, and the verdict per file. <b>Download</b> saves a file into your folder and checks its SHA-256 at the end. <b>Show SHA-256 of each file</b> (under the table) shows the codes; click one to copy it. <b>GGUF source</b> (at the top) picks which Hugging Face copy you look at; when llmfit knows none, <b>Find GGUF copies</b> searches Hugging Face and <b>Use</b> takes one. The file list is kept 12 hours ("kept 12 h"). "Fits here" uses llmfit's planner with extra safety room, in short words: <b>Tight</b> = runs, but tight; <b>Slower</b> = runs, but slower. Tags per file: <b>vision projector</b> (needed for images), <b>draft head</b> (optional speed-up), <b>part 2 of 3</b> (a split model: all parts are needed, Download takes them all), <b>pickle file — can run code</b> (.bin/.pt: use the GGUF instead); a line under the table says whether the repo has pickle files.</dd>
       <dt>Run</dt><dd>"LM Studio load settings for this PC" (shown when <b>LM Studio</b> is chosen under "Run it on this PC" and the model fits): what to set in LM Studio's load dialog for this model (context length, GPU offload, flash attention, K/V cache, max concurrent predictions, speculative decoding, remember settings, and "All other fields": leave the defaults), with the reason; point at a <span class="q">?</span> for what each setting does. <b>Memory per context</b> (folded, under the card) lists llmfit's memory estimate per context length with KV F16 and Q8_0; a number in the Won't fit colour does not fit in your VRAM. <b>Set it by hand in LM Studio</b> (folded) says where these settings are in LM Studio. <b>Load in LM Studio with these settings</b> (when the model is in LM Studio and its server is on) first shows what will be sent, then asks LM Studio to load it: context length, flash attention, KV cache on the GPU and MTP. LM Studio's API cannot set GPU offload and K/V cache quantization, so LM Studio keeps its own setting for those. A model that is loaded already is unloaded first; other loaded models stay, unless you tick the box to unload them. <b>Run it on this PC</b> gives the same as commands: the LM Studio command uses the card's context, and "--gpu max" only when the model fits fully in VRAM; the llama.cpp command puts all layers on the GPU only then (a MoE model that does not fit keeps its experts in system RAM with --cpu-moe).</dd>
-      <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
+      <dt>Run: Run it on this PC</dt><dd>Ready commands for LM Studio, llama.cpp or Ollama, to paste into PowerShell. A name with unusual characters goes in single quotes, so nothing in it can run; a name that cannot be made safe (for example one that starts with "-") gets no command. With LM Studio, a model you already have shows <b>your</b> file first ("Your file in LM Studio · quant Q4_K_S"); llmfit's best file is named below it as an option: higher quality but less room for context, or smaller but lower quality. Below it: settings for AI agents (OpenCode, Codex).</dd>
       <dt>Plan</dt><dd>llmfit's planner: the minimum and recommended hardware, which routes are possible here (<b>GPU only</b>, <b>GPU + system RAM</b>, <b>MoE offload (experts in RAM)</b>, <b>CPU only</b>) with a verdict and speed for each, and <b>What would make it better?</b>: for example "+1.7 GB VRAM → Runs well (llmfit: Good)". Below: whether a target speed is reached (the answer uses the route speeds above), how many chats fit at the same time, and the disk space for your best models.</dd>
     </dl>
 
@@ -2795,6 +2795,19 @@ async function runLmsLoad() {
 
 /* ---------- Run tab ---------- */
 function cmdLine(who, text) { return `<div class="cmd"><span class="who">${who}</span><code title="${esc(text)}">${esc(text)}</code><button class="btn small" data-copy="${esc(text)}" data-what="Command">Copy</button></div>`; }
+// The copied commands are pasted into PowerShell. Repo ids, model names and file paths come from Hugging Face,
+// the catalog, the live store or LM Studio, so they may hold characters PowerShell reads as code ($(), ;, `,
+// quotes). A part with only plain characters stays as it is; any other part becomes a single-quoted literal, where
+// nothing expands, with every single quote doubled (PowerShell also ends such a string on the curly quotes).
+// Some parts cannot go in safely at all, so they get no command (psArg gives null): a leading "-" (also "--" and
+// the stop-parsing token "--%") is read as an option even inside quotes, Windows PowerShell 5.1 drops a double
+// quote on its way to the program, and the HTML attribute changes control characters.
+const PS_PLAIN = /^[\w.\/:-]+$/, PS_PLAIN_PATH = /^[\w.\\-]+$/, PS_BAD = /["\x00-\x1F\x7F]/;
+function psLit(s) { return "'" + String(s).replace(/['‘’‚‛]/g, "$&$&") + "'"; }
+function psArg(s) { s = String(s); return !s || s[0] === "-" || PS_BAD.test(s) ? null : PS_PLAIN.test(s) ? s : psLit(s); }
+const noCmd = (what) => `<p class="hint">The ${what} has characters that cannot go safely into a PowerShell command, so there is no command to copy for it.</p>`;
+// A TOML basic string: JSON's escapes are valid TOML ones; DEL and lone surrogates are not, so they are changed.
+const tomlStr = (s) => JSON.stringify(String(s).replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "�")).replace(/\x7F/g, "\\u007F");
 function tabRun(r) {
   const m = r.m, b = r.best, lms = inLms(m);
   const repo = chosenRepo(m);
@@ -2825,12 +2838,17 @@ function tabRun(r) {
     const allGpu = planned ? !!(lp.bestF16 || lp.bestQ8) : b.mode === "GPU";
     const ctxCmd = planned ? lmsCtxRec(r, lp.bestF16, lp.bestQ8) : ctx;
     ctxShown = ctxCmd;
-    body = (lms ? `<div class="ok-box">Already in LM Studio as <b>${esc(lms.id)}</b>.</div>` : repo ? cmdLine("download", `lms get ${repo}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) +
-      cmdLine("load", `lms load ${lmsId}${allGpu ? " --gpu max" : ""} --context-length ${ctxCmd}`) + cmdLine("server", "lms server start") +
+    const getArg = repo ? psArg(repo) : null, loadArg = psArg(lmsId);
+    body = (lms ? `<div class="ok-box">Already in LM Studio as <b>${esc(lms.id)}</b>.</div>` : repo ? (getArg ? cmdLine("download", `lms get ${getArg}`) : noCmd("repo name")) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) +
+      (loadArg ? cmdLine("load", `lms load ${loadArg}${allGpu ? " --gpu max" : ""} --context-length ${ctxCmd}`) : noCmd("model name")) + cmdLine("server", "lms server start") +
       (kv !== "fp16" ? `<p class="hint">KV cache ${kv.toUpperCase()}: in LM Studio open the model's load settings and set K and V cache quantization to ${kv.toUpperCase()}.</p>` : "") + otherFile;
   } else if (state.engine === "llama") {
     base = "http://127.0.0.1:8080/v1";
-    const path = file ? `${LMS_FOLDER}\\${repo.replace("/", "\\")}\\${file.replace(/\//g, "\\")}` : "<path to the .gguf file>";
+    // $env:USERPROFILE must expand, so a plain path goes in double quotes; any other path is built by Join-Path
+    // from a single-quoted literal, so nothing in the file name can run.
+    const rel = file ? `${repo.replace("/", "\\")}\\${file.replace(/\//g, "\\")}` : "";
+    const pathArg = !file ? `"<path to the .gguf file>"` : PS_PLAIN_PATH.test(rel) ? `"${LMS_FOLDER}\\${rel}"`
+      : PS_BAD.test(rel) ? null : `(Join-Path $env:USERPROFILE ${psLit(".lmstudio\\models\\" + rel)})`;
     // All layers on the GPU only when the model fits there. MoE offload: the experts stay in system RAM
     // (--cpu-moe). CPU+GPU: about the share that fits, from the file's layer count when it is known.
     const g = file ? state.gguf.get(repo + "/" + file) : null, blocks = g && g.blocks;
@@ -2841,13 +2859,13 @@ function tabRun(r) {
       if (blocks) ngl = ` -ngl ${Math.max(1, Math.floor(blocks * Math.min(1, b.inGpu / b.need) * 0.9))}`;
       else nglHint = `<p class="hint">The model does not fit fully in VRAM: add <code>-ngl</code> with the number of layers that fit (start low, raise it while it still loads).</p>`;
     }
-    body = cmdLine("start", `llama-server -m "${path}"${ngl} -c ${ctx} -fa on` + (kv !== "fp16" ? ` --cache-type-k ${kv} --cache-type-v ${kv}` : "") + " --host 127.0.0.1 --port 8080") + nglHint + `<p class="hint">Needs a separate llama.cpp. LM Studio already contains llama.cpp.</p>`;
+    body = (pathArg ? cmdLine("start", `llama-server -m ${pathArg}${ngl} -c ${ctx} -fa on` + (kv !== "fp16" ? ` --cache-type-k ${kv} --cache-type-v ${kv}` : "") + " --host 127.0.0.1 --port 8080") : noCmd("file path")) + nglHint + `<p class="hint">Needs a separate llama.cpp. LM Studio already contains llama.cpp.</p>`;
   } else {
     base = "http://127.0.0.1:11434/v1";
-    body = (kv !== "fp16" ? cmdLine("setting", `$env:OLLAMA_FLASH_ATTENTION = "1"; $env:OLLAMA_KV_CACHE_TYPE = "${kv}"`) : "") + (repo ? cmdLine("run", `ollama run hf.co/${repo}:${b.q}`) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) + `<p class="hint">Needs Ollama.</p>`;
+    body = (kv !== "fp16" ? cmdLine("setting", `$env:OLLAMA_FLASH_ATTENTION = "1"; $env:OLLAMA_KV_CACHE_TYPE = "${kv}"`) : "") + (repo ? (psArg(`hf.co/${repo}:${b.q}`) ? cmdLine("run", `ollama run ${psArg(`hf.co/${repo}:${b.q}`)}`) : noCmd("repo name")) : `<p class="hint">Find a GGUF copy under <b>Files</b> first.</p>`) + `<p class="hint">Needs Ollama.</p>`;
   }
   const opencode = JSON.stringify({ provider: { local: { npm: "@ai-sdk/openai-compatible", options: { baseURL: base }, models: { [lmsId]: {} } } } }, null, 2);
-  const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = "${lmsId}"`;
+  const codex = `[model_providers.local]\nname = "Local"\nbase_url = "${base}"\n\n[profiles.local]\nmodel_provider = "local"\nmodel = ${tomlStr(lmsId)}`;
   return `${state.engine === "lms" && b.plain !== "nofit" ? lmsSettingsCard(r, setRepo, file) : ""}<section class="card"><div class="card-head"><h2>Run it on this PC</h2><span class="seg">${[["lms", "LM Studio"], ["llama", "llama.cpp"], ["ollama", "Ollama"]].map(([k, l]) => `<button data-engine="${k}" aria-pressed="${state.engine === k}">${l}</button>`).join("")}</span></div>
     ${state.upg.gpu || state.upg.ram ? `<div class="warn-box" style="margin:0 0 10px"><b>With upgrade.</b> "What if I upgrade?" is on, so these commands are for the upgraded PC (for example all layers on the GPU). Switch it off for commands that fit your PC as it is now.</div>` : ""}
     <p class="hint" style="margin-top:0">${own ? `Your file in LM Studio · quant <b>${esc(ownQ)}</b>` : `${file ? `File <b>${esc(file)}</b> · ` : ""}quant ${esc(b.q)}`} · context ${fmtCtx(ctxShown)} · KV cache ${kv.toUpperCase()} · listens only on this PC (127.0.0.1).</p>${body}</section>

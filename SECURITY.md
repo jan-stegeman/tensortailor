@@ -11,6 +11,8 @@ because TensorTailor is a free project.
 TensorTailor is one HTML file that runs in your browser. Things that matter most:
 
 - text from Hugging Face, LM Studio or a model file that runs as code in the page (cross-site scripting);
+- a command you copy from the page (tab **Run**) that runs more than the program it names when you paste it
+  into PowerShell, for example because of an odd file or repo name;
 - your Hugging Face token leaving the page for anything other than huggingface.co;
 - a download that writes outside the folder you chose, overwrites or deletes a file without asking, or puts a
   damaged file in LM Studio's folder;

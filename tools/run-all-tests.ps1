@@ -29,7 +29,7 @@ if (-not (Test-Path $python) -or -not (Test-Path $publicCheck)) {
   Set-Content -Path "D:\AI\temp\reg-public-ready.log" -Value $out -Encoding utf8
   if ($code -ne 0 -or $out -notmatch "OK public ready") { $bad++; "public-ready: exit $code FAIL"; $out.Trim() } else { "public-ready: exit 0, OK public ready" }
 }
-$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure", "test-kv-fill", "test-key", "test-plan-reach", "test-mine-speed", "test-packed", "test-narrow", "test-small-fixes", "test-calm", "test-review-fixes", "test-review2", "test-name-words", "test-help-audit", "test-review3", "test-screen-review", "test-store-safety", "test-review3-w", "test-detect"
+$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure", "test-kv-fill", "test-key", "test-plan-reach", "test-mine-speed", "test-packed", "test-narrow", "test-small-fixes", "test-calm", "test-review-fixes", "test-review2", "test-name-words", "test-help-audit", "test-review3", "test-screen-review", "test-store-safety", "test-review3-w", "test-detect", "test-copy-commands"
 $served = "test-local-gguf", "test-downloads", "test-vision-download", "test-updates", "test-groups", "test-review3-dl"
 foreach ($t in $plain + $served) {
   if ($served -contains $t) { $env:CDP_SERVE_DIR = "dist"; $u = "{server}/tensortailor.html" } else { Remove-Item Env:CDP_SERVE_DIR -ErrorAction SilentlyContinue; $u = $page }
@@ -38,6 +38,11 @@ foreach ($t in $plain + $served) {
   Set-Content -Path "D:\AI\temp\reg-$t.log" -Value $out -Encoding utf8
   $steps = ([regex]::Matches($out, "\[step\]")).Count
   $fails = [regex]::Matches($out, "\[step\][^\r\n]*FAIL[^\r\n]*") | ForEach-Object { $_.Value.Substring(0, [Math]::Min(300, $_.Value.Length)) }
+  # The copied Run-tab commands are also read by PowerShell's own parser (never run): audit lead 3.
+  if ($t -eq "test-copy-commands") {
+    $parsed = & powershell -NoProfile -File (Join-Path $PSScriptRoot "check-copied-commands.ps1") -Log "D:\AI\temp\reg-$t.log" | Out-String
+    if ($LASTEXITCODE -ne 0) { $fails = @($fails) + ("[step] parser check FAIL: " + $parsed.Trim()) }
+  }
   if ($code -ne 0 -or $fails) { $bad++ }
   "{0}: exit {1}, {2} steps{3}" -f $t, $code, $steps, $(if ($fails) { " FAIL" } else { "" })
   $fails
@@ -50,3 +55,5 @@ if ($Readme) {
 "tests with a problem: $bad"
 Start-Sleep -Seconds 2
 Remove-Item -Recurse -Force $profiles -ErrorAction SilentlyContinue
+# A caller that reads only the exit code also sees a failed test.
+if ($bad) { exit 1 }
