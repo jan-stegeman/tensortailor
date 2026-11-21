@@ -269,8 +269,8 @@ jobs:
           - Model list: $CATALOG_WHY.${CATALOG_SHA:+ Catalog SHA-256: \`$CATALOG_SHA\`}
           - Commit: ${BUILT:0:7}
           - SHA-256 of tensortailor.html: \`$SHA\` (also in tensortailor.html.sha256)
-          - Licenses: TensorTailor and llmfit are MIT. The Rust crates inside the engine and their licenses are in
-            THIRD-PARTY-NOTICES.txt (also in the page: About → Show the licenses).
+          - Licences: TensorTailor and llmfit are MIT. The Rust crates inside the engine and their licences are in
+            THIRD-PARTY-NOTICES.txt (also in the page: About → Show the licences).
           EOF
           gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 dist/THIRD-PARTY-NOTICES.txt \
             --target "$BUILT" \

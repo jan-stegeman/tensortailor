@@ -1106,7 +1106,7 @@ details.by-hand .hint { margin-top: 6px; }
         <div class="menu-sep" role="separator"></div>
         <div class="menu-lbl" role="presentation">App</div>
         <button class="btn ghost" id="btnTheme" role="menuitem" title="Light or dark (T)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg>Light or dark<span class="mi-r"><kbd>T</kbd></span></button>
-        <button class="btn ghost" id="btnAbout" role="menuitem" title="About and licenses"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>About and licenses</button>
+        <button class="btn ghost" id="btnAbout" role="menuitem" title="About and licences"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>About and licences</button>
       </div>
     </div>
   </div>
@@ -1174,7 +1174,7 @@ details.by-hand .hint { margin-top: 6px; }
         <label><input type="checkbox" id="fNew"> Released in the last 60 days</label>
         <label><input type="checkbox" id="fWatch"> Only my favorites ★</label>
         <label><input type="checkbox" id="fLms"> Already in LM Studio</label>
-        <label><input type="checkbox" id="fOpen"> Open license (Apache, MIT)</label>
+        <label><input type="checkbox" id="fOpen"> Open licence (Apache, MIT)</label>
         <label title="Hides models that are gated on Hugging Face (you would have to accept terms and set a token to download them)."><input type="checkbox" id="fFree"> No token needed</label>
         <label title="Hides models whose name says abliterated, Heretic, uncensored, derestricted or NSFW (Help: Words in model names)."><input type="checkbox" id="fUnc"> Hide uncensored versions</label>
         <label><input type="checkbox" id="fGpu"> Fits fully in VRAM</label>
@@ -1335,12 +1335,12 @@ details.by-hand .hint { margin-top: 6px; }
       <dt><span class="chip live">from LM Studio</span></dt><dd>In your LM Studio, but not in llmfit's list, and llmfit could not read it from Hugging Face. The row is made from what LM Studio and the model file's header say (parameters, quant, layers, context); llmfit's formulas give the verdict. Rougher than a model from llmfit's list. Its name is the Hugging Face repo of its folder when there is one; else it starts with <code>lmstudio/</code>: then no Hugging Face page is known, its ↗ link searches Hugging Face for the name, and it is counted apart from the live models (Tools → Catalog).</dd>
       <dt>Kept, not readable</dt><dd>In Tools → Catalog: fetched models (live or from LM Studio) that this version of the engine could not read, for example after an llmfit update changed the row format. They are not in the list, but they are kept (not deleted) and tried again each time the page opens. <b>Remove fetched models</b> removes them too.</dd>
       <dt><span class="chip lock">size uncertain</span></dt><dd>The name shows already-compressed weights that are not GGUF (EXL2/EXL3, bnb, AWQ, GPTQ, MLX, vllm, "9bit" …), or says far more parameters than llmfit counts (for example 27B in the name, 10.3B counted). llmfit then counted the compressed weights, so its memory and speed are too optimistic. These rows come after all other models that fit (before Won't fit) and are never a top pick; the Overview tab says why. Look for a GGUF copy of the original model instead.</dd>
-      <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files. A repo with an open license can be gated too.</dd>
-      <dt><span class="chip">license</span> (grey)</dt><dd>Not a plain open license (MIT, Apache): Llama, Gemma, non-commercial or research licenses have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
-      <dt><span class="chip lock">license</span> (amber)</dt><dd>The same kind of license, but not checked yet: the guess comes from the license name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>license</b>.</dd>
+      <dt><span class="chip lock">gated</span></dt><dd>Gated on Hugging Face: accept the terms on the model page first, then set your Hugging Face token (the key button at the top right, or Tools → Hugging Face token) to download the files. A repo with an open licence can be gated too.</dd>
+      <dt><span class="chip">licence</span> (grey)</dt><dd>Not a plain open licence (MIT, Apache): Llama, Gemma, non-commercial or research licences have their own terms. Read them on the model page. Not gated: the files download without a token.</dd>
+      <dt><span class="chip lock">licence</span> (amber)</dt><dd>The same kind of licence, but not checked yet: the guess comes from the licence name. Open the model and TensorTailor asks Hugging Face; the label then becomes <b>gated</b> or a grey <b>licence</b>.</dd>
       <dt>Where "gated" comes from</dt><dd>The page carries Hugging Face's list of gated models from the day it was built (the weekly release makes a fresh one). When you open a model, TensorTailor also asks Hugging Face live and remembers that answer for 7 days. Point at a label to see where its answer comes from. The filter <b>No token needed</b> hides the gated models.</dd>
       <dt><span class="chip moe">MoE</span></dt><dd>Mixture of experts (see MoE offload).</dd>
-      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: license, then live (or from LM Studio), measured and NEW, then the small icons (vision, tool use, reasoning). Point at the line to see which; the detail panel shows them all. The number of parameters always stays. The maker's name may end in "…"; in a very full line it is left out, and on a very narrow list the warnings (in LM Studio, gated, vLLM, size uncertain) go last. A memory label that does not fit leaves out its words: "23.0 GB + 63.8 GB".</dd>
+      <dt>A full label line</dt><dd>When a row in the list has more labels than room, it leaves out whole labels, the least important first: licence, then live (or from LM Studio), measured and NEW, then the small icons (vision, tool use, reasoning). Point at the line to see which; the detail panel shows them all. The number of parameters always stays. The maker's name may end in "…"; in a very full line it is left out, and on a very narrow list the warnings (in LM Studio, gated, vLLM, size uncertain) go last. A memory label that does not fit leaves out its words: "23.0 GB + 63.8 GB".</dd>
       <dt><span class="chip upg">with upgrade</span></dt><dd>At the top of the detail panel when "What if I upgrade?" is on: the verdict, the numbers and the Run commands are for the upgraded PC. The Run tab says so too; switch the upgrade off for commands that fit your PC as it is now.</dd>
       <dt><span class="chip upg">upgrade</span></dt><dd>With the upgrade you switched on under "What if I upgrade?", this model fits fully in VRAM (runs well or runs, but tight); on your PC as it is now, it runs slower or does not fit.</dd>
       <dt><span class="chip meas">measured</span></dt><dd>The speed comes from real measurements on similar hardware (llmfit's own community results), not from an estimate: the list and the detail panel show the measured number (point at the speed for the number of runs and llmfit's formula estimate). Only PCs with the same CPU and GPU as a community result get it. Your own measurements on this PC are shown separately: see "My models: Measure".</dd>
@@ -1359,7 +1359,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Dolphin</dt><dd>A known series of models trained again on data with the refusals taken out.</dd>
       <dt>RP · roleplay · NSFW</dt><dd>Trained further on stories, role-play or adult texts. Fewer refusals is a side effect; the goal is the writing style.</dd>
       <dt>Good</dt><dd>Fewer refusals of normal requests, and no lectures.</dd>
-      <dt>Not so good</dt><dd>Often a little less accurate than the original (tests show it most in math and facts). It does not know more: removing refusals adds no knowledge, so it makes up what it never learned. The quality varies a lot, because anyone can upload one. You are responsible for what you do with it, and the license of the original model still holds.</dd>
+      <dt>Not so good</dt><dd>Often a little less accurate than the original (tests show it most in math and facts). It does not know more: removing refusals adds no knowledge, so it makes up what it never learned. The quality varies a lot, because anyone can upload one. You are responsible for what you do with it, and the licence of the original model still holds.</dd>
       <dt>How to choose</dt><dd>Start from a popular original model and a known publisher, read the model card (refusals, KL divergence), and test it next to the original with your own questions. If it is not better for your task, you do not need it.</dd>
       <dt>The filter</dt><dd><b>Hide uncensored versions</b> (Filters, left) hides models whose name says abliterated (or obliterated), Heretic, uncensored (or decensored, unfiltered), derestricted or NSFW. It does not hide Dolphin or role-play models (they get a <b>Name says</b> line only), and it cannot see models that refuse less without such a word in the name.</dd>
     </dl>
@@ -1410,7 +1410,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Released in the last 60 days</dt><dd>Only new models (label NEW).</dd>
       <dt>Only my favorites ★</dt><dd>Only the models you starred.</dd>
       <dt>Already in LM Studio</dt><dd>Only the models you have in LM Studio (label "in LM Studio").</dd>
-      <dt>Open license (Apache, MIT)</dt><dd>Only models with a plain open license: Apache 2.0, MIT, BSD, CC-BY-4.0, OpenRAIL or BigScience.</dd>
+      <dt>Open licence (Apache, MIT)</dt><dd>Only models with a plain open licence: Apache 2.0, MIT, BSD, CC-BY-4.0, OpenRAIL or BigScience.</dd>
       <dt>No token needed</dt><dd>Hides the models that are gated on Hugging Face (label "gated").</dd>
       <dt>Hide uncensored versions</dt><dd>Hides models whose name says abliterated (or obliterated), Heretic, uncensored (or decensored, unfiltered), derestricted or NSFW. Off by default. See "Words in model names".</dd>
       <dt>Fits fully in VRAM</dt><dd>Only models that run fully on the graphics card.</dd>
@@ -1419,7 +1419,7 @@ details.by-hand .hint { margin-top: 6px; }
 
     <h3>The detail panel (right)</h3>
     <dl>
-      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and the two key facts (parameters and maximum context). The license (with "(gated)" or "(not gated)"), release date and downloads are at the top of the Overview tab, and a line <b>Name says</b> when the name has a word like abliterated, Heretic, base or distill (see "Words in model names"). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs. A very long name takes at most 3 lines and its Hugging Face link 1 line; point at them for the full text.</dd>
+      <dt>Top of the panel</dt><dd>The answer first: the verdict, the best file for this PC, the file you have in LM Studio (if any), and one action: <b>Load in LM Studio…</b> or <b>Choose a file to download</b>. The star button (☆) at the right stars the model as a favorite. Below the name: the labels, and the two key facts (parameters and maximum context). The licence (with "(gated)" or "(not gated)"), release date and downloads are at the top of the Overview tab, and a line <b>Name says</b> when the name has a word like abliterated, Heretic, base or distill (see "Words in model names"). This part stays in view while you scroll; it shrinks to the name, the answer and the tabs. A very long name takes at most 3 lines and its Hugging Face link 1 line; point at them for the full text.</dd>
       <dt>Panel width</dt><dd>Drag the thin line at the left edge of the detail panel to make it wider or narrower (or click it and use the arrow keys). Double-click the line for the normal width (a little narrower on screens below 1500 px). The width is remembered in this browser. The list always keeps room for all its columns, so on a small screen (1366 px) the panel can grow only a little.</dd>
       <dt>Overview</dt><dd>One quiet line (runs on, estimated or measured), then speed, memory, best file and context, and "Which file fits?" for the quantizations Q8_0 to Q2_K (the verdict itself is at the top of the panel). When llmfit's planner (more safety room) gives the best file another verdict or another way to run than the list, an amber note says so and names the best file that runs well. <b>Preview speed</b> shows how fast text appears at that speed. "Why this result" starts with llmfit's own level (Perfect, Good, Marginal or Too tight) and lists llmfit's reasons.</dd>
       <dt>KV cache from a real file</dt><dd>llmfit counts the memory for the context (the KV cache) exactly only when it knows a model's layers and head size. For about 4,900 models in its list it does not, and uses a rough rule. When TensorTailor reads a real GGUF file of such a model (your file in My models, or a file in the Files or Run tab), it fills in the missing values from the file's header. It never changes a value llmfit has, and skips a file that does not match. "Why this result" then says "KV cache counted from the GGUF header of …", and My models lists your models it did this for. Remembered in this browser.</dd>
@@ -1446,7 +1446,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>Downloads</dt><dd>Files you download (tab Files → <b>Download</b>). Choose LM Studio's models folder once; each file goes to the publisher's and repo's folder, so LM Studio sees it at once. Files come in parts, so <b>Resume</b> goes on after a crash. The SHA-256 of the parts is checked before they are joined, so a damaged download never appears in LM Studio's folder; at the end the joined file is read back from disk and checked again (<b>Check again</b> reads it once more), and only then are the parts removed. If the joined file differs, TensorTailor removes it and joins once more from the checked parts; if it differs again (a memory or disk problem on this PC), it is removed and the parts stay. <b>SHA-256 differs</b> (red bar) for a file that was already in the folder: <b>Download again</b> asks you, deletes it and downloads it anew. <b>Remove</b> during a download stops it and removes its parts. <b>Download again</b> first asks Hugging Face for the file's newest size and SHA-256 (a new version there is not called "damaged"). A download remembers the folder it went into: after <b>Change folder</b>, Resume, Check again and Download again ask you to choose that folder again. A different file with the same name is never overwritten. A vision model's projector (mmproj) is taken along, and all parts of a split model ("part 1 of 3") are downloaded together. <b>Remove from list</b> never deletes a finished model file. When a file cannot be deleted because it is in use (LM Studio has the model loaded), the message says so: eject the model in LM Studio, then try again. Two TensorTailor tabs never work on the same file: the second tab leaves it waiting and says so (press <b>Resume</b> there when the first tab is done); <b>Remove</b>, <b>Check again</b> and <b>Download again</b> also leave a file alone that another tab works on. Before it starts, a tab reads the download list again, so a file another tab finished or removed is shown as such. <b>Remove</b> waits while Check again or Download again is busy with the same file.</dd>
       <dt>Favorites ★</dt><dd>Click the star next to a model (or press <kbd>W</kbd>) to make it a favorite. <b>Only my favorites</b> (filters) shows just those. My models shows the same stars for your LM Studio models that are matched to llmfit's list; click a star there to add or remove it too.</dd>
       <dt>Token key (top right)</dt><dd>The key button left of the question mark: grey with no Hugging Face token, green with a small dot when a token is set. Click it to set, change or remove the token (only needed for gated models; it stays in this browser tab).</dd>
-      <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licenses</b>.</dd>
+      <dt>Tools (top right)</dt><dd>The button with three lines (in the open menu, the arrow keys, Home and End move between the items; Esc closes it). <b>Catalog</b>: where the list comes from, and "Fetch new models" from Hugging Face. <b>Hugging Face token: set / not set</b>: the same window as the key button (a read-only token for gated models; it stays only in this browser tab). <b>Light or dark</b> (key <kbd>T</kbd>). <b>About and licences</b>.</dd>
       <dt>Keys</dt><dd><kbd>/</kbd> search · <kbd>↑</kbd> <kbd>↓</kbd> (or <kbd>j</kbd> <kbd>k</kbd>) move · <kbd>C</kbd> select for compare · <kbd>W</kbd> favorite (star) · <kbd>T</kbd> light or dark · <kbd>?</kbd> help. With <kbd>Tab</kbd> the list is one stop: then the arrow keys move in it, <kbd>Enter</kbd> jumps to the detail panel and <kbd>Space</kbd> selects for compare (like <kbd>C</kbd>). The next <kbd>Tab</kbd> goes on to the <b>Selected:</b> strip (when you picked models) and then the detail panel. A screen reader hears the chosen row, and what C and W did.</dd>
     </dl>
   </div>
@@ -1565,7 +1565,7 @@ const OPEN_LICENSES = /^(apache-2\.0|mit|bsd|cc-by-4\.0|openrail|bigscience)/i;
 const GATED_LICENSES = /llama|gemma|mnpl|non-production|cc-by-nc|research/i;
 // Hover texts for the small labels in the list (the Help window has the same, longer).
 const CHIP_TIP = {
-  license: 'License "{lic}": not a plain open license (MIT, Apache). It has its own terms: Llama and Gemma licenses have rules for use; non-commercial or research licenses forbid business use. Read the terms on the model page before you use it.\nSome repos with such a license are "gated": Hugging Face asks you to accept the terms first, and TensorTailor then needs your HF token for the files. Many copies (like this kind of fine-tune) are not gated and download without a token.',
+  license: 'Licence "{lic}": not a plain open licence (MIT, Apache). It has its own terms: Llama and Gemma licences have rules for use; non-commercial or research licences forbid business use. Read the terms on the model page before you use it.\nSome repos with such a licence are "gated": Hugging Face asks you to accept the terms first, and TensorTailor then needs your HF token for the files. Many copies (like this kind of fine-tune) are not gated and download without a token.',
   new: "Released in the last 60 days.",
   moe: "Mixture of experts: many experts, only a few work per word. Fast for its size; the unused experts can wait in system RAM (MoE offload).",
   upg: 'Only runs well with the upgrade you switched on under "What if I upgrade?".',
@@ -2276,8 +2276,8 @@ function notesFor(r, d) {
   if (m.runtime && m.runtime !== "LlamaCpp") n.push(`This model needs ${rtName(m.runtime)}, not llama.cpp. LM Studio on Windows cannot run it.`);
   const g = gatedOf(m.id);
   if (g) n.push(`Gated on Hugging Face: accept the terms on the model page, then set your token (the key button at the top right, or Tools → Hugging Face token) to download.`);
-  else if (g === false && m.gated) n.push(`License "${m.license}" has its own terms: read them on the model page. Not gated: the files download without a token.`);
-  else if (m.gated) n.push(`License "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
+  else if (g === false && m.gated) n.push(`Licence "${m.license}" has its own terms: read them on the model page. Not gated: the files download without a token.`);
+  else if (m.gated) n.push(`Licence "${m.license}" may require you to accept terms on Hugging Face (set your token for gated repos).`);
   const kv = kvFillNote(m);
   if (kv) n.push(kv);
   for (const t of (d && d.detail && d.detail.fit.notes) || []) n.push("llmfit: " + t);
@@ -2364,7 +2364,7 @@ function saferNote(r, d) {
 // The facts that left the detail header: license (gated or not), release date, downloads.
 function aboutFacts(m) {
   const g = gatedOf(m.id);
-  return [m.license && m.license !== "unknown" ? "License " + m.license + (g ? " (gated)" : g === false && m.gated ? " (not gated)" : "") : g ? "gated" : "",
+  return [m.license && m.license !== "unknown" ? "Licence " + m.license + (g ? " (gated)" : g === false && m.gated ? " (not gated)" : "") : g ? "gated" : "",
     m.added ? `released ${m.added}` : "", m.downloads ? `${m.downloads.toLocaleString("en")} downloads` : ""].filter(Boolean);
 }
 function tabOverview(r, d) {
@@ -2455,13 +2455,13 @@ function licenseChip(m) {
   const g = gatedOf(m.id), lic = m.license ? CHIP_TIP.license.replace("{lic}", m.license) : "", src = gatedSource(m.id);
   if (g) return `<span class="chip lock" title="${esc(GATED_TIP.yes.replace("{src}", src) + (lic ? "\n\n" + lic : ""))}">gated</span>`;
   // data-p="1": in a full list row, "license" is the first label left out (see fitSubs).
-  if (g === false) return m.gated ? `<span class="chip" data-p="1" title="${esc(GATED_TIP.no.replace("{src}", src) + "\n\n" + lic)}">license</span>` : "";
-  return m.gated ? `<span class="chip lock" data-p="1" title="${esc(lic + "\n\n" + GATED_TIP.unknown)}">license</span>` : "";
+  if (g === false) return m.gated ? `<span class="chip" data-p="1" title="${esc(GATED_TIP.no.replace("{src}", src) + "\n\n" + lic)}">licence</span>` : "";
+  return m.gated ? `<span class="chip lock" data-p="1" title="${esc(lic + "\n\n" + GATED_TIP.unknown)}">licence</span>` : "";
 }
 function hfHeaders() { return state.token ? { Authorization: "Bearer " + state.token } : {}; }
 async function hfJson(url) {
   const res = await fetch(url, { headers: hfHeaders() });
-  if (res.status === 401 || res.status === 403) throw new Error("This repository is gated or private. Accept its license on Hugging Face and set your token.");
+  if (res.status === 401 || res.status === 403) throw new Error("This repository is gated or private. Accept its licence on Hugging Face and set your token.");
   if (res.status === 429) throw new Error("Hugging Face asks to slow down (too many requests). Wait a minute, or set your token.");
   if (!res.ok) throw new Error("Hugging Face answered " + res.status + ".");
   return res.json();
@@ -3286,7 +3286,7 @@ async function ggufHeader(src, maxBytes = 64 * 1024 * 1024, stop = null) {
         if (chunk.length < CH) ended = true;
       } else {
         const res = await fetch(src, { headers: { ...hfHeaders(), Range: `bytes=${buf.length}-${buf.length + CH - 1}` } });
-        if (res.status === 401 || res.status === 403) throw new Error("gated or private: accept the license on Hugging Face and set your token");
+        if (res.status === 401 || res.status === 403) throw new Error("gated or private: accept the licence on Hugging Face and set your token");
         if (res.status !== 206 && res.status !== 200) throw new Error(`Hugging Face answered ${res.status}`);
         chunk = new Uint8Array(await res.arrayBuffer());
         if (res.status === 200 || chunk.length < CH) ended = true;
@@ -4512,7 +4512,7 @@ async function dlRunNow(job) {
     await inPool(todo, d.parallel, async (i) => {
       const start = i * job.partBytes, len = partLen(i);
       const res = await fetch(dlUrl(job.repo, job.path), { headers: { ...hfHeaders(), Range: `bytes=${start}-${start + len - 1}` }, signal: job.ctl.signal });
-      if (res.status === 401 || res.status === 403) throw new Error("This repository is gated or private. Accept its license on Hugging Face and set your token.");
+      if (res.status === 401 || res.status === 403) throw new Error("This repository is gated or private. Accept its licence on Hugging Face and set your token.");
       if (res.status !== 206) throw new Error(res.status === 200 ? "Hugging Face sent the whole file instead of a part." : `Hugging Face answered ${res.status}.`);
       const total = /\/(\d+)\s*$/.exec(res.headers.get("content-range") || "");
       if (total && Number(total[1]) !== job.bytes) throw new Error("The file on Hugging Face has another size now. Remove this download and start it again.");
@@ -4863,7 +4863,7 @@ function openCompare() {
   if (rs.length < 2) { toast("Pick at least 2 models."); return; }
   const rows = [["Verdict", (r) => verdict(r.best.plain), null], ["Runs on", (r) => r.best.mode, null], ["Best file", (r) => `<span class="quant">${esc(r.best.q)}</span>`, null],
     ["Memory", (r) => gb(r.best.need), (r) => -r.best.need], ["Speed", (r) => speedRange(r.best) + (r.best.tps > 0 ? " tok/s" : ""), (r) => r.best.tps], ["Usable context", (r) => fmtCtxUnit(r.ctxFit), (r) => r.ctxFit],
-    ["Score", (r) => r.best.score.toFixed(0), (r) => r.best.score], ["Quality", (r) => r.best.parts.quality.toFixed(0), (r) => r.best.parts.quality], ["Parameters", (r) => fmtParams(r.m.params), null], ["License", (r) => esc(r.m.license), null]];
+    ["Score", (r) => r.best.score.toFixed(0), (r) => r.best.score], ["Quality", (r) => r.best.parts.quality.toFixed(0), (r) => r.best.parts.quality], ["Parameters", (r) => fmtParams(r.m.params), null], ["Licence", (r) => esc(r.m.license), null]];
   $("cmpBody").innerHTML = `<table class="cmp-table"><tr><th></th>${rs.map((r) => `<td><b>${esc(r.m.name)}</b></td>`).join("")}</tr>${rows.map(([label, cell, rank]) => { const bv = rank ? Math.max(...rs.map(rank)) : null; return `<tr><th>${label}</th>${rs.map((r) => `<td class="${rank && rank(r) === bv ? "best" : ""}">${cell(r)}</td>`).join("")}</tr>`; }).join("")}</table><p class="hint" style="margin:10px 0 0">Green = the best value in that row. Score is llmfit's match for this PC (as in the list); Battle uses its own points, so its winner can differ.</p>`;
   $("dlgCompare").showModal();
 }
@@ -5128,11 +5128,11 @@ function renderAbout() {
     <dt>Version</dt><dd><b>${esc(pageVersion())}</b>${b.version ? " (the release tag on GitHub; a newer release has a later date)" : " (not a release: built on a PC or by a test run)"}</dd>
     <dt>This build</dt><dd>${esc(b.built || "")} · commit ${esc(b.commit || "")} · engine ${esc(b.wasm_mb || "")} MB (${esc(b.wasm_gz_mb || "")} MB packed)</dd>
     <dt>Engine SHA-256</dt><dd class="hash">${esc(b.wasm_sha256 || "")}</dd>
-    <dt>Rust libraries</dt><dd>The engine also contains Rust crates (MIT, Apache-2.0 and similar licenses). ${b.notices ? `<button class="btn small" id="btnNotices">Show the licenses</button>` : "This local build has no list inside; see THIRD-PARTY-NOTICES.txt with each release."}</dd>
-    <dt>Measured speeds</dt><dd>llmfit's own community results (MIT). llmfit's cache of results from localmaxxing.com is left out: their terms give no license for the data. Your own measurements (My models → Measure) stay in this browser.</dd>
-    <dt>Models</dt><dd>Never included. Each model keeps its own license; some are gated.</dd>
+    <dt>Rust libraries</dt><dd>The engine also contains Rust crates (MIT, Apache-2.0 and similar licences). ${b.notices ? `<button class="btn small" id="btnNotices">Show the licences</button>` : "This local build has no list inside; see THIRD-PARTY-NOTICES.txt with each release."}</dd>
+    <dt>Measured speeds</dt><dd>llmfit's own community results (MIT). llmfit's cache of results from localmaxxing.com is left out: their terms give no licence for the data. Your own measurements (My models → Measure) stay in this browser.</dd>
+    <dt>Models</dt><dd>Never included. Each model keeps its own licence; some are gated.</dd>
     <dt>Privacy</dt><dd>No tracking and no account. The page talks only to Hugging Face and to LM Studio on 127.0.0.1. Hugging Face (huggingface.co, and its download servers for files): when you open a model (gated check, file list, the GGUF header, config.json), check a link, fetch new models or download a file, and by itself in My models (the base models for Similar, the daily update check). Your token, when you set one, goes only to Hugging Face.</dd>
-    <dt>License</dt><dd>TensorTailor: MIT License. No warranty. <button class="btn small" id="btnLicTexts">Show the license texts</button></dd></dl>
+    <dt>Licence</dt><dd>TensorTailor: MIT License. No warranty. <button class="btn small" id="btnLicTexts">Show the licence texts</button></dd></dl>
     <pre class="block" id="aboutLicText" hidden></pre>`;
 }
 const LIC_MIT = (holder) => `MIT License\n\nCopyright (c) 2026 ${holder}\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the "Software"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n`;
@@ -5206,7 +5206,7 @@ function loadPrefs() {
   $("ctx").value = String(state.ctxIdx); $("ctx").style.setProperty("--p", (state.ctxIdx / 5 * 100) + "%"); $("ctxText").textContent = fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens"; $("ctx").setAttribute("aria-valuetext", fmtCtx(CTX_STEPS[state.ctxIdx]) + " tokens");
   $("kvq").value = state.kvq; $("sort").value = state.sort;
 }
-const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open license"], ["fFree", "free", "No token needed"], ["fUnc", "unc", "Uncensored hidden"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
+const FILTER_BOXES = [["fLlama", "llama", "Runs in LM Studio"], ["fGguf", "gguf", "Known GGUF download"], ["fNew", "isNew", "Last 60 days"], ["fWatch", "watch", "Only favorites"], ["fLms", "lms", "Already in LM Studio"], ["fOpen", "open", "Open licence"], ["fFree", "free", "No token needed"], ["fUnc", "unc", "Uncensored hidden"], ["fGpu", "gpu", "Fits fully in VRAM"], ["fPop", "pop", "Popular (10,000+)"]];
 // Show the filter state in the controls on the left.
 function syncFilterUi() {
   $("fLang").value = state.f.lang; $("fSize").value = state.f.size;

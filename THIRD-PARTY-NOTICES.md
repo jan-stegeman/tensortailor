@@ -37,11 +37,11 @@ SOFTWARE.
 ## Rust crates inside the engine
 
 The engine contains Rust crates (for example serde, serde_json, wasm-bindgen) under MIT, Apache-2.0 and
-similar licenses. The exact list with every license text is made at build time by
+similar licences. The exact list with every licence text is made at build time by
 [cargo-about](https://github.com/EmbarkStudios/cargo-about) for the WebAssembly target (`engine/about.toml`,
 `engine/about.hbs`). It is:
 
-- inside every page: **About → Show the licenses**;
+- inside every page: **About → Show the licences**;
 - attached to every GitHub Release as `THIRD-PARTY-NOTICES.txt`;
 - kept with every GitHub Actions build (artifact `tensortailor-html`).
 
@@ -49,9 +49,9 @@ similar licenses. The exact list with every license text is made at build time b
 
 - **Model catalog:** llmfit's `hf_models.json` (or our weekly copy made with llmfit's own scraper): names,
   sizes and other facts read from the public Hugging Face API. The models themselves are never included;
-  each model keeps its own license.
+  each model keeps its own licence.
 - **Measured speeds:** only llmfit's own community results (`data/community`, MIT). llmfit also embeds a
   cache of results from [localmaxxing.com](https://localmaxxing.com); TensorTailor leaves that cache out
-  (`engine/tools/strip-benchmark-cache.sh`), because localmaxxing's terms give no license for the data.
+  (`engine/tools/strip-benchmark-cache.sh`), because localmaxxing's terms give no licence for the data.
 - **Your own measurements:** **Measure** in My models stores LM Studio's speed for your models in your
   browser only (localStorage); nothing is sent anywhere.

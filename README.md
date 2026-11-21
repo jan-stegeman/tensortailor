@@ -101,7 +101,7 @@ change in the page).
 - A Hugging Face token (only needed for gated models) stays in the browser tab. It is never saved in the file.
   Set it with the key button at the top right; the key turns green when a token is set.
   The page carries Hugging Face's list of gated models from its build day (fresh every weekly release), and a model
-  you open is checked live: the label says **gated** (token needed) or **license** in grey (own terms, no token
+  you open is checked live: the label says **gated** (token needed) or **licence** in grey (own terms, no token
   needed). The filter **No token needed** hides the gated models.
 - Your settings, fetched models and download list stay in your browser on your PC.
 
@@ -114,7 +114,7 @@ change in the page).
   by default that is `C:\Users\<you>\.lmstudio\models`.
 - LM Studio's API cannot set GPU offload and K/V cache quantization. When TensorTailor loads a model, LM Studio
   keeps its own setting for those two. The Run tab tells you what to set by hand.
-- Models are never part of TensorTailor. Each model has its own license; some need you to accept terms on
+- Models are never part of TensorTailor. Each model has its own licence; some need you to accept terms on
   Hugging Face first.
 - **No warranty.** The verdicts, speeds and settings are estimates, and you download and run models at your own
   risk. What a model writes, and how you use it, is your own responsibility (also for "uncensored" versions).
@@ -132,7 +132,7 @@ change in the page).
   the clock in the recency bonus, and llmfit's update code split so the page can fetch from Hugging Face itself
   and then use llmfit's own conversion (`engine/tools/patch-llmfit.sh`). One data change: llmfit's cache of
   benchmark results from localmaxxing.com is left out (`engine/tools/strip-benchmark-cache.sh`), because their
-  terms give no license for the data; llmfit's own community results (MIT) stay in. And one small addition:
+  terms give no licence for the data; llmfit's own community results (MIT) stay in. And one small addition:
   for the about 4,900 models in llmfit's list without layer data, the engine fills in the KV cache values from a
   real GGUF header that the page has read (`setExtraModelsAndFills`: never a value llmfit has, never when the
   file disagrees), so the memory for the context is exact instead of a rough rule.
@@ -181,7 +181,7 @@ use made-up demo data.
 | `engine/tools/patch-llmfit.sh` | The two small browser changes to llmfit-core (clock, and the update code split) |
 | `engine/tools/strip-benchmark-cache.sh` | Leaves llmfit's localmaxxing.com benchmark cache out (browser copy and golden copy) |
 | `engine/tools/hf-fixtures.json` | 13 fixed Hugging Face models: the live conversion must be the same natively and in WebAssembly |
-| `engine/about.toml`, `engine/about.hbs` | cargo-about settings: the licenses of the Rust crates in the engine |
+| `engine/about.toml`, `engine/about.hbs` | cargo-about settings: the licences of the Rust crates in the engine |
 | `web/app.html` | The real page (filled with the engine by `web/build.mjs`) |
 | `web/build.mjs` | Makes the single file `dist/tensortailor.html` |
 | `web/help-check.mjs` | Stops the build when the Help misses a filter, view, sort choice or label |
@@ -216,9 +216,9 @@ use made-up demo data.
 | `ACCESSIBILITY.md` | What works with keyboard, screen readers and contrast, how it was tested, the known limits |
 | `SECURITY.md` | How to report a security problem privately |
 
-## Credits and license
+## Credits and licence
 
 TensorTailor is under the MIT License (`LICENSE`). It is based on **llmfit**, Copyright (c) 2026 Alex Jones,
 released under the MIT License. `THIRD-PARTY-NOTICES.md` lists everything else inside the page; the exact list
-of Rust crates with their license texts is made at every build (About → **Show the licenses** in the page, and
+of Rust crates with their licence texts is made at every build (About → **Show the licences** in the page, and
 `THIRD-PARTY-NOTICES.txt` with every release).
