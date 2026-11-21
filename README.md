@@ -39,7 +39,7 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 - **Measure the real speed.** Press **Measure** next to a model that is loaded in LM Studio: LM Studio writes about
   256 tokens and TensorTailor shows the measured speed next to the estimate. Your measurements also correct the
   estimates of other models for your PC ("your PC: ~A–B" in the detail panel). Measure never loads a model.
-- **Keep favorites.** Click the star ☆ next to a model (or press `W`). **Only my favorites** shows just those,
+- **Keep favourites.** Click the star ☆ next to a model (or press `W`). **Only my favourites** shows just those,
   and My models shows the same stars.
 - **Know what a name means.** Many models are changed copies of a known model: *abliterated*, *Heretic*,
   *uncensored*, *base*, *distill*, *merge* … The Overview tab says what such a word in the name means (**Name

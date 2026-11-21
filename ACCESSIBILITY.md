@@ -8,9 +8,9 @@ mode, and with a screen reader. This page says what works, what was tested, and 
 - **Keyboard.** Every button, filter and tab works with the keyboard, and every control shows a clear focus ring.
   The model list is one Tab stop: the arrow keys (or `J` and `K`) move in it, `Enter` goes to the detail panel,
   and `Space` or `C` selects a model for Compare. Other keys: `/` search, `?` Help, `1` to `4` the views,
-  `W` favorite, `T` light or dark, `Esc` back. The Help window lists them all.
+  `W` favourite, `T` light or dark, `Esc` back. The Help window lists them all.
 - **Screen readers.** The list tells the screen reader which row is active and says its verdict and best file.
-  Changes such as "Selected for Compare" or "Favorite" are announced too.
+  Changes such as "Selected for Compare" or "Favourite" are announced too.
 - **Contrast.** Text and labels meet WCAG 2.2 level AA (at least 4.5 to 1) in light and in dark mode.
 - **Not by colour alone.** Verdicts are words (*Runs well*, *Won't fit* …), and the memory bar has its numbers in
   text under it.
