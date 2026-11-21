@@ -202,6 +202,9 @@ jobs:
         run: |
           set -euo pipefail
           CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser || true)
+          # The test runner reads the browser's port from DevToolsActivePort in its profile folder; a snap Chromium
+          # cannot write into /tmp as Node sees it, so the profiles go under the runner's own temp folder.
+          export CDP_PROFILE_DIR="$RUNNER_TEMP/tt-profiles"
           CHANGED=false
           if [ -z "$CHROME" ]; then
             echo "::warning::Chrome not found on runner; keeping existing README screenshots"

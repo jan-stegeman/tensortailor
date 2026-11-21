@@ -1,4 +1,4 @@
-// Opens a page in headless Edge through the DevTools protocol, prints console
+// Opens a page in headless Chrome or Edge through the DevTools protocol, prints console
 // messages and errors, waits for a JS condition, runs optional steps, and saves
 // a screenshot. A step may have "js" (run it), "log", "wait" (ms) and "shot"
 // (save a screenshot to that path after the wait). Usage:
@@ -7,7 +7,7 @@
 // http://127.0.0.1:<free port>/ and "{server}" in the url is replaced by it
 // (a file:// page has no origin storage, so OPFS tests need http).
 import { spawn } from "node:child_process";
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, normalize, extname } from "node:path";
 import { tmpdir } from "node:os";
@@ -27,21 +27,40 @@ if (process.env.CDP_SERVE_DIR) {
   url = url.replace("{server}", `http://127.0.0.1:${server.address().port}`);
   console.log("serving", root, "at", url);
 }
-const port = 9333 + Math.floor(Math.random() * 300);
-// Edge's throw-away profile: in CDP_PROFILE_DIR when set, else in the system's temp folder.
-const profile = join(process.env.CDP_PROFILE_DIR || tmpdir(), `tt-cdp-profile-${port}`);
-mkdirSync(profile, { recursive: true });
+// Every run gets a NEW empty throw-away profile folder (in CDP_PROFILE_DIR when set, else in the system's temp
+// folder) and port 0: the browser picks a free port itself and writes it to DevToolsActivePort in that folder. A
+// chosen port could already be in use by another run (the sister apps' tests in another chat use the same kind of
+// runner): this run would then drive THAT browser and its page, and get its errors (proven on 2026-11-21).
+const profileBase = process.env.CDP_PROFILE_DIR || tmpdir();
+mkdirSync(profileBase, { recursive: true });
+const profile = mkdtempSync(join(profileBase, "tt-cdp-profile-"));
 const extraFlags = process.platform === "linux" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [];
 const proc = spawn(edge, ["--headless=new", "--no-first-run", "--disable-extensions", ...extraFlags, `--user-data-dir=${profile}`,
-  `--remote-debugging-port=${port}`, "--window-size=1600,900", "about:blank"], { stdio: "ignore" });
+  "--remote-debugging-port=0", "--window-size=1600,900", "about:blank"], { stdio: "ignore" });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let target;
-// Up to 60 s: a busy GitHub runner once needed more than the 15 s this used to wait.
+// The end of every run: the browser is stopped and, once it has exited, its profile folder is removed (a Windows
+// renderer can hold files for a moment, hence the retries; a folder that still cannot go is left behind).
+async function stopBrowser() {
+  const exited = new Promise((r) => (proc.exitCode !== null || proc.signalCode !== null ? r() : proc.once("exit", r)));
+  proc.kill();
+  await Promise.race([exited, sleep(5000)]);
+  try { rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch { /* left behind */ }
+}
+let port = 0, target;
+// Up to 60 s: a busy GitHub runner once needed more than the 15 s this used to wait. The port counts only when the
+// file is complete (a number in range on the first line, and the second line there), so a half-written file is read
+// again on the next pass.
 for (let i = 0; i < 240 && !target; i++) {
-  try { const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); target = list.find((t) => t.type === "page"); } catch { /* not up yet */ }
+  if (!port) {
+    try {
+      const [p, path] = readFileSync(join(profile, "DevToolsActivePort"), "utf8").split(/\r?\n/), n = Number(p);
+      if (/^\d+$/.test(p) && n > 0 && n < 65536 && path) port = n;
+    } catch { /* not written yet */ }
+  }
+  if (port) { try { const list = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(2000) })).json(); target = list.find((t) => t.type === "page"); } catch { /* not up yet */ } }
   if (!target) await sleep(250);
 }
-if (!target) { console.log(`FAIL: the browser did not start (no answer on port ${port} within 60 s)`); proc.kill(); if (server) server.close(); process.exit(1); }
+if (!target) { console.log(`FAIL: the browser did not start (${port ? `no answer on port ${port}` : "no DevToolsActivePort"} within 60 s)`); await stopBrowser(); if (server) server.close(); process.exit(1); }
 
 const ws = new WebSocket(target.webSocketDebuggerUrl);
 await new Promise((r) => ws.addEventListener("open", r, { once: true }));
@@ -80,4 +99,4 @@ for (const step of steps) {
 const shotRes = await send("Page.captureScreenshot", { format: "png" });
 writeFileSync(shot, Buffer.from(shotRes.result.data, "base64"));
 console.log("screenshot:", shot);
-ws.close(); proc.kill(); if (server) server.close(); process.exit(ok ? 0 : 1);
+ws.close(); await stopBrowser(); if (server) server.close(); process.exit(ok ? 0 : 1);
