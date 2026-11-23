@@ -11,7 +11,9 @@ mode, and with a screen reader. This page says what works, what was tested, and 
   `W` favourite, `T` light or dark, `Esc` back. The Help window lists them all.
 - **Screen readers.** The list tells the screen reader which row is active and says its verdict and best file.
   Changes such as "Selected for Compare" or "Favourite" are announced too.
-- **Contrast.** Text and labels meet WCAG 2.2 level AA (at least 4.5 to 1) in light and in dark mode.
+- **Contrast.** Text and labels meet WCAG 2.2 level AA (at least 4.5 to 1) in light and in dark mode. The edge of
+  every input field, list and search box stands out at least 3 to 1 (WCAG 1.4.11) and turns the accent colour on
+  focus.
 - **Not by colour alone.** Verdicts are words (*Runs well*, *Won't fit* …), and the memory bar has its numbers in
   text under it.
 - **Explanations.** Point at a bar, speed, verdict or score for an explanation, or press `?` for the Help window,

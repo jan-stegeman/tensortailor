@@ -29,7 +29,7 @@ if (-not (Test-Path $python) -or -not (Test-Path $publicCheck)) {
   Set-Content -Path "D:\AI\temp\reg-public-ready.log" -Value $out -Encoding utf8
   if ($code -ne 0 -or $out -notmatch "OK public ready") { $bad++; "public-ready: exit $code FAIL"; $out.Trim() } else { "public-ready: exit 0, OK public ready" }
 }
-$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure", "test-kv-fill", "test-key", "test-plan-reach", "test-mine-speed", "test-packed", "test-narrow", "test-small-fixes", "test-calm", "test-review-fixes", "test-review2", "test-name-words", "test-help-audit", "test-review3", "test-screen-review", "test-store-safety", "test-review3-w", "test-detect", "test-copy-commands", "test-licence-words"
+$plain = "steps-example", "test-mine-planner", "test-gguf-kv", "test-gated", "test-gated-list", "test-highlight", "test-help", "test-lms-load", "test-lms-missing", "test-prefs", "test-measure", "test-kv-fill", "test-key", "test-plan-reach", "test-mine-speed", "test-packed", "test-narrow", "test-small-fixes", "test-calm", "test-review-fixes", "test-review2", "test-name-words", "test-help-audit", "test-review3", "test-screen-review", "test-store-safety", "test-review3-w", "test-detect", "test-copy-commands", "test-licence-words", "test-field-line"
 $served = "test-local-gguf", "test-downloads", "test-vision-download", "test-updates", "test-groups", "test-review3-dl"
 foreach ($t in $plain + $served) {
   if ($served -contains $t) { $env:CDP_SERVE_DIR = "dist"; $u = "{server}/tensortailor.html" } else { Remove-Item Env:CDP_SERVE_DIR -ErrorAction SilentlyContinue; $u = $page }

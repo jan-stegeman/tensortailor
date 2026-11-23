@@ -27,6 +27,7 @@
   --panel-2: #f6f7fa;
   --line: rgba(16, 24, 40, .09);
   --line-2: rgba(16, 24, 40, .15);
+  --field-line: #7a8493; /* the border of an input field, list or search box: 3.4:1 or more on --panel, --panel-2, --raised, --sunken and --bg (WCAG 1.4.11; owner's choice B, 2026-11-23) */
   --raised: #f7f8fa;
   --sunken: #f1f3f6;
   --hover: #f4f6f9;
@@ -72,6 +73,7 @@
   --panel-2: #161b23;
   --line: rgba(255, 255, 255, .07);
   --line-2: rgba(255, 255, 255, .11);
+  --field-line: #646e80; /* 3.3:1 or more on --panel, --panel-2, --raised, --sunken and --bg */
   --raised: #161b23;
   --sunken: #0d1016;
   --hover: #161b24;
@@ -115,6 +117,7 @@
   --panel-2: #161b23;
   --line: rgba(255, 255, 255, .07);
   --line-2: rgba(255, 255, 255, .11);
+  --field-line: #646e80; /* 3.3:1 or more on --panel, --panel-2, --raised, --sunken and --bg */
   --raised: #161b23;
   --sunken: #0d1016;
   --hover: #161b24;
@@ -206,11 +209,11 @@ kbd { font: 11px var(--mono); padding: 1px 6px; border-bottom-width: 2px; border
 .hw-meta { font-size: 12px; color: var(--muted); }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
 .field-grid label, .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-.unit-input { display: flex; align-items: center; height: 32px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); padding-right: 8px; }
+.unit-input { display: flex; align-items: center; height: 32px; border: 1px solid var(--field-line); border-radius: 8px; background: var(--panel); padding-right: 8px; }
 .unit-input:focus-within { border-color: var(--accent); }
 .unit-input input { width: 100%; border: 0; background: transparent; padding: 0 8px; outline: none; color: var(--text); }
 .unit-input span { color: var(--faint); font-size: 12px; }
-select { height: 32px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--panel); padding: 0 8px; color: var(--text); }
+select { height: 32px; border: 1px solid var(--field-line); border-radius: 8px; background: var(--panel); padding: 0 8px; color: var(--text); }
 .usable { margin-top: 10px; background: var(--panel-2); font-size: 12.5px; color: var(--muted); }
 .usable b { color: var(--text); font-variant-numeric: tabular-nums; }
 .btn-row { display: flex; gap: 8px; margin-top: 12px; }
@@ -419,7 +422,7 @@ dialog { padding: 0; background: var(--panel); color: var(--text); width: 580px;
 .dlg-body { display: grid; gap: 12px; max-height: 600px; overflow: auto; }
 .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); }
 .dlg-body p { margin: 0; color: var(--muted); font-size: 13px; }
-.dlg-body input[type="password"], .dlg-body textarea { width: 100%; border: 1px solid var(--line-2); border-radius: 9px; background: var(--panel); padding: 8px 10px; }
+.dlg-body input[type="password"], .dlg-body textarea { width: 100%; border: 1px solid var(--field-line); border-radius: 9px; background: var(--panel); padding: 8px 10px; }
 .dlg-body textarea { font: 12px var(--mono); min-height: 90px; resize: vertical; }
 pre.snippet { margin: 0; padding: 10px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-all; }
 #dlgCompare { width: 900px; }
@@ -561,9 +564,10 @@ h2 { font-weight: 650; }
 .chip-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-ring); font-weight: 600; }
 .chip-btn[aria-pressed="true"] .cap { color: var(--accent); }
 /* Fields. */
-select, .unit-input, .dlg-body input[type="password"], .dlg-body textarea { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line-2); border-radius: 8px; }
-.search { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); }
+select, .unit-input, .dlg-body input[type="password"], .dlg-body textarea { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--field-line); border-radius: 8px; }
+.search { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--field-line); }
 .search:focus-within, .unit-input:focus-within { outline: 0; box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft); background: var(--sunken); }
+select:focus, .dlg-body input[type="password"]:focus, .dlg-body textarea:focus { box-shadow: inset 0 0 0 1px var(--accent); } /* house style: the field edge turns --accent on focus (as .search and .unit-input do); the keyboard focus outline stays */
 kbd { border: 0; box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 0 var(--line-2); background: var(--panel); }
 /* Tables: quiet uppercase headers and hairlines. */
 .ladder th, .ftable th, .mtable th, .ptable th, .cmp-table th { font-size: 12px; font-weight: 600; color: var(--faint); }
