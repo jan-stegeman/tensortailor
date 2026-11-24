@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// The llmfit release this engine is built from. Must match the tag in Cargo.toml.
-pub const LLMFIT_REF: &str = "v1.1.20";
+pub const LLMFIT_REF: &str = "v1.1.21";
 
 /// Hardware as typed or imported on the page.
 #[derive(Debug, Clone, Deserialize)]
