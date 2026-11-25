@@ -12,6 +12,7 @@
 - [ ] I ran the tests that fit this change, and they pass.
 - [ ] A change you can see in the page has a row in the built-in Help.
 - [ ] The README text and pictures still match the page.
+- [ ] CHANGELOG.md has a line for this change under today's date (start a new block at the top if there is none).
 - [ ] No token, password, own paths or own model names in the change.
 
 See [CONTRIBUTING.md](https://github.com/jan-stegeman/tensortailor/blob/main/CONTRIBUTING.md) for the details.

@@ -39,6 +39,8 @@ New work must keep these promises:
 - **Tests:** run the test in `tools/` that fits your change with `tools/cdp_test.mjs` in headless Chrome (see
   [Test it](README.md#test-it)), and add a test step for a fix when you can. `tools/run-all-tests.ps1` runs all
   tests, but it uses fixed folders of the maintainer's PC. Say in the pull request which tests you ran.
+- **Changelog:** add one sentence for your change to [CHANGELOG.md](CHANGELOG.md), under today's date (start a new
+  block at the top if there is none).
 - **Text** in the page and the docs: plain, simple English with short sentences.
 - **Commit messages** follow [Conventional Commits](https://www.conventionalcommits.org/): `feat: …`, `fix: …`,
   `docs: …`.

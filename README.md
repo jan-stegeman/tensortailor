@@ -2,6 +2,8 @@
 
 Find out which open AI models (LLMs) fit your PC, before you download them.
 
+What's new: [CHANGELOG.md](CHANGELOG.md)
+
 TensorTailor is **one HTML file** (about 3 MB). You open it in Edge or Chrome. It needs no install and works
 offline. It checks about 19,000 models from Hugging Face against your GPU, VRAM, RAM and CPU. It tells you
 which file to download, how fast the model will run, and which settings to use in LM Studio.
@@ -212,6 +214,7 @@ use made-up demo data.
 | `.github/dependabot.yml` | Monthly updates of the GitHub Actions (every action is pinned to a commit) |
 | `.github/ISSUE_TEMPLATE/` | The forms for a new issue: bug report, wrong fit/speed/memory, feature request, accessibility barrier |
 | `.github/pull_request_template.md` | The text a new pull request starts with: what changed, how it was tested, a checklist |
+| `CHANGELOG.md` | Every change, newest first, one block per day; each change adds its line under its date (the weekly bot commits are added by hand) |
 | `CONTRIBUTING.md` | How to report a problem and how to send a pull request |
 | `ACCESSIBILITY.md` | What works with keyboard, screen readers and contrast, how it was tested, the known limits |
 | `SECURITY.md` | How to report a security problem privately |
