@@ -149,7 +149,10 @@ change in the page).
   arrived unchanged and stores it (the catalog data itself still comes from llmfit's scraper).
 - **Weekly release:** `.github/workflows/weekly.yml` follows new llmfit releases by itself: it switches the
   engine to the new llmfit tag, builds it, checks that the answers are the same as native llmfit, and only then
-  commits and publishes. When a check fails, nothing is pushed or released.
+  commits and publishes. When a check fails, nothing is pushed or released. The build runs in a job that can
+  only read this repository; a second job, which runs none of llmfit's code, checks that the page arrived
+  unchanged and that the new commits only move the llmfit tag forward and refresh the README pictures, and only
+  then pushes them and publishes the release.
 
 ### Build the page
 

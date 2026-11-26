@@ -4,6 +4,19 @@ name: Weekly release
 # WebAssembly engine gives the same answers as native llmfit, and publish the
 # single HTML file as a GitHub Release. Nothing is pushed or released when a
 # check fails. No release when nothing that goes into the page changed.
+#
+# Two jobs, so the write token never shares a machine with llmfit's code:
+# - build (contents: read) runs everything that uses llmfit's code (the build,
+#   llmfit's tests, the README pictures) and makes its commits only locally. It
+#   hands over the page and a git bundle of those commits as artifacts.
+# - release (contents: write) runs no llmfit code and no code of this
+#   repository. It takes both artifacts by their IDs (download-artifact checks
+#   the digest), checks that the page arrived unchanged and that the commits
+#   only move the llmfit tag forward (Cargo.toml, lib.rs, Cargo.lock pinned to
+#   the commit GitHub names for the tag) and refresh README pictures, then
+#   pushes them and publishes the release.
+# The build job writes the Rust cache; no job with the write token restores a
+# cache, because a job that ran llmfit's code could have put a bad entry there.
 
 on:
   schedule:
@@ -20,19 +33,32 @@ on:
         default: ""
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: weekly-release
   cancel-in-progress: false
 
 jobs:
-  weekly:
+  build:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # The write token is given only to the steps that call gh or push (not to the build, which runs
-    # upstream llmfit code and its tests), and checkout does not keep it in .git/config.
+    permissions:
+      contents: read
+    outputs:
+      update: ${{ steps.llmfit.outputs.update }}
+      dry: ${{ steps.llmfit.outputs.dry }}
+      tag: ${{ steps.ver.outputs.tag }}
+      built: ${{ steps.built.outputs.sha }}
+      page_sha: ${{ steps.built.outputs.page_sha }}
+      page_id: ${{ steps.page.outputs.artifact-id }}
+      release: ${{ steps.decide.outputs.release }}
+      catalog_why: ${{ steps.cat.outputs.why }}
+      catalog_sha: ${{ steps.cat.outputs.sha }}
+      push: ${{ steps.pack.outputs.push }}
+      head: ${{ steps.pack.outputs.head }}
+      commits_id: ${{ steps.commits.outputs.artifact-id }}
     steps:
       - name: Checkout (with tags)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,8 +72,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           WANT: ${{ inputs.llmfit_tag }}
           DRY_INPUT: ${{ inputs.dry_run }}
+          BASE: ${{ github.sha }}
         run: |
           set -euo pipefail
+          # The release job pushes on top of this commit, so the build must start from it.
+          test "$(git rev-parse HEAD)" = "$BASE"
           CUR=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
           if [ -n "${WANT:-}" ]; then
             NEW="$WANT"
@@ -152,10 +181,12 @@ jobs:
           version: ${{ steps.ver.outputs.tag }}
 
       # The commit the page was built from: the release points at it (the README picture commit that may
-      # follow changes only docs/).
+      # follow changes only docs/). The SHA-256 of the page lets the release job check what it receives.
       - name: Remember the built commit
         id: built
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "page_sha=$(sha256sum dist/tensortailor.html | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       # The build action restores Cargo.lock after its patched builds (they add the web-time crate), so a
       # "did not change" check here would prove nothing. What counts: Cargo.lock names the tag, and the build
@@ -166,6 +197,7 @@ jobs:
           grep -q "llmfit?tag=$TAG#" engine/Cargo.lock
 
       - name: Keep the page
+        id: page
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: tensortailor-html-weekly
@@ -173,6 +205,7 @@ jobs:
             dist/tensortailor.html
             dist/THIRD-PARTY-NOTICES.txt
           retention-days: 30
+          if-no-files-found: error
 
       - name: Decide on a release
         id: decide
@@ -226,17 +259,176 @@ jobs:
           fi
           echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
+      # The local commits (engine update, README pictures) go to the release job as a git bundle; that job
+      # pushes them. A dry run hands over nothing.
+      - name: Pack the new commits for the release job
+        id: pack
+        if: steps.llmfit.outputs.dry != 'true'
+        env:
+          BASE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ "$HEAD_SHA" = "$BASE" ]; then
+            echo "push=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/handover"
+          git branch -f weekly-out HEAD
+          git bundle create "$RUNNER_TEMP/handover/weekly.bundle" refs/heads/weekly-out "^$BASE"
+          { echo "push=true"; echo "head=$HEAD_SHA"; } >> "$GITHUB_OUTPUT"
+          echo "New commits for main:" | tee -a "$GITHUB_STEP_SUMMARY"
+          git --no-pager log --format='%h %s' "$BASE..HEAD" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Hand the commits to the release job
+        id: commits
+        if: steps.pack.outputs.push == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: weekly-commits
+          path: ${{ runner.temp }}/handover/weekly.bundle
+          retention-days: 7
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: needs.build.outputs.dry != 'true' && (needs.build.outputs.release == 'true' || needs.build.outputs.push == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      # Only git and gh run in this job; nothing of this checkout is started.
+      - name: Checkout (with tags)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Take the page of the build job (by ID; the digest is checked)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.page_id }}
+          path: ${{ runner.temp }}/page
+          digest-mismatch: error
+
+      - name: Take the new commits of the build job (by ID; the digest is checked)
+        if: needs.build.outputs.push == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.commits_id }}
+          path: ${{ runner.temp }}/commits
+          digest-mismatch: error
+
+      # The build job ran llmfit's code, so what it hands over is checked here before anything is pushed or
+      # published: the page is the file it built, and its commits are a straight line on top of this run's
+      # commit that change only the llmfit tag lines, Cargo.lock and the README pictures.
+      - name: Check what the build job handed over
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.sha }}
+          BUILD_UPDATE: ${{ needs.build.outputs.update }}
+          PUSH: ${{ needs.build.outputs.push }}
+          HEAD_SHA: ${{ needs.build.outputs.head }}
+          BUILT: ${{ needs.build.outputs.built }}
+          PAGE_SHA: ${{ needs.build.outputs.page_sha }}
+          TAG: ${{ needs.build.outputs.tag }}
+          CATALOG_SHA: ${{ needs.build.outputs.catalog_sha }}
+          CATALOG_WHY: ${{ needs.build.outputs.catalog_why }}
+          PAGE_DIR: ${{ runner.temp }}/page
+          BUNDLE: ${{ runner.temp }}/commits/weekly.bundle
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+          [[ "$BUILT" =~ ^[0-9a-f]{40}$ ]] || fail "Bad built commit from the build job."
+          [[ "$PAGE_SHA" =~ ^[0-9a-f]{64}$ ]] || fail "Bad page SHA-256 from the build job."
+          [[ "$TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}(-[0-9]+)?$ ]] || fail "Bad version from the build job: $TAG"
+          [[ -z "$CATALOG_SHA" || "$CATALOG_SHA" =~ ^[0-9a-f]{64}$ ]] || fail "Bad catalog SHA-256 from the build job."
+          WHY_RE="^[A-Za-z0-9 .,()_:/+'-]+$"
+          [[ "$CATALOG_WHY" =~ $WHY_RE ]] || fail "Bad catalog text from the build job."
+
+          # The page artifact: exactly these two plain files, and the page the build job took the SHA-256 of.
+          FILES=$(cd "$PAGE_DIR" && find . -mindepth 1 -printf '%P %y\n' | LC_ALL=C sort)
+          [ "$FILES" = "$(printf 'THIRD-PARTY-NOTICES.txt f\ntensortailor.html f')" ] || fail "Unexpected files in the page artifact: $FILES"
+          [ "$(sha256sum "$PAGE_DIR/tensortailor.html" | cut -d' ' -f1)" = "$PAGE_SHA" ] || fail "tensortailor.html is not the page the build job made."
+
+          if [ "$PUSH" = "true" ]; then
+            [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || fail "Bad head commit from the build job."
+            git bundle verify -q "$BUNDLE" || fail "The commit bundle does not fit on $BASE."
+            [ "$(git bundle list-heads "$BUNDLE" | wc -l)" -eq 1 ] || fail "The commit bundle must hold one branch."
+            git -c fetch.fsckObjects=true fetch -q "$BUNDLE" refs/heads/weekly-out
+            [ "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA" ] || fail "The commit bundle is not the head the build job named."
+            # One or two new commits, each with one parent, on top of BASE. The page is built from BASE (README
+            # pictures only) or from the first new commit (the engine update); a commit after it may change only
+            # README pictures.
+            mapfile -t NEWC < <(git rev-list --reverse "$BASE..$HEAD_SHA")
+            { [ "${#NEWC[@]}" -ge 1 ] && [ "${#NEWC[@]}" -le 2 ]; } || fail "Expected 1 or 2 new commits, got ${#NEWC[@]}."
+            if [ "$BUILT" != "$BASE" ]; then [ "$BUILT" = "${NEWC[0]}" ] || fail "The built commit $BUILT is not the first new commit."; fi
+            PREV=$BASE
+            for C in "${NEWC[@]}"; do
+              [ "$(git rev-list --parents -n1 "$C")" = "$C $PREV" ] || fail "Commit $C is not a straight child of $PREV."
+              CHANGES=$(git diff-tree -r --no-renames "$PREV" "$C")
+              [ -n "$CHANGES" ] || fail "Commit $C changes nothing."
+              while IFS=$'\t' read -r META FILE; do
+                read -r _ MODE _ _ STATUS <<< "$META"
+                [ "$MODE" = "100644" ] || fail "Commit $C gives $FILE the mode $MODE."
+                if [ "$C" = "$BUILT" ]; then
+                  case "$FILE" in
+                    engine/Cargo.toml|engine/Cargo.lock|engine/src/lib.rs) [ "$STATUS" = "M" ] || fail "Commit $C: $FILE is $STATUS." ;;
+                    *) fail "The engine commit $C changes $FILE, which it may not change." ;;
+                  esac
+                else
+                  [[ "$FILE" =~ ^docs/screenshots/[A-Za-z0-9._-]+\.png$ && "$STATUS" =~ ^[MA]$ ]] || fail "Commit $C changes $FILE ($STATUS); only README pictures may change there."
+                fi
+              done <<< "$CHANGES"
+              PREV=$C
+            done
+          else
+            [ "$BUILT" = "$BASE" ] || fail "No commits were handed over, so the page must be built from $BASE."
+          fi
+
+          # An engine update is what the commits show, and it must agree with what the build job says.
+          UPDATE=false; [ "$BUILT" != "$BASE" ] && UPDATE=true
+          [ "$UPDATE" = "$BUILD_UPDATE" ] || fail "The build job says update=$BUILD_UPDATE, but the commits say $UPDATE."
+          LLMFIT=$(git show "$BUILT:engine/Cargo.toml" | grep -oP 'tag = "\K[^"]+')
+          [[ "$LLMFIT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Unexpected llmfit tag in the built commit: $LLMFIT"
+          if [ "$UPDATE" = "true" ]; then
+            CUR=$(git show "$BASE:engine/Cargo.toml" | grep -oP 'tag = "\K[^"]+')
+            NEW=$LLMFIT
+            [[ "$CUR" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Unexpected llmfit tag in $BASE: $CUR"
+            { [ "$NEW" != "$CUR" ] && [ "$(printf '%s\n%s\n' "$CUR" "$NEW" | sort -V | tail -n1)" = "$NEW" ]; } || fail "The engine update must move the llmfit tag forward ($CUR -> $NEW)."
+            # Cargo.toml and lib.rs: the old files with only the tag changed, by the same edits as the build job.
+            cmp -s <(git show "$BASE:engine/Cargo.toml" | sed "s/tag = \"$CUR\"/tag = \"$NEW\"/") <(git show "$BUILT:engine/Cargo.toml") \
+              || fail "engine/Cargo.toml changes more than the llmfit tag ($CUR -> $NEW)."
+            cmp -s <(git show "$BASE:engine/src/lib.rs" | sed "s/LLMFIT_REF: &str = \"$CUR\"/LLMFIT_REF: \\&str = \"$NEW\"/") <(git show "$BUILT:engine/src/lib.rs") \
+              || fail "engine/src/lib.rs changes more than LLMFIT_REF ($CUR -> $NEW)."
+            git show "$BUILT:engine/src/lib.rs" | grep -qxF "pub const LLMFIT_REF: &str = \"$NEW\";" || fail "engine/src/lib.rs does not name llmfit $NEW."
+            # Cargo.lock: llmfit at the commit that GitHub names for the new tag. (Its other lines are crates.io
+            # versions with checksums; they are not checked here.)
+            LSHA=$(gh api "repos/AlexsJones/llmfit/commits/$NEW" --jq .sha)
+            [[ "$LSHA" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub gave no commit for llmfit $NEW."
+            WANT="source = \"git+https://github.com/AlexsJones/llmfit?tag=$NEW#$LSHA\""
+            LOCK=$(git show "$BUILT:engine/Cargo.lock" | grep -F 'AlexsJones/llmfit' || true)
+            { [ -n "$LOCK" ] && [ -z "$(printf '%s\n' "$LOCK" | grep -vxF "$WANT" || true)" ]; } || fail "Cargo.lock does not pin llmfit $NEW at $LSHA."
+          fi
+          { echo "llmfit=$LLMFIT"; echo "update=$UPDATE"; } >> "$GITHUB_OUTPUT"
+          echo "Hand-over checked: page SHA-256 $PAGE_SHA, built from ${BUILT:0:7}, llmfit $LLMFIT." | tee -a "$GITHUB_STEP_SUMMARY"
+
       # No rebase: a rebase would put commits into main that are not in the built page, and the next run would
       # then see "nothing new". If main moved during this run, an engine update fails the run (nothing is
       # released); only new README pictures are skipped with a warning (the next run makes them again).
+      # Git hooks are switched off for the push.
       - name: Push weekly updates to main
-        if: (steps.llmfit.outputs.update == 'true' || steps.shots.outputs.changed == 'true') && steps.llmfit.outputs.dry != 'true'
+        if: needs.build.outputs.push == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          UPDATE: ${{ steps.llmfit.outputs.update }}
+          UPDATE: ${{ steps.check.outputs.update }}
+          HEAD_SHA: ${{ needs.build.outputs.head }}
         run: |
           set -uo pipefail
-          if git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main; then
+          if git -c core.hooksPath=/dev/null push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$HEAD_SHA:refs/heads/main"; then
             echo "Pushed to main." | tee -a "$GITHUB_STEP_SUMMARY"
           elif [ "$UPDATE" = "true" ]; then
             echo "::error::main moved during this run, so the engine update could not be pushed. Nothing is released; start the run again."
@@ -246,24 +438,25 @@ jobs:
           fi
 
       - name: Publish the release
-        if: steps.decide.outputs.release == 'true'
+        if: needs.build.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          BUILT: ${{ steps.built.outputs.sha }}
-          CATALOG_WHY: ${{ steps.cat.outputs.why }}
-          CATALOG_SHA: ${{ steps.cat.outputs.sha }}
-          TAG: ${{ steps.ver.outputs.tag }}
+          BUILT: ${{ needs.build.outputs.built }}
+          CATALOG_WHY: ${{ needs.build.outputs.catalog_why }}
+          CATALOG_SHA: ${{ needs.build.outputs.catalog_sha }}
+          TAG: ${{ needs.build.outputs.tag }}
+          LLMFIT: ${{ steps.check.outputs.llmfit }}
+          PAGE_DIR: ${{ runner.temp }}/page
         run: |
           set -euo pipefail
           # The page already carries this version: never publish it under another tag.
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::Release $TAG appeared during this run; the page says $TAG, so nothing is published."; exit 1
           fi
-          LLMFIT=$(grep -oP 'tag = "\K[^"]+' engine/Cargo.toml)
-          (cd dist && sha256sum tensortailor.html > tensortailor.html.sha256)
-          SHA=$(cut -d' ' -f1 dist/tensortailor.html.sha256)
-          SIZE=$(du -m dist/tensortailor.html | cut -f1)
-          cat > release-notes.md <<EOF
+          (cd "$PAGE_DIR" && sha256sum tensortailor.html > tensortailor.html.sha256)
+          SHA=$(cut -d' ' -f1 "$PAGE_DIR/tensortailor.html.sha256")
+          SIZE=$(du -m "$PAGE_DIR/tensortailor.html" | cut -f1)
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
           One offline HTML file (about $SIZE MB). Download **tensortailor.html** and open it in Edge or Chrome.
 
           - Version: $TAG (shown at the top left of the page and in About).
@@ -275,8 +468,8 @@ jobs:
           - Licences: TensorTailor and llmfit are MIT. The Rust crates inside the engine and their licences are in
             THIRD-PARTY-NOTICES.txt (also in the page: About → Show the licences).
           EOF
-          gh release create "$TAG" dist/tensortailor.html dist/tensortailor.html.sha256 dist/THIRD-PARTY-NOTICES.txt \
+          gh release create "$TAG" "$PAGE_DIR/tensortailor.html" "$PAGE_DIR/tensortailor.html.sha256" "$PAGE_DIR/THIRD-PARTY-NOTICES.txt" \
             --target "$BUILT" \
             --title "TensorTailor ${TAG#v} (llmfit $LLMFIT)" \
-            --notes-file release-notes.md
+            --notes-file "$RUNNER_TEMP/release-notes.md"
           echo "Published release $TAG" | tee -a "$GITHUB_STEP_SUMMARY"

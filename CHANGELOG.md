@@ -9,13 +9,18 @@ a day with a release names it. The commits are in backticks at the end of each l
 
 - The Monday catalog run stores its catalog. The first scheduled run (2026-11-23) skipped the store step, because its
   test `inputs.publish != false` is false when a run has no inputs; so release v2026.11.24 still used the catalog of
-  2026-11-18.
+  2026-11-18 (`2aea836`).
 
 ### Security
 
 - The catalog workflow now has two jobs: llmfit's scraper and checks run in a job that can only read the repository,
   and the job with the write token runs none of llmfit's code. It takes the result by its artifact ID (digest checked),
-  checks with the SHA-256 and the file list that it arrived unchanged, and runs Python with `-I`.
+  checks with the SHA-256 and the file list that it arrived unchanged, and runs Python with `-I` (`2aea836`).
+- The weekly release workflow now has two jobs as well: the build, llmfit's tests and the README pictures run in a job
+  that can only read the repository. The job with the write token takes the page and a git bundle of the new commits
+  by their artifact IDs, checks that the page arrived unchanged and that the commits only move the llmfit tag forward
+  (with `Cargo.lock` pinned to the commit GitHub names for that tag) and refresh the README pictures, and then pushes
+  them (with git hooks switched off) and publishes.
 
 ## [2026.11.25] - 2026-11-25
 
