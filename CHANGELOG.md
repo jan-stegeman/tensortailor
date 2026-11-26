@@ -28,6 +28,11 @@ Released as v2026.11.26 (started by hand, the first release made by the new rele
   by their artifact IDs, checks that the page arrived unchanged and that the commits only move the llmfit tag forward
   (with `Cargo.lock` pinned to the commit GitHub names for that tag) and refresh the README pictures, and then pushes
   them (with git hooks switched off) and publishes (`3b3f7e9`).
+- The release job checks the whole `Cargo.lock` of an engine update, not only the llmfit line: every crate besides
+  llmfit and our own must come from crates.io with a checksum, and none may move back to an older version within its
+  semver line. It asks GitHub for the llmfit commit by its tag only (never a branch of the same name), allows exactly
+  one README picture commit when there is no engine update, and accepts only the four known texts for the catalog
+  line of the release notes.
 
 ## [2026.11.25] - 2026-11-25
 

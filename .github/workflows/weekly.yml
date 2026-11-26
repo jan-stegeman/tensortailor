@@ -129,7 +129,7 @@ jobs:
           git --no-pager show --stat HEAD
 
       # Our weekly catalog (catalog.yml, Monday) when it is fresh and intact,
-      # else llmfit's own catalog of the tag.
+      # else llmfit's own catalog of the tag. The release job accepts only these four "why" texts (WHY_RE).
       - name: Choose the model catalog
         id: cat
         env:
@@ -298,7 +298,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Only git and gh run in this job; nothing of this checkout is started.
+      # Only git, gh and the runner's own python3 (-I, standard library) run in this job; nothing of this
+      # checkout is started.
       - name: Checkout (with tags)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -346,7 +347,8 @@ jobs:
           [[ "$PAGE_SHA" =~ ^[0-9a-f]{64}$ ]] || fail "Bad page SHA-256 from the build job."
           [[ "$TAG" =~ ^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}(-[0-9]+)?$ ]] || fail "Bad version from the build job: $TAG"
           [[ -z "$CATALOG_SHA" || "$CATALOG_SHA" =~ ^[0-9a-f]{64}$ ]] || fail "Bad catalog SHA-256 from the build job."
-          WHY_RE="^[A-Za-z0-9 .,()_:/+'-]+$"
+          # Exactly the four texts of the build job's step "Choose the model catalog" (keep both in step).
+          WHY_RE="^(llmfit's own catalog of the tag \((no weekly catalog found|our weekly catalog failed its SHA-256 check|our weekly catalog is -?[0-9]+ days old)\)|our weekly catalog of [0-9]{4}-[0-9]{2}-[0-9]{2} \(-?[0-9]+ entries, made with llmfit's own scraper\))$"
           [[ "$CATALOG_WHY" =~ $WHY_RE ]] || fail "Bad catalog text from the build job."
 
           # The page artifact: exactly these two plain files, and the page the build job took the SHA-256 of.
@@ -360,12 +362,16 @@ jobs:
             [ "$(git bundle list-heads "$BUNDLE" | wc -l)" -eq 1 ] || fail "The commit bundle must hold one branch."
             git -c fetch.fsckObjects=true fetch -q "$BUNDLE" refs/heads/weekly-out
             [ "$(git rev-parse FETCH_HEAD)" = "$HEAD_SHA" ] || fail "The commit bundle is not the head the build job named."
-            # One or two new commits, each with one parent, on top of BASE. The page is built from BASE (README
-            # pictures only) or from the first new commit (the engine update); a commit after it may change only
-            # README pictures.
+            # New commits, each with one parent, on top of BASE. The page is built from BASE (then there is exactly
+            # one commit: the README pictures) or from the first new commit (the engine update, maybe followed by
+            # one commit that changes only README pictures).
             mapfile -t NEWC < <(git rev-list --reverse "$BASE..$HEAD_SHA")
-            { [ "${#NEWC[@]}" -ge 1 ] && [ "${#NEWC[@]}" -le 2 ]; } || fail "Expected 1 or 2 new commits, got ${#NEWC[@]}."
-            if [ "$BUILT" != "$BASE" ]; then [ "$BUILT" = "${NEWC[0]}" ] || fail "The built commit $BUILT is not the first new commit."; fi
+            if [ "$BUILT" = "$BASE" ]; then
+              [ "${#NEWC[@]}" -eq 1 ] || fail "Without an engine update, expected 1 new commit, got ${#NEWC[@]}."
+            else
+              { [ "${#NEWC[@]}" -ge 1 ] && [ "${#NEWC[@]}" -le 2 ]; } || fail "Expected 1 or 2 new commits, got ${#NEWC[@]}."
+              [ "$BUILT" = "${NEWC[0]}" ] || fail "The built commit $BUILT is not the first new commit."
+            fi
             PREV=$BASE
             for C in "${NEWC[@]}"; do
               [ "$(git rev-list --parents -n1 "$C")" = "$C $PREV" ] || fail "Commit $C is not a straight child of $PREV."
@@ -405,13 +411,87 @@ jobs:
             cmp -s <(git show "$BASE:engine/src/lib.rs" | sed "s/LLMFIT_REF: &str = \"$CUR\"/LLMFIT_REF: \\&str = \"$NEW\"/") <(git show "$BUILT:engine/src/lib.rs") \
               || fail "engine/src/lib.rs changes more than LLMFIT_REF ($CUR -> $NEW)."
             git show "$BUILT:engine/src/lib.rs" | grep -qxF "pub const LLMFIT_REF: &str = \"$NEW\";" || fail "engine/src/lib.rs does not name llmfit $NEW."
-            # Cargo.lock: llmfit at the commit that GitHub names for the new tag. (Its other lines are crates.io
-            # versions with checksums; they are not checked here.)
-            LSHA=$(gh api "repos/AlexsJones/llmfit/commits/$NEW" --jq .sha)
-            [[ "$LSHA" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub gave no commit for llmfit $NEW."
-            WANT="source = \"git+https://github.com/AlexsJones/llmfit?tag=$NEW#$LSHA\""
-            LOCK=$(git show "$BUILT:engine/Cargo.lock" | grep -F 'AlexsJones/llmfit' || true)
-            { [ -n "$LOCK" ] && [ -z "$(printf '%s\n' "$LOCK" | grep -vxF "$WANT" || true)" ]; } || fail "Cargo.lock does not pin llmfit $NEW at $LSHA."
+            # Cargo.lock, compared with the one of BASE: every llmfit crate at the commit that GitHub names for the
+            # TAG (tags/, never a branch of that name); our own crates (no source) unchanged; every other crate from
+            # crates.io with a checksum (the same checksum when the version was there before); no crate lower than
+            # before inside a semver line that BASE had. A real llmfit update that lowers a crate inside its line
+            # therefore stops here: check it by hand.
+            LSHA=$(gh api "repos/AlexsJones/llmfit/commits/tags/$NEW" --jq .sha)
+            [[ "$LSHA" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub gave no commit for the llmfit tag $NEW."
+            git show "$BASE:engine/Cargo.lock" > "$RUNNER_TEMP/base.lock"
+            git show "$BUILT:engine/Cargo.lock" > "$RUNNER_TEMP/built.lock"
+            python3 -I - "$RUNNER_TEMP/base.lock" "$RUNNER_TEMP/built.lock" "git+https://github.com/AlexsJones/llmfit?tag=$NEW#$LSHA" <<'PY' \
+              || fail "Cargo.lock does not pass the check for llmfit $NEW at $LSHA (see the line above)."
+          import re, sys, tomllib
+          base_path, built_path, want = sys.argv[1:4]
+          CRATES = "registry+https://github.com/rust-lang/crates.io-index"
+          LLMFIT = "git+https://github.com/AlexsJones/llmfit?"
+
+          def load(path):
+              with open(path, "rb") as f:
+                  lock = tomllib.load(f)
+              if set(lock) != {"version", "package"}:
+                  sys.exit(f"Cargo.lock has unexpected top-level keys: {sorted(lock)}")
+              return lock
+
+          def vkey(version):
+              # shortcut: pre-release parts compare as plain text; enough for the release crates in this lock,
+              # refine when a pre-release crate shows up.
+              core, _, pre = version.split("+")[0].partition("-")
+              return (tuple(int(n) for n in core.split(".")), pre == "", pre)
+
+          base, built = load(base_path), load(built_path)
+          if built["version"] != base["version"]:
+              sys.exit(f"Cargo.lock format changed: {base['version']} -> {built['version']}")
+          base_reg = {}
+          for p in base["package"]:
+              if p.get("source") == CRATES:
+                  base_reg.setdefault(p["name"], {})[p["version"]] = p.get("checksum")
+          base_local = sorted((p["name"], p["version"]) for p in base["package"] if "source" not in p)
+          built_reg, built_local, llmfit, seen = {}, [], [], set()
+          for p in built["package"]:
+              name, ver, src = p["name"], p["version"], p.get("source")
+              if (name, ver, src) in seen:
+                  sys.exit(f"Cargo.lock lists {name} {ver} twice.")
+              seen.add((name, ver, src))
+              if src is None:
+                  built_local.append((name, ver))
+              elif src.startswith(LLMFIT):
+                  if src != want:
+                      sys.exit(f"Cargo.lock: {name} {ver} comes from {src}, not from {want}.")
+                  llmfit.append(name)
+              elif src == CRATES:
+                  checksum = p.get("checksum")
+                  if not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+                      sys.exit(f"Cargo.lock: {name} {ver} has no valid checksum.")
+                  old = base_reg.get(name, {}).get(ver)
+                  if old is not None and old != checksum:
+                      sys.exit(f"Cargo.lock: the checksum of {name} {ver} changed.")
+                  built_reg.setdefault(name, {})[ver] = checksum
+              else:
+                  sys.exit(f"Cargo.lock: {name} {ver} comes from {src}; only crates.io and llmfit are allowed.")
+          if "llmfit-core" not in llmfit:
+              sys.exit("Cargo.lock has no llmfit-core from the llmfit tag.")
+          if sorted(built_local) != base_local:
+              sys.exit(f"Cargo.lock: our own crates changed: {base_local} -> {sorted(built_local)}")
+          # Per semver line (1.x, 0.4.x, 0.0.3 …): a crate may gain or lose a whole line, but inside a line that
+          # BASE had, the version must not be lower than BASE's.
+          # shortcut: a requirement that spans lines (such as ">=0.4, <0.6") can still swap 0.5.x for a lower
+          # 0.4.x; not checked, because a stricter rule would also refuse rare real updates. Upgrade when such a
+          # requirement shows up in our dependency tree.
+          def line(version):
+              major, minor, patch = vkey(version)[0]
+              return (major,) if major else (0, minor) if minor else (0, 0, patch)
+
+          for name, versions in built_reg.items():
+              top = {}
+              for v in base_reg.get(name, {}):
+                  top[line(v)] = max(top.get(line(v), vkey(v)), vkey(v))
+              for v in versions:
+                  if line(v) in top and vkey(v) < top[line(v)]:
+                      sys.exit(f"Cargo.lock moves {name} back: {sorted(base_reg[name])} -> {sorted(versions)}")
+          print(f"Cargo.lock: {len(seen)} crates; llmfit at the tag, crates.io with checksums, no crate moved back in its line.")
+          PY
           fi
           { echo "llmfit=$LLMFIT"; echo "update=$UPDATE"; } >> "$GITHUB_OUTPUT"
           echo "Hand-over checked: page SHA-256 $PAGE_SHA, built from ${BUILT:0:7}, llmfit $LLMFIT." | tee -a "$GITHUB_STEP_SUMMARY"

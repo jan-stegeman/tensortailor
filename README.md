@@ -151,8 +151,9 @@ change in the page).
   engine to the new llmfit tag, builds it, checks that the answers are the same as native llmfit, and only then
   commits and publishes. When a check fails, nothing is pushed or released. The build runs in a job that can
   only read this repository; a second job, which runs none of llmfit's code, checks that the page arrived
-  unchanged and that the new commits only move the llmfit tag forward and refresh the README pictures, and only
-  then pushes them and publishes the release.
+  unchanged and that the new commits only move the llmfit tag forward and refresh the README pictures (in
+  `Cargo.lock`, every crate besides llmfit and our own must come from crates.io with a checksum, and none may
+  move back to an older version within its semver line), and only then pushes them and publishes the release.
 
 ### Build the page
 
