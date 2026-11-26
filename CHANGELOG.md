@@ -5,6 +5,13 @@ a day with a release names it. The commits are in backticks at the end of each l
 
 ## [2026.11.26] - 2026-11-26
 
+Released as v2026.11.26 (started by hand, the first release made by the new release job), with a fresh catalog of
+22398 models.
+
+### Changed
+
+- The README pictures were taken again for the release (`e98725b`).
+
 ### Fixed
 
 - The Monday catalog run stores its catalog. The first scheduled run (2026-11-23) skipped the store step, because its
@@ -20,7 +27,7 @@ a day with a release names it. The commits are in backticks at the end of each l
   that can only read the repository. The job with the write token takes the page and a git bundle of the new commits
   by their artifact IDs, checks that the page arrived unchanged and that the commits only move the llmfit tag forward
   (with `Cargo.lock` pinned to the commit GitHub names for that tag) and refresh the README pictures, and then pushes
-  them (with git hooks switched off) and publishes.
+  them (with git hooks switched off) and publishes (`3b3f7e9`).
 
 ## [2026.11.25] - 2026-11-25
 
