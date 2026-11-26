@@ -144,7 +144,9 @@ change in the page).
   which one. Rows that llmfit itself cannot read (for example a context of 100 billion tokens) are taken out and
   listed in the run summary. The engine merges re-uploads of the same model into one row and keeps the newest
   date of them all, so `web/build.mjs` also stores each repo's own release date (and the number of catalog rows)
-  from the catalog file; the page shows that date ("released", NEW).
+  from the catalog file; the page shows that date ("released", NEW). The scraper and llmfit's checks run in a job
+  that can only read this repository; a second job, which runs none of llmfit's code, checks that the result
+  arrived unchanged and stores it (the catalog data itself still comes from llmfit's scraper).
 - **Weekly release:** `.github/workflows/weekly.yml` follows new llmfit releases by itself: it switches the
   engine to the new llmfit tag, builds it, checks that the answers are the same as native llmfit, and only then
   commits and publishes. When a check fails, nothing is pushed or released.

@@ -3,12 +3,26 @@
 All notable changes to TensorTailor are written down here, newest first. Each block is one day, labelled with its date;
 a day with a release names it. The commits are in backticks at the end of each line.
 
+## [2026.11.26] - 2026-11-26
+
+### Fixed
+
+- The Monday catalog run stores its catalog. The first scheduled run (2026-11-23) skipped the store step, because its
+  test `inputs.publish != false` is false when a run has no inputs; so release v2026.11.24 still used the catalog of
+  2026-11-18.
+
+### Security
+
+- The catalog workflow now has two jobs: llmfit's scraper and checks run in a job that can only read the repository,
+  and the job with the write token runs none of llmfit's code. It takes the result by its artifact ID (digest checked),
+  checks with the SHA-256 and the file list that it arrived unchanged, and runs Python with `-I`.
+
 ## [2026.11.25] - 2026-11-25
 
 ### Added
 
 - A What's new list: this changelog, linked from the top of the README; CONTRIBUTING.md and the pull request template
-  ask for a line in it with every change.
+  ask for a line in it with every change (`f733b79`).
 
 ## [2026.11.24] - 2026-11-24
 

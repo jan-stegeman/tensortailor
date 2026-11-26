@@ -6,6 +6,15 @@ name: Weekly catalog
 # pass, the catalog is stored as assets of the fixed pre-release "catalog"
 # (not in git: 17 MB per week). The Tuesday release (weekly.yml) uses it, and
 # falls back to llmfit's own catalog when it is missing, old, or failed.
+#
+# Two jobs, so the write token never shares a machine with llmfit's code:
+# - scrape (contents: read) runs the scraper and all of llmfit's checks, and hands
+#   the result over as an artifact;
+# - store (contents: write) runs no llmfit code: it takes that artifact by its ID
+#   (download-artifact checks the digest), checks that it arrived unchanged, and
+#   uploads it.
+# Neither job uses actions/cache: a job that runs llmfit's code could put a bad
+# cache entry there for a later job. Never give a job with a write token a cache.
 
 on:
   schedule:
@@ -21,19 +30,23 @@ on:
         default: true
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: weekly-catalog
   cancel-in-progress: false
 
 jobs:
-  catalog:
+  scrape:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 130
-    # The write token is given only to the steps that call gh (not to llmfit's scraper or tests), and
-    # checkout does not keep it in .git/config.
+    permissions:
+      contents: read
+    outputs:
+      artifact_id: ${{ steps.handover.outputs.artifact-id }}
+      sha: ${{ steps.pack.outputs.sha }}
+      models: ${{ steps.size.outputs.models }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,6 +65,8 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "llmfit $TAG, scraper SHA-256 $(sha256sum vendor/llmfit/scripts/scrape_hf_models.py | cut -c1-16)…" | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # Python runs with -I here: the working folder is llmfit's checkout, and -I keeps files there
+      # (such as a json.py) out of Python's import path.
       - name: Start from our previous catalog (or llmfit's)
         id: base
         working-directory: vendor/llmfit
@@ -62,12 +77,12 @@ jobs:
           mkdir -p data
           BASE="llmfit $(grep -oP 'tag = "\K[^"]+' "$GITHUB_WORKSPACE/engine/Cargo.toml")"
           if gh release download catalog -R "$GITHUB_REPOSITORY" -D prev -p hf_models.json -p gguf_sources_cache.json -p release_date_cache.json -p catalog-info.json 2>/dev/null \
-             && python3 -m json.tool prev/hf_models.json > /dev/null; then
+             && python3 -I -m json.tool prev/hf_models.json > /dev/null; then
             cp prev/hf_models.json llmfit-core/data/hf_models.json
             for f in gguf_sources_cache.json release_date_cache.json; do [ -f "prev/$f" ] && cp "prev/$f" "data/$f" || true; done
-            BASE="our catalog of $(python3 -c 'import json; print(json.load(open("prev/catalog-info.json"))["built"])' 2>/dev/null || echo '?')"
+            BASE="our catalog of $(python3 -I -c 'import json; print(json.load(open("prev/catalog-info.json"))["built"])' 2>/dev/null || echo '?')"
           fi
-          N=$(python3 -c 'import json; print(len(json.load(open("llmfit-core/data/hf_models.json"))))')
+          N=$(python3 -I -c 'import json; print(len(json.load(open("llmfit-core/data/hf_models.json"))))')
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
           echo "base_models=$N" >> "$GITHUB_OUTPUT"
           echo "Start: $BASE, $N entries" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -156,11 +171,10 @@ jobs:
           echo "After the scrape: $N entries (start: $BASE_N)" | tee -a "$GITHUB_STEP_SUMMARY"
           if [ "$N" -lt $(( BASE_N * 95 / 100 )) ]; then echo "::error::The catalog shrank by more than 5%: not stored."; exit 1; fi
 
-      - name: Store as the 'catalog' release
-        if: inputs.publish != false
+      - name: Pack the catalog for the store job
+        id: pack
         working-directory: vendor/llmfit
         env:
-          GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.llmfit.outputs.tag }}
           BASE: ${{ steps.base.outputs.base }}
           N: ${{ steps.size.outputs.models }}
@@ -168,12 +182,13 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          mkdir -p out
-          cp llmfit-core/data/hf_models.json out/
-          for f in gguf_sources_cache.json release_date_cache.json; do [ -f "data/$f" ] && cp "data/$f" out/ || true; done
-          SHA=$(sha256sum out/hf_models.json | cut -d' ' -f1)
+          OUT="$GITHUB_WORKSPACE/catalog-out"
+          mkdir -p "$OUT"
+          cp llmfit-core/data/hf_models.json "$OUT/"
+          for f in gguf_sources_cache.json release_date_cache.json; do [ -f "data/$f" ] && cp "data/$f" "$OUT/" || true; done
+          SHA=$(sha256sum "$OUT/hf_models.json" | cut -d' ' -f1)
           BUILT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          python3 - "$BUILT" "$TAG" "$N" "$SHA" "$BASE" "$RUN_URL" > out/catalog-info.json <<'PY'
+          python3 -I - "$BUILT" "$TAG" "$N" "$SHA" "$BASE" "$RUN_URL" > "$OUT/catalog-info.json" <<'PY'
           import json, os, sys
           built, tag, n, sha, base, run = sys.argv[1:]
           print(json.dumps({"built": built, "llmfit_tag": tag, "models": int(n), "sha256": sha, "base": base,
@@ -182,13 +197,16 @@ jobs:
                             "taken_out": json.loads(os.environ.get("DROPPED") or "[]"),
                             "run": run}, indent=1))
           PY
-          if ! gh release view catalog -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release create catalog -R "$GITHUB_REPOSITORY" --prerelease --latest=false \
-              --title "Model catalog (weekly, used by the Tuesday release)" \
-              --notes "Refreshed every Monday by .github/workflows/catalog.yml with llmfit's own scraper. Not a TensorTailor release."
-          fi
-          gh release upload catalog -R "$GITHUB_REPOSITORY" --clobber out/*
-          echo "Stored: $N models, SHA-256 $SHA" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Hand the catalog to the store job
+        id: handover
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: catalog-store
+          path: catalog-out/
+          retention-days: 7
+          if-no-files-found: error
 
       - name: Keep the result (also when not stored)
         if: always()
@@ -200,3 +218,58 @@ jobs:
             vendor/llmfit/data/*.json
           retention-days: 7
           if-no-files-found: ignore
+
+  # A scheduled run has no inputs (inputs.publish is empty), so it always stores; a run by hand stores
+  # only when "publish" is ticked. (The old test "inputs.publish != false" was false on a schedule too.)
+  store:
+    needs: scrape
+    if: github.event_name != 'workflow_dispatch' || inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Take the catalog of the scrape job (by ID; the digest is checked)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.scrape.outputs.artifact_id }}
+          path: ${{ runner.temp }}/catalog
+          digest-mismatch: error
+
+      # Nothing of llmfit is on this machine; Python still runs with -I, in a folder that holds only the
+      # downloaded files.
+      - name: Check it again and store it as the 'catalog' release
+        working-directory: ${{ runner.temp }}/catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.scrape.outputs.sha }}
+          N: ${{ needs.scrape.outputs.models }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$SHA" =~ ^[0-9a-f]{64}$ && "$N" =~ ^[0-9]+$ ]]; then echo "::error::Bad hand-over values from the scrape job."; exit 1; fi
+          # Only the four known files, as plain files.
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              ./hf_models.json|./catalog-info.json|./gguf_sources_cache.json|./release_date_cache.json)
+                if [ -L "$f" ] || ! [ -f "$f" ]; then echo "::error::Not a plain file: $f"; exit 1; fi ;;
+              *) echo "::error::Unexpected item in the artifact: $f"; exit 1 ;;
+            esac
+          done < <(find . -mindepth 1 -print0)
+          if [ "$(sha256sum hf_models.json | cut -d' ' -f1)" != "$SHA" ]; then echo "::error::hf_models.json is not the file the scrape job checked."; exit 1; fi
+          python3 -I - "$SHA" "$N" <<'PY'
+          import json, os, sys
+          sha, n = sys.argv[1], int(sys.argv[2])
+          for f in os.listdir("."):
+              json.load(open(f, encoding="utf-8"))
+          info = json.load(open("catalog-info.json", encoding="utf-8"))
+          rows = json.load(open("hf_models.json", encoding="utf-8"))
+          if not isinstance(rows, list) or len(rows) != n or info.get("sha256") != sha or info.get("models") != n:
+              sys.exit("catalog-info.json does not match the catalog")
+          PY
+          if ! gh release view catalog -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create catalog -R "$GITHUB_REPOSITORY" --prerelease --latest=false \
+              --title "Model catalog (weekly, used by the Tuesday release)" \
+              --notes "Refreshed every Monday by .github/workflows/catalog.yml with llmfit's own scraper. Not a TensorTailor release."
+          fi
+          gh release upload catalog -R "$GITHUB_REPOSITORY" --clobber ./*.json
+          echo "Stored: $N models, SHA-256 $SHA" | tee -a "$GITHUB_STEP_SUMMARY"
