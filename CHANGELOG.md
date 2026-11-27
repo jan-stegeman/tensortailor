@@ -18,6 +18,11 @@ a day with a release names it. The commits are in backticks at the end of each l
   repo names only, and most GGUF repos hold every quant as a file, so "Qwen 3.8 27B Uncensored Q4_K_M" missed
   `orcarouter/Qwen3.8-27B-Uncensored-GGUF`. The search now leaves the quant out (the line above the list says so), and
   the detail panel marks that file with **you searched** in Which file fits? and in Files (`4b212f4`).
+- The page fits a page area of 1100 px (it needed 1180 px; below that its right edge was cut off). Below 1180 px the side bar is
+  248 px and the detail panel starts at 340 px, a remembered wider panel is limited again, and the four numbers in the
+  panel get a little smaller. In such a narrow panel the Files tab gives each file two lines, so a name keeps its
+  quant. The verdict tiles drop the word "hidden" when the list is narrow and never run off its edge, and "Runs, but
+  slower" is no longer close to being cut off in a narrow list.
 
 ## [2026.11.26] - 2026-11-26
 

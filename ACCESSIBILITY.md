@@ -24,15 +24,17 @@ mode, and with a screen reader. This page says what works, what was tested, and 
 Before the first public release (November 2026) every screen was checked in headless Chrome at window widths of
 1180, 1280, 1366, 1600 and 1920 pixels, in light and in dark mode: text that is cut off or overlaps, contrast
 measured on the real colours, and real `Tab` walks through the page for the focus order and focus rings. Tests in
-`tools/` repeat the most important checks on every change.
+`tools/` repeat the most important checks on every change. Since 2026-11-27 the page also fits a page area of 1,100
+pixels, and a test checks it.
 
 ## Known limits
 
 - **No real screen-reader test yet.** The page was not yet tested from start to end with NVDA, JAWS or Narrator.
 - **Dimmed rows.** Models that *Won't fit* are shown a little faded on purpose, so the models that do fit stand
   out. Their text is below the AA contrast level.
-- **Desktop only.** TensorTailor is made for a PC screen of at least about 1180 pixels wide. Phones, tablets and
-  touch screens are not supported.
+- **Desktop only.** TensorTailor is made for a PC screen with a page area at least 1,100 pixels wide (the Chrome
+  window itself is a little wider, because of its edges). In a narrower window the right edge of the page is cut
+  off. Phones, tablets and touch screens are not supported.
 - **Browser.** Tested in Chrome on Windows; made for Chrome and Edge. Downloads need Chrome or Edge.
 
 ## Report a barrier
