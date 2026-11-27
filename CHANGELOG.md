@@ -22,7 +22,10 @@ a day with a release names it. The commits are in backticks at the end of each l
   248 px and the detail panel starts at 340 px, a remembered wider panel is limited again, and the four numbers in the
   panel get a little smaller. In such a narrow panel the Files tab gives each file two lines, so a name keeps its
   quant. The verdict tiles drop the word "hidden" when the list is narrow and never run off its edge, and "Runs, but
-  slower" is no longer close to being cut off in a narrow list.
+  slower" is no longer close to being cut off in a narrow list (`f03218a`).
+- A model that reads images, downloaded from a GGUF copy without a vision projector (`mmproj`), gave no sign that
+  LM Studio would use it for text only. The Files tab now shows an amber note for such a copy, and the Download
+  message says so.
 
 ## [2026.11.26] - 2026-11-26
 
