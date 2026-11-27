@@ -12,20 +12,29 @@ a day with a release names it. The commits are in backticks at the end of each l
   looks for the same model on Hugging Face by name, with the Ollama user's own repos of that name first.
   `hf.co/<repo>:<quant>` is checked as that Hugging Face repo (`4b212f4`).
 
+### Changed
+
+- For a model that reads images, every GGUF copy in the Files tab says whether it has a vision projector: in the
+  GGUF source list (one request per copy, once) and in Find GGUF copies (no extra request; the copies with one come
+  first). The amber note under a copy without one offers the copies that have one, with **Use**; **Use** on a copy
+  that is already in the source list picks it there.
+
 ### Fixed
 
 - A quant in the search (`Q4_K_M`, `IQ4_XS`, `UD-Q4_K_XL`, `Q8_0` …) no longer hides the model. Hugging Face searches
   repo names only, and most GGUF repos hold every quant as a file, so "Qwen 3.8 27B Uncensored Q4_K_M" missed
   `orcarouter/Qwen3.8-27B-Uncensored-GGUF`. The search now leaves the quant out (the line above the list says so), and
   the detail panel marks that file with **you searched** in Which file fits? and in Files (`4b212f4`).
-- The page fits a page area of 1100 px (it needed 1180 px; below that its right edge was cut off). Below 1180 px the side bar is
-  248 px and the detail panel starts at 340 px, a remembered wider panel is limited again, and the four numbers in the
+- The page fits a page area of 1100 px (it needed 1180 px; below that its right edge was cut off). Below 1180 px
+  the side bar is 248 px and the detail panel starts at 340 px, a remembered wider panel is limited again, and the four numbers in the
   panel get a little smaller. In such a narrow panel the Files tab gives each file two lines, so a name keeps its
   quant. The verdict tiles drop the word "hidden" when the list is narrow and never run off its edge, and "Runs, but
   slower" is no longer close to being cut off in a narrow list (`f03218a`).
 - A model that reads images, downloaded from a GGUF copy without a vision projector (`mmproj`), gave no sign that
   LM Studio would use it for text only. The Files tab now shows an amber note for such a copy, and the Download
-  message says so.
+  message says so (`fdd5c0b`).
+- **Find GGUF copies** listed repos without any GGUF file too (Hugging Face no longer applies `library=gguf`); it now
+  asks with `filter=gguf`.
 
 ## [2026.11.26] - 2026-11-26
 
