@@ -17,7 +17,10 @@ a day with a release names it. The commits are in backticks at the end of each l
 - For a model that reads images, every GGUF copy in the Files tab says whether it has a vision projector: in the
   GGUF source list (one request per copy, once) and in Find GGUF copies (no extra request; the copies with one come
   first). The amber note under a copy without one offers the copies that have one, with **Use**; **Use** on a copy
-  that is already in the source list picks it there.
+  that is already in the source list picks it there (`7b5bd08`).
+- Before you download a model that reads images, each model file in the Files tab says **+ vision projector** (the
+  projector comes along) or **text only** (this copy has none), and Download of a text-only copy first asks whether
+  you want it anyway.
 
 ### Fixed
 
@@ -34,7 +37,7 @@ a day with a release names it. The commits are in backticks at the end of each l
   LM Studio would use it for text only. The Files tab now shows an amber note for such a copy, and the Download
   message says so (`fdd5c0b`).
 - **Find GGUF copies** listed repos without any GGUF file too (Hugging Face no longer applies `library=gguf`); it now
-  asks with `filter=gguf`.
+  asks with `filter=gguf` (`7b5bd08`).
 
 ## [2026.11.26] - 2026-11-26
 
