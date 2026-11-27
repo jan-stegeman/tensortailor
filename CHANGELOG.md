@@ -20,7 +20,11 @@ a day with a release names it. The commits are in backticks at the end of each l
   that is already in the source list picks it there (`7b5bd08`).
 - Before you download a model that reads images, each model file in the Files tab says **+ vision projector** (the
   projector comes along) or **text only** (this copy has none), and Download of a text-only copy first asks whether
-  you want it anyway.
+  you want it anyway (`5a7c7c6`).
+- The Vision eye was about the original model only, so a top pick could show it while none of its GGUF copies can
+  read images in LM Studio. When a search on Hugging Face finds no GGUF copy with a vision projector, the eye is now
+  amber with a line through it ("Vision only in the original model") in the list, the top picks and the detail panel.
+  TensorTailor checks this by itself for the three top picks and for the model you open.
 
 ### Fixed
 

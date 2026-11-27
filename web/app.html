@@ -322,6 +322,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .m-name .sub .cap { width: 17px; height: 17px; }
 .m-name .sub .cap svg { width: 10px; height: 10px; }
 .cap.vision { color: var(--cap-vision); } .cap.tools { color: var(--cap-tools); } .cap.reason { color: var(--cap-reason); }
+/* Vision only in the original model (no GGUF copy can read images): amber, with a line through it. */
+.caps .cap.vision.off, .d-facts .caps .cap.vision.off { color: var(--marginal); border-color: currentColor; position: relative; }
+.cap.vision.off::after { content: ""; position: absolute; left: 1px; right: 1px; top: calc(50% - 0.75px); height: 1.5px; background: currentColor; transform: rotate(-45deg); border-radius: 1px; }
 .chip-btn .cap { width: 17px; height: 17px; margin-right: 5px; vertical-align: -4px; }
 
 .cap-label { display: inline-flex; align-items: center; gap: 5px; }
@@ -1377,7 +1380,7 @@ details.by-hand .hint { margin-top: 6px; }
 
     <h3>Labels and icons</h3>
     <dl>
-      <dt><span class="caps"><span data-helpcap="vision"></span></span> Vision</dt><dd>The model can read images (photos, screenshots). It does not make images.</dd>
+      <dt><span class="caps"><span data-helpcap="vision"></span></span> Vision</dt><dd>The model can read images (photos, screenshots). It does not make images. LM Studio also needs the model's <b>vision projector</b> (an <code>mmproj</code> file) next to the GGUF file. An <b>amber eye with a line through it</b> means: the original model reads images, but none of its GGUF copies on Hugging Face has a vision projector, so in LM Studio it reads text only. TensorTailor checks this for the top picks and for the model you open (a search on Hugging Face); for other models the eye stays normal until then.</dd>
       <dt><span class="caps"><span data-helpcap="tools"></span></span> Tool use</dt><dd>The model can call functions, so AI agents can use it.</dd>
       <dt><span class="caps"><span data-helpcap="reason"></span></span> Reasoning</dt><dd>The model thinks step by step before it answers. "(from the model name)" means only the name says so (for example "Thinking" or "R1"), not llmfit's list.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days: the date this repo was made on Hugging Face. A new re-upload of an old model does not make the old model new.</dd>
@@ -1770,10 +1773,15 @@ const CAP_SVG = {
   reason: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3a3 3 0 0 0-3 3 3 3 0 0 0-2.5 4.5A3 3 0 0 0 5 16a3 3 0 0 0 4.5 4V3z"/><path d="M14.5 3a3 3 0 0 1 3 3 3 3 0 0 1 2.5 4.5A3 3 0 0 1 19 16a3 3 0 0 1-4.5 4V3z"/></svg>'
 };
 const CAP_TITLE = { vision: "Vision: reads images", tools: "Tool use: can call functions (agents)", reason: "Reasoning: thinks step by step" };
-function capIcon(k, extra) { return `<span class="cap ${k}" title="${esc(CAP_TITLE[k] + (extra || ""))}" aria-label="${esc(CAP_TITLE[k])}">${CAP_SVG[k]}</span>`; }
-function capIcons(caps) {
+function capIcon(k, extra) { return `<span class="cap ${k}" role="img" title="${esc(CAP_TITLE[k] + (extra || ""))}" aria-label="${esc(CAP_TITLE[k])}">${CAP_SVG[k]}</span>`; }
+// m (optional): a model that reads images, but whose GGUF copies cannot (no vision projector in any of them), gets an
+// amber, struck-through eye: the original model reads images, LM Studio only text.
+const VISION_OFF = "Vision only in the original model: no GGUF copy has a vision projector, so LM Studio uses it for text only.";
+function visionOffIcon() { return `<span class="cap vision off" role="img" title="${esc(VISION_OFF)}" aria-label="${esc(VISION_OFF)}">${CAP_SVG.vision}</span>`; }
+function capIcons(caps, m) {
   const fromName = caps.includes("reason-name") ? " (from the model name)" : "";
-  return `<span class="caps">${["vision", "tools", "reason"].filter((k) => caps.includes(k)).map((k) => capIcon(k, k === "reason" ? fromName : "")).join("")}</span>`;
+  const off = !!m && caps.includes("vision") && visionCopies(m) === "none";
+  return `<span class="caps">${["vision", "tools", "reason"].filter((k) => caps.includes(k)).map((k) => (k === "vision" && off ? visionOffIcon() : capIcon(k, k === "reason" ? fromName : ""))).join("")}</span>`;
 }
 // Repos with already-compressed weights that are not GGUF (EXL2/EXL3, bitsandbytes, AWQ, GPTQ, MLX, vLLM builds, "9bit"),
 // or whose name says far more parameters than llmfit counts. llmfit's list marks most of them "gguf" and counts the
@@ -2064,7 +2072,7 @@ function rowHTML(r, idx) {
     <div class="row-acts"><button class="star" tabindex="-1" data-watch="${esc(m.id)}" aria-pressed="${state.watch.has(m.id)}" title="Favourite (W): star the models you like; see them all with 'Only my favourites'" aria-label="Favourite ${esc(m.name)}">${state.watch.has(m.id) ? "★" : "☆"}</button><input type="checkbox" tabindex="-1" data-cmp="${esc(m.id)}" ${state.compare.includes(m.id) ? "checked" : ""} title="Select for compare or battle (C)" aria-label="Select ${esc(m.name)}"></div>
     ${avatar(m)}
     <div class="m-name"><div class="nm"><span class="t" title="${esc(m.id)}">${esc(m.name)}</span><a class="hf-link" tabindex="-1" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Search Hugging Face for this model" : "Open on Hugging Face"}" aria-label="${lmsOnly(m.id) ? "Search Hugging Face for" : "Open"} ${esc(m.name)}${lmsOnly(m.id) ? "" : " on Hugging Face"}">↗</a>${m.moe ? `<span class="chip moe" title="${esc(CHIP_TIP.moe)}">MoE</span>` : ""}${r.upgradeOnly ? `<span class="chip upg" title="${esc(CHIP_TIP.upg)}">upgrade</span>` : ""}</div>
-      <div class="sub">${capIcons(m.caps)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", rtName(m.runtime)))}">${esc(rtName(m.runtime))}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"><span class="sep"> · </span><span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
+      <div class="sub">${capIcons(m.caps, m)}${isNew(m) ? `<span class="chip new" data-p="4" title="${esc(CHIP_TIP.new + (m.added ? " Released " + m.added + "." : ""))}">NEW</span>` : ""}${m.fromLms ? `<span class="chip live" data-p="2" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="chip live" data-p="2" title="Fetched live from Hugging Face${m.live !== "yes" ? " on " + esc(m.live) : ""}, not in llmfit's list">live</span>` : ""}${String(b.conf).startsWith("measured") ? `<span class="chip meas" data-p="3" title="${esc(CHIP_TIP.meas)}">measured</span>` : ""}${m.runtime && m.runtime !== "LlamaCpp" ? `<span class="chip vllm" title="${esc(CHIP_TIP.runtime.replace("{rt}", rtName(m.runtime)))}">${esc(rtName(m.runtime))}</span>` : ""}${lms && !m.fromLms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}${m.packed ? `<span class="chip lock" title="${esc(m.packed.text)}">size uncertain</span>` : ""}${licenseChip(m)}<span class="idt"><span class="pub" title="${esc(m.provider)}">${esc(m.provider)}</span><span class="prm"><span class="sep"> · </span><span title="Number of parameters (B = billion, M = million)">${fmtParams(m.params)}</span></span></span></div></div>
     <div title="Best file: ${esc(b.q)}. The best quantization (file version) llmfit picks for this PC. Q8_0 = near original quality; lower numbers (Q4, Q3, Q2) = smaller and faster, but less precise."><span class="quant${String(b.q).length > 7 ? " long" : ""}">${esc(b.q).replace(/-/g, "-<wbr>")}</span></div>
     <div class="membar${b.vram > 0 && b.inRam <= 0.05 && b.need / b.vram > 0.88 ? " hot" : ""}" title="${esc(memTip(b))}">${memBar(b)}<div class="memlabel"><span>${memLabelHtml(b)}</span>${b.vram > 0 && b.inRam <= 0.05 && b.plain !== "nofit" ? `<span class="pct">${Math.round(100 * Math.min(b.inGpu, b.vram) / b.vram)}%</span>` : ""}</div></div>
     <div class="num tps" title="${esc(speedTip(b))}">${speedRange(b)}${b.tps > 0 && b.hi < 1000 ? "<small>tok/s</small>" : ""}</div>
@@ -2345,6 +2353,8 @@ function renderSuggest() {
   const fastest = ok.filter((r) => r.best.parts.quality >= 60).sort((a, b) => b.best.tps - a.best.tps)[0];
   // Nothing to suggest (for example a search without results): no empty cards above the empty list.
   if (!bestOverall && !smartest && !fastest) { el.hidden = true; return; }
+  // Can LM Studio read images with a pick that reads images? Checked in the background (the eye turns amber if not).
+  queueVisionChecks([bestOverall, smartest, fastest]);
   // Closed: one slim strip with the three names (click one to open it). Open: three cards.
   if (!state.picksOpen) {
     const pill = (k, r, why) => r ? `<button class="pk" data-show="${esc(r.m.id)}" title="${esc(k + ": " + r.m.id + " · " + PLAIN[r.best.plain].label + " · " + speedTok(r.best) + "\n" + why)}"><span class="d ${PLAIN[r.best.plain].cls}"></span><span class="k">${k}</span><b>${esc(pickName(r.m.name))}</b></button>` : "";
@@ -2354,7 +2364,7 @@ function renderSuggest() {
     return;
   }
   el.className = "suggest";
-  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedTok(r.best)}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span>${visionModel(r.m) ? capIcons(["vision"], r.m) : ""}</span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedTok(r.best)}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
     : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
   el.innerHTML = `<div class="sug-head"><b>Top picks for this PC</b><span>They follow your filters. Point at a label for the rule.</span><span class="spacer"></span><button class="btn ghost small" id="btnCloseSuggest" title="Hide the top picks (the button Top picks shows them again)">Hide</button></div>` + card("Best overall", bestOverall, "Highest score that still gives 12+ tok/s.") + card("Highest quality", smartest, "Best quality score at reading pace or faster.") + card("Fastest", fastest, "Quickest model whose quality score is 60 or more.");
   el.hidden = false;
@@ -2639,14 +2649,16 @@ const projAsked = new Set();
 let projPauseUntil = 0;
 async function checkSourceProjectors(m) {
   if (Date.now() < projPauseUntil) return;
-  const todo = ggufSources(m).map((s) => s.repo).filter((repo) => projOf(repo) === undefined && !state.files.get(repo) && !projAsked.has(repo));
+  // "lmstudio/…" ids (models only LM Studio knows) are not Hugging Face repos: never asked.
+  const todo = ggufSources(m).map((s) => s.repo).filter((repo) => !lmsOnly(repo) && projOf(repo) === undefined && !state.files.get(repo) && !projAsked.has(repo));
   if (!todo.length) return;
   for (const repo of todo) projAsked.add(repo);
   let learnt = false;
   for (const [i, repo] of todo.entries()) {
     try {
       const j = await hfJson(`https://huggingface.co/api/models/${repo}`);
-      if (Array.isArray(j.siblings)) { const p = hasProjFile(j.siblings.map((s) => s.rfilename || "")); if (p !== undefined) { projKnown.set(repo, p); learnt = true; } }
+      // A repo without GGUF model files is stored as undefined: known, but no copy (visionCopies skips it).
+      if (Array.isArray(j.siblings)) { const p = hasProjFile(j.siblings.map((s) => s.rfilename || "")); projKnown.set(repo, p); if (p !== undefined) learnt = true; }
     } catch (e) {
       projPauseUntil = Date.now() + 60000;
       for (const r0 of todo.slice(i)) projAsked.delete(r0);
@@ -2655,22 +2667,73 @@ async function checkSourceProjectors(m) {
   }
   if (learnt && state.selected === m.id && state.tab === "files") renderDetail();
 }
-async function searchGgufCopies(m) {
+// quiet: started by the app itself (checkVisionCopies), not by Find GGUF copies: no "Searching…" in the panel, and a
+// model with llmfit's own GGUF sources does not show the list (its note still offers a copy with a projector).
+async function searchGgufCopies(m, quiet) {
   const key = "search:" + m.id;
-  const entry = { loading: true, at: Date.now() };
-  state.files.set(key, entry); renderDetail();
+  const entry = { loading: true, at: Date.now(), auto: !!quiet };
+  state.files.set(key, entry); if (!quiet) renderDetail();
   try {
     // filter=gguf: "library=gguf" also returned repos without GGUF files (2026-11-27). full=true adds each repo's
     // file names, so a vision projector is seen without a request per repo.
-    const list = await hfJson(`https://huggingface.co/api/models?filter=gguf&full=true&search=${encodeURIComponent(m.name)}&sort=downloads&limit=8`);
+    const list = await hfJson(`https://huggingface.co/api/models?filter=gguf&full=true&search=${encodeURIComponent(m.name)}&sort=downloads&limit=${SEARCH_LIMIT}`);
     entry.repos = list.map((x) => {
       const repo = x.id || x.modelId;
       if (Array.isArray(x.siblings)) projKnown.set(repo, hasProjFile(x.siblings.map((s) => s.rfilename || "")));
       return { repo, downloads: x.downloads || 0 };
     });
     entry.loading = false;
-  } catch (e) { entry.loading = false; entry.error = e.message; }
-  renderDetail();
+  } catch (e) { entry.loading = false; entry.error = e.message; projPauseUntil = Date.now() + 60000; }
+  if (!quiet || (state.selected === m.id && state.tab === "files")) renderDetail();
+  // The eyes in the list and the top picks may change (also after Find GGUF copies).
+  if (visionModel(m)) visionRepaint(m);
+}
+// The search asks for at most this many copies; a full page may leave more copies unseen.
+const SEARCH_LIMIT = 8;
+// Can LM Studio read images with this model? "yes": a known GGUF copy has a vision projector. "none": a search was
+// done (and found fewer than SEARCH_LIMIT copies, so none was left out) and every known GGUF copy (llmfit's sources,
+// the search, the copy you chose) was checked, and none has one. "": not known yet, or not a model that reads images.
+function visionCopies(m) {
+  if (!visionModel(m)) return "";
+  const s = state.files.get("search:" + m.id), searched = !!(s && s.repos && !s.error && s.repos.length < SEARCH_LIMIT);
+  const repos = [...new Set([...ggufSources(m).map((x) => x.repo), ...(searched ? s.repos.map((x) => x.repo) : []), state.srcIdx["repo:" + m.id]].filter(Boolean))];
+  const known = (r0) => !!(state.files.get(r0) || {}).files || projKnown.has(r0);
+  if (repos.some((r0) => projOf(r0) === true)) return "yes";
+  if (s && s.repos && !s.error && s.repos.some((x) => projOf(x.repo) === true)) return "yes";
+  return searched && repos.every(known) ? "none" : "";
+}
+// The app checks this itself for the three top picks and the model you open (a search, plus one request per GGUF
+// source it does not know yet), once per model while the page is open; a failed search may be tried again later.
+const visAsked = new Set();
+async function checkVisionCopies(m) {
+  if (!visionModel(m) || visAsked.has(m.id) || visionCopies(m) || Date.now() < projPauseUntil) return;
+  const s = state.files.get("search:" + m.id);
+  // A search you started is still running: it draws the eyes itself when it ends; ask again later.
+  if (s && s.loading) return;
+  visAsked.add(m.id);
+  if (!s || s.error) await searchGgufCopies(m, true);
+  const done = state.files.get("search:" + m.id);
+  if (!done || done.error) { visAsked.delete(m.id); return; }
+  await checkSourceProjectors(m);
+  visionRepaint(m);
+}
+// Draw the eyes again: the list rows in view, the top picks, and the icons at the top of the detail panel.
+function visionRepaint(m) {
+  renderRowsWindow();
+  // The top picks are drawn again: a button there that had the keyboard focus gets it back.
+  const a = document.activeElement, sg = $("suggest");
+  const key = a && sg.contains(a) ? (a.id ? "#" + a.id : a.dataset.show ? `[data-show="${CSS.escape(a.dataset.show)}"]` : a.dataset.addbattle ? `[data-addbattle="${CSS.escape(a.dataset.addbattle)}"]` : "") : "";
+  renderSuggest();
+  if (key) { const b = sg.querySelector(key); if (b) b.focus(); }
+  const d = document.querySelector("#detail .d-facts .caps");
+  if (d && state.selected === m.id) d.outerHTML = capIcons(m.caps, m);
+}
+let visTimer = 0;
+function queueVisionChecks(rs) {
+  clearTimeout(visTimer);
+  if (Date.now() < projPauseUntil) return;
+  const todo = rs.filter((r) => r && visionModel(r.m) && !visAsked.has(r.m.id) && !visionCopies(r.m));
+  if (todo.length) visTimer = setTimeout(async () => { for (const r of todo) await checkVisionCopies(r.m); }, 1500);
 }
 // A short label for a copy of a vision model: with or without a projector (nothing while unknown).
 function projTag(m, repo) {
@@ -2717,7 +2780,7 @@ function tabFiles(r) {
   const projWord = (r0) => { const p = vis ? projOf(r0) : undefined; return p === true ? " · vision projector" : p === false ? " · no vision projector" : ""; };
   if (sources.length) html += `<label class="field" style="margin-bottom:10px">GGUF source<select id="srcSel">${sources.map((s, i) => `<option value="${i}" ${!custom && i === idx ? "selected" : ""}>${esc(s.repo + projWord(s.repo))}</option>`).join("")}${custom ? `<option selected>${esc(custom + projWord(custom))}</option>` : ""}</select></label>`;
   else html += `<p class="hint" style="margin-top:0">llmfit knows no GGUF copy of this model. Search Hugging Face for one:</p><button class="btn small" id="btnFindGguf">Find GGUF copies</button>`;
-  if (search) {
+  if (search && !(search.auto && sources.length)) {
     // For a vision model, the copies with a projector come first (each group by downloads, as Hugging Face sent them).
     const found = search.repos ? (vis ? search.repos.slice().sort((a, c) => (projOf(c.repo) === true) - (projOf(a.repo) === true)) : search.repos) : [];
     html += search.loading ? '<div class="loading">Searching Hugging Face…</div>' : search.error ? `<div class="warn-box">${esc(search.error)}</div>` :
@@ -2733,7 +2796,7 @@ function tabFiles(r) {
         // Known copies that do have one (GGUF sources and search results), each with Use.
         const others = [...new Set([...sources.map((s) => s.repo), ...((search && search.repos) || []).map((x) => x.repo)])].filter((r0) => r0 !== repo && projOf(r0) === true);
         const alt = others.length ? `<div class="vm-alt">Copies with a vision projector:${others.map((r0) => `<div class="folder-row"><code>${esc(r0)}</code><button class="btn small" data-userepo="${esc(r0)}">Use</button></div>`).join("")}</div>`
-          : search && !search.loading && !search.error ? "<div class=\"vm-alt\">None of the copies found has one either.</div>"
+          : search && !search.loading && !search.error && !(search.auto && sources.length) ? "<div class=\"vm-alt\">None of the copies found has one either.</div>"
           : `<div class="vm-alt">Search Hugging Face for a copy that has one: <button class="btn small" data-findgguf="1">Find GGUF copies</button></div>`;
         html += `<div class="warn-box vision-miss"><b>No vision projector in this copy.</b> This model can read images, but this repo has no <code>mmproj</code> file, so LM Studio loads it for text only.${alt}</div>`;
       }
@@ -3161,6 +3224,7 @@ function renderDetail() {
   // through the list (arrow keys, j/k) sent two requests per row before. Gated repos answer 401 without a token:
   // config.json is only asked for when a token is set.
   if (!gatedLive(m.id)) hfWhenSettled(m.id, () => checkGated(m.id));
+  if (visionModel(m) && !visAsked.has(m.id) && !visionCopies(m)) hfWhenSettled(m.id, () => checkVisionCopies(m));
   const mx = state.mtp.get(m.id);
   if (!(mx && (mx.loading || "config" in mx)) && (!needsToken(m) || state.token)) hfWhenSettled(m.id, () => loadMtpConfig(m.id));
   const tabs = [["overview", "Overview"], ["files", "Files"], ["run", "Run"], ["plan", "Plan"]];
@@ -3176,7 +3240,7 @@ function renderDetail() {
     : (ggufSources(m).length || /gguf/i.test(m.id)) && b.plain !== "nofit" ? `<button class="btn primary small" data-tab="files" title="Opens the Files tab: the file marked 'best for this PC' has the Download button">Choose a file to download</button>` : "";
   $("detail").innerHTML = `<section class="card dhead">
     <div class="dh-top">${avatar(m, true)}<div class="dh-name"><h1 class="d-title${m.name.length > 26 ? " long" : ""}" title="${esc(m.name)}">${esc(m.name)}</h1><a class="d-id" href="${esc(hfHref(m.id))}" target="_blank" rel="noopener" title="${lmsOnly(m.id) ? "Made from LM Studio's data: no Hugging Face page is known. Search Hugging Face for it" : "Open on Hugging Face: huggingface.co/" + esc(m.id)}">${lmsOnly(m.id) ?"No Hugging Face page known · search Hugging Face" : `huggingface.co/${esc(m.id)}`}↗</a></div><button class="btn icon fav" data-watch="${esc(m.id)}" aria-pressed="${fav}" aria-label="Favourite" title="Favourite (W): see all favourites with 'Only my favourites'">${fav ? "★" : "☆"}</button></div>
-    <div class="d-facts">${capIcons(m.caps)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
+    <div class="d-facts">${capIcons(m.caps, m)}${mtpTag(m)}${m.fromLms ? `<span class="tag okay" title="${esc(CHIP_TIP.fromLms)}">from LM Studio</span>` : m.live ? `<span class="tag okay" title="Not in llmfit's list: fetched live from Hugging Face and converted with llmfit's own code">live from Hugging Face${m.live !== "yes" ? " · " + esc(m.live) : ""}</span>` : ""}${lms ? `<span class="chip lms" title="${esc(CHIP_TIP.lms)}">in LM Studio</span>` : ""}<span class="d-meta">${meta.map((x) => `<span class="mi">${esc(x)}</span>`).join(" · ")}</span></div>
     <div class="d-answer v-${b.plain}">${verdict(b.plain)}${state.upg.gpu || state.upg.ram ? `<span class="chip upg" title="What if I upgrade? is on: this verdict, the numbers and the commands are for the upgraded PC, not for your PC as it is now.">with upgrade</span>` : ""}<span class="d-file" title="${esc("The quantization (file version) llmfit picks for this PC. Overview, Files and the commands use it.")}">Best file <b>${esc(b.q)}</b></span>${lmsQ ? `<span class="d-file" title="The file you have in LM Studio. The LM Studio settings in Run are for this file.">In LM Studio <b>${esc(lmsQ)}</b></span>` : ""}<span class="spacer"></span>${action}</div>
     <div class="tabs" role="tablist" aria-label="Details">${tabs.map(([k, l]) => `<button role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${state.tab === k}" aria-controls="detailPanel" tabindex="${state.tab === k ? 0 : -1}">${l}</button>`).join("")}</div></section><div class="tab-panel" role="tabpanel" id="detailPanel" aria-labelledby="tab-${state.tab}">${body}</div>`;
   if (state.tab === "files") fitFileNames();
