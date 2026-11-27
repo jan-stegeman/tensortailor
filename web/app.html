@@ -556,6 +556,8 @@ h2 { font-weight: 650; }
 .badge::before { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
 .tag { border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
 .tag.browser, .tag.imported, .tag.okay, .tag.warnish { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 26%, transparent); }
+/* The quant named in the search ("you searched"), in Which file fits? and Files. */
+.tag.searched { color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 26%, transparent); font-size: 10.5px; font-weight: 600; padding: 0 6px; vertical-align: 1px; }
 .chip { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent); }
 .chip.upg { box-shadow: none; }
 .quant { font-weight: 600; border: 0; background: var(--sunken); box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); border-radius: 5px; }
@@ -1088,7 +1090,7 @@ details.by-hand .hint { margin-top: 6px; }
   <div class="top-mid">
     <label class="search">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <input id="q" type="search" placeholder="Search or paste a HF link" autocomplete="off" aria-label="Search models or paste a Hugging Face link">
+      <input id="q" type="search" placeholder="Search or paste a link" autocomplete="off" aria-label="Search models, or paste a Hugging Face or Ollama link">
       <kbd>/</kbd>
     </label>
     <nav class="nav" id="nav" aria-label="Views">
@@ -1402,7 +1404,7 @@ details.by-hand .hint { margin-top: 6px; }
       <dt>KV cache</dt><dd>F16 is normal. Q8 halves the KV cache, Q4 makes it about a quarter, with a small loss in quality. The list always counts with F16. In the detail panel, Memory, the maths line, the bar, "Which file fits?" (with its note) and the Files tab's "Fits here" use your choice, and the Plan tab counts with it; the verdict and the speed stay those of the list (F16), and one line under the maths says so. When the smaller cache would let the model fit fully in VRAM (or fit at all), the numbers stay F16 and that line says what your choice gives.</dd>
       <dt>Your choices are kept</dt><dd>Filters, what it is for, context length, KV cache, sort and the four verdict tiles are kept in this browser, also after a reload. <b>Reset</b> (Filters) puts the filters back to the start values. Your hardware is a short summary; <b>Edit hardware</b> opens the fields, <b>Detect in browser</b> and <b>Import…</b>. A saved hardware value that is not a valid number or name (other local pages can share this browser's storage) is replaced by the start value.</dd>
       <dt>Storage full</dt><dd>When this browser's storage for TensorTailor is full, a message says that a change was not saved: it works until you close the page. Fetched models take the most room: <b>Tools → Catalog → Remove fetched models</b> frees it.</dd>
-      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). Several words find models that have all of them, in any order: <b>qwen3 14b</b> finds Qwen3-14B. From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model (the line above the list reminds you).</dd>
+      <dt>Search</dt><dd>Type a name or a publisher (for example bartowski). Several words find models that have all of them, in any order: <b>qwen3 14b</b> finds Qwen3-14B. From 2 letters, a line above the list shows how many matches your filters hide (<b>Show all</b> turns the filters off for this search; <b>Filters on again</b> turns them back on). Press Enter on an exact model name (or a pasted link) to open its Files tab; Enter on a word that matches nothing at all searches Hugging Face by itself. <b>Search Hugging Face</b> finds the publisher's models and models with the text in their name, and checks them with llmfit's own code (label <span class="chip live">live</span>). Paste a Hugging Face link and press Enter to check one model (the line above the list reminds you). A quant in the search (Q4_K_M, IQ4_XS, Q8_0 …) is left out, because it names a file inside a repo and Hugging Face searches repo names only; the detail panel marks that file with <b>you searched</b> in <b>Which file fits?</b> and in <b>Files</b>. An Ollama link (ollama.com/…, or an <code>ollama run</code> line) works too: a web page cannot read ollama.com, so TensorTailor looks for the same model on Hugging Face by name. Most Ollama models are GGUF files from there; <code>hf.co/&lt;repo&gt;:Q4_K_M</code> is checked as that repo.</dd>
     </dl>
 
     <h3>Filters (left)</h3>
@@ -2038,8 +2040,65 @@ function chosenRepo(m) {
   const s = ggufSources(m);
   return s.length ? s[clamp(state.srcIdx[m.id] || 0, 0, s.length - 1)].repo : null;
 }
-// Plain search text (not a pasted link). It matches the id (so also the publisher) and the provider.
-function searchText() { const s = state.search.trim().toLowerCase(); return s && !/^https?:/.test(s) ? s : ""; }
+// A quant word (Q4_K_M, IQ4_XS, UD-Q4_K_XL, Q8_0, F16 …) names a file inside a repo, not the repo: Hugging Face
+// searches repo names only, so the search leaves it out and the detail panel marks that file instead.
+const QUANT_WORD = /^(?:ud-)?(?:iq\d_[a-z]+|q\d_k(?:_[a-z]{1,2})?|q\d_\d|q\d_[a-z]|bf16|f16|f32|mxfp4)$/i;
+const quantName = (w) => String(w).replace(/^ud-/i, "").toUpperCase();
+// "qwen 3.8 27b Q4_K_M" → text "qwen 3.8 27b", quant "Q4_K_M". A pasted file name is cut at its hyphens:
+// "Qwen3.8-27B-Uncensored-Q4_K_M.gguf" → "Qwen3.8-27B-Uncensored". Only quant words: the text stays as it is.
+function splitQuant(text) {
+  const raw = String(text || "").trim(), words = [], quants = [];
+  for (const w0 of raw.split(/\s+/).filter(Boolean)) {
+    const segs = w0.replace(/\.gguf$/i, "").replace(/-\d{5}-of-\d{5}$/i, "").split("-");
+    let run = [];
+    segs.forEach((s, i) => {
+      if (/^ud$/i.test(s) && i + 1 < segs.length && QUANT_WORD.test(segs[i + 1])) return;
+      if (QUANT_WORD.test(s)) { quants.push(quantName(s)); if (run.filter(Boolean).length) words.push(run.join("-")); run = []; return; }
+      run.push(s);
+    });
+    if (run.filter(Boolean).length) words.push(run.join("-"));
+  }
+  return { text: quants.length && words.length ? words.join(" ") : raw, quant: quants[0] || "" };
+}
+// An Ollama model: "ollama.com/<user>/<model>:<tag>", "ollama.com/library/<model>:<tag>", "ollama run …", or a
+// typed "<user>/<model>:<tag>". A web page cannot read ollama.com (it sends no CORS header), so TensorTailor looks
+// for the same model on Hugging Face by name; most Ollama models are GGUF files from there. "hf.co/<org>/<repo>:<quant>"
+// (the form the Run tab copies for Ollama) names the Hugging Face repo itself.
+function parseOllama(s) {
+  let t = String(s || "").trim();
+  const cmd = /^ollama\s+(?:run|pull)\s+(\S+)/i.exec(t);
+  if (cmd) t = cmd[1];
+  const hf = /^(?:https?:\/\/)?hf\.co\/([\w.-]+\/[\w.-]+?)(?::([\w.-]+))?\/?$/i.exec(t);
+  if (hf) return { repo: hf[1], quant: hf[2] && QUANT_WORD.test(hf[2]) ? quantName(hf[2]) : "" };
+  const site = /^(?:https?:\/\/)?(?:www\.)?(?:ollama\.com|registry\.ollama\.ai)\/(.+)$/i.exec(t);
+  if (!site && !cmd && !/^[\w.-]+\/[\w.-]+:[\w.-]+$/.test(t)) return null;
+  const path = (site ? site[1] : t).replace(/[?#].*$/, "").replace(/^v2\//, "").replace(/\/+$/, "");
+  const m = /^(?:library\/)?(?:([\w.-]+)\/)?([\w.-]+)(?::([\w.-]+))?$/.exec(path);
+  // ollama.com's own pages (blog, search, docs …) are not models.
+  const PAGES = /^(search|library|models|blog|download|settings|signin|signup|api|public|docs|pricing)$/i;
+  if (!m || (site && PAGES.test(m[1] || m[2]))) return null;
+  const ns = m[1] || "", name = m[2], tag = m[3] || "";
+  // Ollama's own library writes "llama3.2", "qwen3", "deepseek-r1"; Hugging Face writes "Llama-3.2", "Qwen3".
+  const words = ns ? [name] : name.replace(/([a-z]{3,})(\d)/gi, "$1 $2").split("-").filter(Boolean);
+  let quant = "";
+  const parts = tag.split("-").filter(Boolean);
+  parts.forEach((p, i) => {
+    if (/^ud$/i.test(p) && QUANT_WORD.test(parts[i + 1] || "")) return;  // "UD-Q4_K_XL": Unsloth's prefix
+    if (QUANT_WORD.test(p)) { if (!quant) quant = quantName(p); } else if (!/^latest$/i.test(p)) words.push(p);
+  });
+  return { ns, name, quant, label: (ns ? ns + "/" : "") + name + (tag ? ":" + tag : ""), text: words.concat(quant ? [quant] : []).join(" ") };
+}
+// Plain search text (not a pasted link), without quant words. It matches the id (so also the publisher) and the provider.
+let spKey = null, spVal = null;
+function searchParts() {
+  if (state.search === spKey) return spVal;
+  spKey = state.search;
+  const raw = state.search.trim();
+  spVal = !raw || /^https?:/i.test(raw) || parseOllama(raw) ? { text: "", quant: "" } : splitQuant(raw);
+  spVal.lower = spVal.text.toLowerCase();
+  return spVal;
+}
+function searchText() { return searchParts().lower; }
 // Search: every word you type must be in the model's name or maker, in any order ("qwen3 14b" finds Qwen3-14B).
 let smKey = null, smWords = [];
 function searchMatch(r, s) {
@@ -2173,7 +2232,15 @@ function renderSearchBar() {
   // A pasted link is not a search: say how to check it (until its live check shows).
   const link = /^https?:/i.test(raw) ? hfRepoId(raw) : null;
   if (link && !(state.lookup && state.lookup.id === link)) { el.hidden = false; el.innerHTML = `<span>Press <kbd>Enter</kbd> to check <b>${esc(link)}</b> live on Hugging Face.</span>`; return; }
+  const ol = !link && raw ? parseOllama(raw) : null;
+  if (ol) {
+    el.hidden = false;
+    el.innerHTML = ol.repo ? `<span>Press <kbd>Enter</kbd> to check <b>${esc(ol.repo)}</b> live on Hugging Face${ol.quant ? `; the detail panel marks the ${esc(ol.quant)} file` : ""}.</span>`
+      : `<span>Press <kbd>Enter</kbd> to look for <b>${esc(ol.label)}</b> on Hugging Face by name. A web page cannot read ollama.com, and most Ollama models are GGUF files from Hugging Face${ol.quant ? `; the detail panel marks the ${esc(ol.quant)} file` : ""}.</span>`;
+    return;
+  }
   if (!s || s.length < 2) { el.hidden = true; return; }
+  const sp = searchParts(), quantNote = sp.quant && sp.text !== raw ? `<span class="msg">Left out <b>${esc(sp.quant)}</b>: it is a file inside a repo, and Hugging Face searches repo names only. The detail panel marks the ${esc(sp.quant)} file.</span>` : "";
   // Counted with the verdict tiles, so "Show all N" shows N rows.
   const total = state.results.filter((r) => searchMatch(r, s) && state.show[r.best.plain]).length;
   const save = state.searchAll; state.searchAll = false;
@@ -2187,8 +2254,8 @@ function renderSearchBar() {
   const shownN = state.searchAll ? total : withFilters;
   el.innerHTML = `<span><b>${shownN.toLocaleString("en")}</b> ${shownN === 1 ? "model in the list matches" : "models in the list match"} "${esc(raw)}"${state.searchAll ? " (filters off)" : hidden ? `, <b>${hidden.toLocaleString("en")}</b> more ${hidden === 1 ? "is" : "are"} hidden by your filters` : ""}.</span>
     ${state.searchAll ? `<button class="btn small" data-searchfilters="1">Filters on again</button>` : hidden ? `<button class="btn small" data-searchall="1">Show all ${total.toLocaleString("en")}</button>` : ""}
-    <button class="btn small ${total ? "" : "primary"}" data-hubsearch="${esc(raw)}" ${state.liveBusy ? "disabled" : ""} title="Look on Hugging Face for models of this publisher and models with this text in their name, and check them with llmfit's own code">Search Hugging Face for "${esc(raw)}"</button>
-    ${hub ? `<span class="msg">${hub.busy ? '<span class="dot warn"></span> ' : ""}${esc(hub.msg)}</span>` : ""}`;
+    <button class="btn small ${total ? "" : "primary"}" data-hubsearch="${esc(raw)}" ${state.liveBusy ? "disabled" : ""} title="Look on Hugging Face for models of this publisher and models with this text in their name, and check them with llmfit's own code">Search Hugging Face for "${esc(sp.text)}"</button>
+    ${hub ? `<span class="msg">${hub.busy ? '<span class="dot warn"></span> ' : ""}${esc(hub.msg)}</span>` : ""}${quantNote}`;
 }
 function renderList() {
   savePrefs();
@@ -2202,7 +2269,8 @@ function renderList() {
   const hidden = base.length - state.visible.length;
   $("countText").textContent = `${state.visible.length.toLocaleString("en")} shown` + (hidden ? ` · ${hidden.toLocaleString("en")} hidden` : "") + ` · ${state.results.length.toLocaleString("en")} analysed` + (state.lastMs ? ` · ${(state.lastMs / 1000).toFixed(1)} s` : "");
   const el = $("rows");
-  const lookupId = hfRepoId(state.search.trim());
+  // An Ollama link ("ollama.com/<user>" looks like "org/name") is not a Hugging Face repo.
+  const lookupId = parseOllama(state.search) ? null : hfRepoId(state.search.trim());
   // A pasted link shows its live check; a typed "org/name" only when nothing matches.
   if (!state.visible.length || (lookupId && state.lookup && state.lookup.id === lookupId)) {
     const raw = state.search.trim();
@@ -2347,6 +2415,25 @@ function mathLine(b) {
   if (b.mode === "MoE offload") return `${gb(b.inGpu)} in VRAM (of ${gb(b.vram)}) + ${gb(b.inRam)} experts in RAM (slower)`;
   return `${gb(b.need)} needed − ${gb(b.vram)} VRAM = ${gb(b.inRam)} in RAM (slower)`;
 }
+// The quant you searched for, for model `id`: the quant in the search text, else the quant of the Ollama or
+// hf.co link that opened this one model (state.markQuant for state.markFor). Typing in the search box ends the
+// link's mark, and other models never get it.
+function markedQuant(id) {
+  const sq = searchParts().quant;
+  if (sq) return sq;
+  return state.markQuant && state.markFor && state.markFor.toLowerCase() === String(id || "").toLowerCase() ? state.markQuant : "";
+}
+// That quant on its row of "Which file fits?". The table has rows Q8_0 to Q2_K only, so IQ4_XS, Q4_K_XL, Q4_0 and
+// MXFP4 mark the row of about the same size (as the Files tab counts them).
+function searchedMark(rowQ, id) {
+  const mq = markedQuant(id), row = String(rowQ).toUpperCase();
+  if (!mq) return "";
+  if (row === mq) return ` <span class="tag searched" title="The quant in your search">you searched</span>`;
+  const near = /^(Q4_0|MXFP4)$/.test(mq) ? "Q4_K_M" : /^I?Q\d/.test(mq) ? planQuant(mq) : "";
+  return near === row ? ` <span class="tag searched" title="${esc(`The table has no ${mq} row; ${row} is about the same size`)}">closest to ${esc(mq)}</span>` : "";
+}
+// A file name holds the searched quant as a whole part ("…-Q4_K_M.gguf", "…-UD-Q4_K_XL-00001-of-00002.gguf").
+const fileHasQuant = (path, q) => !!q && path.split("/").pop().replace(/\.gguf$/i, "").split(/[-.]/).some((p) => p.toUpperCase() === q);
 // The planner rows of "Which file fits?" as plain verdicts, by quant.
 function ladderVerdicts(d) {
   const out = new Map();
@@ -2397,7 +2484,7 @@ function tabOverview(r, d) {
     ${!d || d.loading ? '<div class="loading">Asking the engine…</div>' : d.error ? `<div class="warn-box">${esc(d.error)}</div>` : `${saferNote(r, d)}<table class="ladder"><thead><tr><th>Quant</th><th class="r">File</th><th>Runs on</th><th>Verdict</th><th class="r">tok/s</th></tr></thead><tbody>${ladder.map((x) => {
       if (x.error) return `<tr><td><span class="quant">${esc(x.quant)}</span></td><td colspan="4"><small>${esc(x.error)}</small></td></tr>`;
       const c = x.plan.current, lv = LEVEL[c.fit_level] || "tight", md = MODE[c.run_mode] || c.run_mode, t = c.estimated_tps;
-      return `<tr class="${x.quant === b.q ? "pick" : ""}"><td><span class="quant">${esc(x.quant)}</span></td><td class="r">${gb(x.plan.disk_size_gb)}</td><td>${md}</td><td>${verdict(plainOf(lv, md))}</td><td class="r">${t > 0 ? fmtT(t) : "—"}</td></tr>`;
+      return `<tr class="${x.quant === b.q ? "pick" : ""}"><td><span class="quant">${esc(x.quant)}</span>${searchedMark(x.quant, r.m.id)}</td><td class="r">${gb(x.plan.disk_size_gb)}</td><td>${md}</td><td>${verdict(plainOf(lv, md))}</td><td class="r">${t > 0 ? fmtT(t) : "—"}</td></tr>`;
     }).join("")}</tbody></table><p class="hint">llmfit's planner keeps extra room, so it can be stricter than the list: a file the list puts in VRAM may show "CPU+GPU" here.</p>`}
   </section>
   <section class="card"><div class="card-head"><h2>Why this result</h2></div><ul class="notes">${[`llmfit's own level for this file: ${LLMFIT_LABEL[b.level]} (the verdict at the top translates it for this PC).`].concat(notesFor(r, d)).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></section>`;
@@ -2541,8 +2628,10 @@ function tabFiles(r) {
       // Leave out text, settings and Ollama's extension-less files (template, params, license).
       const isPick = (x) => { const sm = splitGguf(x.path); if (sm && Number(sm[2]) > 1) return false; const q = quantOfFile(x.path); return !!q && q === String(b.q).toUpperCase() && fileKind(x.path)[0] === "model file"; };
       const sortHit = (x) => { const q = quantOfFile(x.path); return !!q && q === String(b.q).toUpperCase() && fileKind(x.path)[0] === "model file"; };
-      // The file "best for this PC" (and any sibling shards in order) first, then the rest from large to small.
-      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => (sortHit(c) - sortHit(a)) || (sortHit(a) ? a.path.localeCompare(c.path) : c.size - a.size));
+      // The file "best for this PC" (and any sibling shards in order) first, then the quant you searched, then the
+      // rest from large to small.
+      const mq = markedQuant(m.id), searched = (x) => fileKind(x.path)[0] === "model file" && fileHasQuant(x.path, mq);
+      const shown = f.files.filter((x) => !/\.(md|txt|gitattributes|json|py|jinja|yaml|yml)$/i.test(x.path) && !/^\./.test(x.path) && /\.[a-z0-9]+$/i.test(x.path.split("/").pop())).sort((a, c) => (sortHit(c) - sortHit(a)) || (searched(c) - searched(a)) || (sortHit(a) || searched(a) ? a.path.localeCompare(c.path) : c.size - a.size));
       // "Fits here": the verdict of llmfit's planner for this file's quant ("Which file fits?" in Overview).
       const det = state.detail.get(detailKey(m.id)), lv = ladderVerdicts(det);
       // "Which file fits?" has rows for Q8_0 to Q2_K. Q4_0 and MXFP4 are counted as Q4_K_M (about the same
@@ -2559,7 +2648,7 @@ function tabFiles(r) {
       html += `<table class="ftable files-t" style="margin-top:8px"><thead><tr><th>File</th><th title="llmfit planner, with extra safety room (as in Which file fits?)">Fits here</th><th></th></tr></thead><tbody>${shown.map((x) => {
         const k = fileKind(x.path), pick = isPick(x), sm = splitGguf(x.path), partTag = sm ? `<span class="tag" title="Split GGUF model: all ${Number(sm[3])} parts are needed to load it. Download queues all parts together.">part ${Number(sm[2])} of ${Number(sm[3])}</span>` : "";
         const job = dlJob(repo, x.path);
-        return `<tr class="${pick ? "pick" : ""}"><td class="fcell"><div class="fline"><span class="fname" title="${esc(x.path)}">${esc(midShort(x.path, nameMax))}</span><button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button></div><div class="fsub"><span class="fsize">${fmtSize(x.size)}</span>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}${partTag}${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}</div>${x.sha256 && state.showSha ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
+        return `<tr class="${pick ? "pick" : ""}"><td class="fcell"><div class="fline"><span class="fname" title="${esc(x.path)}">${esc(midShort(x.path, nameMax))}</span><button class="link-copy" data-copy="${esc(dlUrl(repo, x.path))}" data-what="Link" title="Copy the download link" aria-label="Copy the download link"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></button></div><div class="fsub"><span class="fsize">${fmtSize(x.size)}</span>${pick ? `<span class="rec" title="The quant llmfit picks for this PC">best for this PC</span>` : ""}${searched(x) ? `<span class="tag searched" title="The quant in your search">you searched</span>` : ""}${partTag}${k[0] === "model file" ? "" : `<span class="${k[1]}">${k[0]}</span>`}</div>${x.sha256 && state.showSha ? `<div class="hash">SHA-256 <span data-copy="${esc(x.sha256)}" data-what="SHA-256" title="${esc(x.sha256)}&#10;Click to copy" style="cursor:copy">${esc(x.sha256.slice(0, 16))}…</span></div>` : ""}</td><td class="fit-cell">${fitCell(x)}</td><td class="r" style="white-space:nowrap">${job ? `<button class="btn small" data-view-dl="1" title="Open Downloads">${esc(DL_LABEL[job.status] || job.status)}</button>` : `<button class="btn small${pick ? " primary" : ""}" data-dl="${esc(repo)}" data-dlpath="${esc(x.path)}" title="Download into the folder you pick, then check the SHA-256 on disk">Download</button>`}</td></tr>`;
       }).join("")}</tbody></table><p class="hint"><b>best for this PC</b> = the quant llmfit picks for this PC (${esc(b.q)}). <b>Download</b> saves into the folder you pick once, as <code>&lt;folder&gt;\\${esc(repo.replace("/", "\\"))}\\</code>. Pick LM Studio's models folder (by default <code>${esc(LMS_FOLDER_HINT)}</code>) and LM Studio sees the file at once.</p>`;
       const pickle = f.files.some((x) => /\.(bin|pt|pth|pkl|ckpt)$/i.test(x.path));
       html += `<ul class="checks" style="margin-top:10px">${pickle ? '<li><span class="no">!</span>This repo also has pickle files (.bin/.pt). They can run code when loaded. Use the GGUF or safetensors files.</li>' : '<li><span class="ok">✓</span>No pickle files (.bin, .pt) in this repo.</li>'}<li><span class="ok">✓</span>Every download is checked with SHA-256 at the end. <button class="btn ghost small" data-showsha="1" aria-pressed="${!!state.showSha}">${state.showSha ? "Hide" : "Show"} SHA-256 of each file</button></li></ul>`;
@@ -3046,7 +3135,7 @@ async function applyLive() {
 function renderCatalogText() {
   const n = state.live.models.filter((m) => !lmsMade(m.name)).length, k =state.live.models.length - n;
   $("catText").textContent = `Catalog ${state.info.llmfit_ref} · ${state.catalog.length.toLocaleString("en")} models` + (n || k ? ` (${[n ? `${n} live` : "", k ? `${k} from LM Studio` : ""].filter(Boolean).join(", ")})` : "");
-  $("q").placeholder = "Search models, or paste a Hugging Face link"; $("q").title = `Search ${state.catalog.length.toLocaleString("en")} models by name or publisher, or paste a Hugging Face link and press Enter to check it live`;
+  $("q").placeholder = "Search models, or paste a Hugging Face or Ollama link"; $("q").title = `Search ${state.catalog.length.toLocaleString("en")} models by name or publisher, or paste a Hugging Face or Ollama link and press Enter to check it live`;
 }
 function hfRepoId(s) {
   const raw = String(s || "").trim(), isUrl = /^https?:\/\//i.test(raw);
@@ -3113,22 +3202,30 @@ async function hubFields() {
   return new URL(urls[0]).searchParams.getAll("expand[]").concat(PAGE_EXPAND).map((f) => "expand[]=" + f).join("&");
 }
 // "Search Hugging Face for …": models of a publisher (author=) and models with the text in their name (search=).
-async function searchHub(text) {
-  const q = String(text || "").trim();
+// A quant word in the text is left out (see splitQuant). opts.from: the Ollama model the text came from, named in the
+// message. opts.author + opts.name (an Ollama user and model): that publisher's repos with that name come first.
+// llmfit counts copies with the same model name as one model and keeps the first one it gets, so the user's own
+// upload wins over a copy by someone else. Only repos with the name are kept: on Hugging Face the same user name
+// can be someone else.
+async function searchHub(text, opts = {}) {
+  const q = splitQuant(text).text.trim();
   if (q.length < 2 || state.liveBusy || !liveReady()) return;
-  state.liveBusy = true; state.hubSearch = { q, busy: true, msg: "Searching Hugging Face…" }; renderSearchBar();
+  const from = opts.from ? `Ollama model ${opts.from}, looked up by name. ` : "";
+  state.liveBusy = true; state.hubSearch = { q, busy: true, msg: from + "Searching Hugging Face…" }; renderSearchBar();
   try {
     const fields = await hubFields();
+    const own = opts.author && opts.name ? hfJson(`https://huggingface.co/api/models?author=${encodeURIComponent(opts.author)}&search=${encodeURIComponent(opts.name)}&sort=downloads&limit=100&${fields}`).catch(() => []) : Promise.resolve([]);
     const byAuthor = /^[\w.-]+$/.test(q) ? hfJson(`https://huggingface.co/api/models?author=${encodeURIComponent(q)}&sort=downloads&limit=100&${fields}`).catch(() => []) : Promise.resolve([]);
     const byName = hfJson(`https://huggingface.co/api/models?search=${encodeURIComponent(q)}&sort=downloads&limit=100&${fields}`);
     const seen = new Set(), entries = [];
-    for (const list of await Promise.all([byAuthor, byName])) for (const e of list || []) if (e && e.id && !seen.has(e.id)) { seen.add(e.id); entries.push(e); }
-    if (!entries.length) { state.hubSearch = { q, msg: `Hugging Face has no model of "${q}" or with "${q}" in its name.` }; return; }
+    for (const list of await Promise.all([own, byAuthor, byName])) for (const e of list || []) if (e && e.id && !seen.has(e.id)) { seen.add(e.id); entries.push(e); }
+    if (!entries.length) { state.hubSearch = { q, msg: from + `Hugging Face has no model of "${q}" or with "${q}" in its name.` }; return; }
     const r = await liveMapEntries(entries, (t) => { state.hubSearch.msg = t; renderSearchBar(); });
     if (r.added.length) { saveLiveStore(); await applyLive(); }
-    state.searchAll = true;
+    // Filters off only for this search: not when the search box holds something else by now.
+    if (searchText() === q.toLowerCase()) state.searchAll = true;
     const ranked = r.added.filter((n) => state.results.some((x) => x.m.id === n)).length;
-    state.hubSearch = { q, msg: `Hugging Face: ${entries.length} models found, ${r.known} already in the list, ${r.added.length} added (${ranked} analysed for this PC)${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}. Filters are off for this search.` };
+    state.hubSearch = { q, msg: from + `Hugging Face: ${entries.length} models found, ${r.known} already in the list, ${r.added.length} added (${ranked} analysed for this PC)${r.skipped ? `, ${r.skipped} of a kind llmfit does not list` : ""}. Filters are off for this search.` };
     renderList();
   } catch (e) {
     state.hubSearch = { q, msg: "The search stopped: " + e.message };
@@ -3197,6 +3294,28 @@ function lookupHTML(id) {
   if (L && L.busy) return `<div class="lookup"><h3>Checking ${esc(id)}…</h3><p>Reading the model and its config.json on Hugging Face.</p></div>`;
   if (L) return `<div class="lookup"><h3>${esc(id)}</h3><p>${esc(L.msg)}</p>${L.base ? `<button class="btn small primary" data-hfcheck="${esc(L.base)}">Check the base model: ${esc(L.base)}</button> ` : ""}${open}</div>`;
   return `<div class="lookup"><h3>Not in llmfit's list: ${esc(id)}</h3><p>Check it live: TensorTailor reads the model on Hugging Face and runs llmfit's own conversion and fit for this PC.</p><button class="btn small primary" data-hfcheck="${esc(id)}">Check live</button> ${open}</div>`;
+}
+// Ollama (see parseOllama): "hf.co/<repo>:<quant>" is checked as that repo; any other Ollama model is looked up
+// on Hugging Face by name, with the search field showing what is searched. When the Ollama user has a repo of that
+// name on Hugging Face (its GGUF copy first), it opens in Files. The link's quant stays marked on that one model
+// (markedQuant), also after the check clears the search box.
+async function lookupOllama(ol) {
+  if (state.liveBusy) { toast("A live lookup is still running. Press Enter again when it is done."); return; }
+  if (!liveReady()) return;
+  if (ol.repo) {
+    const link = "https://huggingface.co/" + ol.repo;
+    state.markQuant = ol.quant; state.markFor = ol.repo;
+    $("q").value = link; state.search = link; renderList();
+    checkHfLink(ol.repo);
+    return;
+  }
+  state.markQuant = ol.quant; state.markFor = "";
+  $("q").value = ol.text; state.search = ol.text; renderList();
+  await searchHub(ol.text, { from: ol.label, author: ol.ns, name: ol.name });
+  if (!ol.ns || state.search !== ol.text) return;
+  const want = [`${ol.ns}/${ol.name}-gguf`, `${ol.ns}/${ol.name}`].map((s) => s.toLowerCase());
+  const hit = want.map((w) => state.results.find((r) => r.m.id.toLowerCase() === w)).find(Boolean);
+  if (hit) { state.markFor = hit.m.id; showModel(hit.m.id, "files"); }
 }
 async function checkHfLink(id) {
   if (state.liveBusy || !liveReady()) return;
@@ -5311,9 +5430,12 @@ function wire() {
   $("kvq").addEventListener("change", (e) => { state.kvq = e.target.value; savePrefs(); renderDetail(); if (state.view === "mine") renderView(); });
   $("sort").addEventListener("change", (e) => { state.sort = e.target.value; renderList(); });
   let searchTimer = 0;
-  $("q").addEventListener("input", (e) => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.search = e.target.value; renderList(); }, 150); });
+  $("q").addEventListener("input", (e) => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { state.search = e.target.value; state.markQuant = ""; state.markFor = ""; renderList(); }, 150); });
   $("q").addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
+    // An Ollama link or "ollama run" line: look for the same model on Hugging Face.
+    const ol = parseOllama(e.target.value);
+    if (ol) { clearTimeout(searchTimer); lookupOllama(ol); return; }
     const s = e.target.value.trim().replace(/^https?:\/\/huggingface\.co\//, "").replace(/\/$/, "").toLowerCase();
     const hit = state.results.find((r) => r.m.id.toLowerCase() === s || r.m.gguf.some((g) => g.repo.toLowerCase() === s));
     if (hit) { state.search = ""; e.target.value = ""; showModel(hit.m.id, "files"); return; }

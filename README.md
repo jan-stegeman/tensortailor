@@ -50,6 +50,11 @@ as WebAssembly. Every build checks that the page gives exactly the same answers 
 - **Compare.** Tick 2 to 4 models and press **Compare**, or let them fight in **Battle**.
 - **Stay up to date.** **Tools** (top right) → **Catalog** → **Fetch new models** adds the newest models from
   Hugging Face. Or paste any Hugging Face link in the search box and press Enter.
+- **Bring a model from Ollama.** Paste an Ollama link (`ollama.com/<user>/<model>:<tag>`, or an `ollama run` line)
+  and press Enter. A web page cannot read ollama.com, so TensorTailor looks for the same model on Hugging Face by
+  name; most Ollama models are GGUF files from there. A quant in the search, such as `Q4_K_M`, is left out (it is a
+  file inside a repo, and Hugging Face searches repo names only); the detail panel marks that file with **you
+  searched**.
 - **Get help.** Point at a bar, speed, verdict or score for an explanation, or press `?` for the Help window.
 
 ## Get started

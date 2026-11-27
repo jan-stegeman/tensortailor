@@ -3,6 +3,22 @@
 All notable changes to TensorTailor are written down here, newest first. Each block is one day, labelled with its date;
 a day with a release names it. The commits are in backticks at the end of each line.
 
+## [2026.11.27] - 2026-11-27
+
+### Added
+
+- The search box takes an Ollama link (`ollama.com/<user>/<model>:<tag>`, `ollama.com/library/<model>:<tag>`, or an
+  `ollama run` / `ollama pull` line). A web page cannot read ollama.com (it sends no CORS header), so TensorTailor
+  looks for the same model on Hugging Face by name, with the Ollama user's own repos of that name first.
+  `hf.co/<repo>:<quant>` is checked as that Hugging Face repo.
+
+### Fixed
+
+- A quant in the search (`Q4_K_M`, `IQ4_XS`, `UD-Q4_K_XL`, `Q8_0` …) no longer hides the model. Hugging Face searches
+  repo names only, and most GGUF repos hold every quant as a file, so "Qwen 3.8 27B Uncensored Q4_K_M" missed
+  `orcarouter/Qwen3.8-27B-Uncensored-GGUF`. The search now leaves the quant out (the line above the list says so), and
+  the detail panel marks that file with **you searched** in Which file fits? and in Files.
+
 ## [2026.11.26] - 2026-11-26
 
 Released as v2026.11.26 (started by hand, the first release made by the new release job), with a fresh catalog of
