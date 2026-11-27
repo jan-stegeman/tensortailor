@@ -24,7 +24,10 @@ a day with a release names it. The commits are in backticks at the end of each l
 - The Vision eye was about the original model only, so a top pick could show it while none of its GGUF copies can
   read images in LM Studio. When a search on Hugging Face finds no GGUF copy with a vision projector, the eye is now
   amber with a line through it ("Vision only in the original model") in the list, the top picks and the detail panel.
-  TensorTailor checks this by itself for the three top picks and for the model you open.
+  TensorTailor checks this by itself for the three top picks and for the model you open (`17e8d05`).
+- That eye was hard to see: it is now a filled amber box with a thick line through the eye, with the label
+  **text only** next to it (the same label as on the files in Files), and the Help has its own line for it under
+  Labels and icons.
 
 ### Fixed
 
@@ -42,6 +45,8 @@ a day with a release names it. The commits are in backticks at the end of each l
   message says so (`fdd5c0b`).
 - **Find GGUF copies** listed repos without any GGUF file too (Hugging Face no longer applies `library=gguf`); it now
   asks with `filter=gguf` (`7b5bd08`).
+- The button **Search Hugging Face for "…"** above the list ran out of its box for a long search in a narrow window;
+  it now wraps.
 
 ## [2026.11.26] - 2026-11-26
 

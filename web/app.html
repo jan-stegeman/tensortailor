@@ -322,9 +322,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .m-name .sub .cap { width: 17px; height: 17px; }
 .m-name .sub .cap svg { width: 10px; height: 10px; }
 .cap.vision { color: var(--cap-vision); } .cap.tools { color: var(--cap-tools); } .cap.reason { color: var(--cap-reason); }
-/* Vision only in the original model (no GGUF copy can read images): amber, with a line through it. */
-.caps .cap.vision.off, .d-facts .caps .cap.vision.off { color: var(--marginal); border-color: currentColor; position: relative; }
-.cap.vision.off::after { content: ""; position: absolute; left: 1px; right: 1px; top: calc(50% - 0.75px); height: 1.5px; background: currentColor; transform: rotate(-45deg); border-radius: 1px; }
+/* Vision only in the original model (no GGUF copy can read images): an amber, filled box with a struck-through eye,
+   and the label "text only" next to it. The box colour is opaque, so the line's clean edge works on any row. */
+.cap.vision.off, .caps .cap.vision.off, .d-facts .caps .cap.vision.off { color: var(--marginal); border-color: var(--marginal); background: color-mix(in srgb, var(--marginal) 14%, var(--panel)); }
+.cap.vision.off .cut { stroke: color-mix(in srgb, var(--marginal) 14%, var(--panel)); }
+/* Its own opaque background keeps the text at 4.5:1 also on the purple chosen row. */
+.tag.vis-off { font-size: 11px; flex: none; background: color-mix(in srgb, var(--marginal) 10%, var(--panel)); }
+.caps .tag.vis-off { margin-left: 1px; }
 .chip-btn .cap { width: 17px; height: 17px; margin-right: 5px; vertical-align: -4px; }
 
 .cap-label { display: inline-flex; align-items: center; gap: 5px; }
@@ -1095,6 +1099,8 @@ details.by-hand .hint { margin-top: 6px; }
   .split { right: calc(var(--dw, 340px) - 4px); }
   .side { padding-left: 12px; padding-right: 12px; }
 }
+/* "Search Hugging Face for "<a long text>"": the button may wrap instead of running out of its box. */
+.btn[data-hubsearch] { max-width: 100%; height: auto; min-height: 30px; padding-top: 4px; padding-bottom: 4px; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 /* Verdict tiles in a narrow list: less padding, and no "· hidden" word (the tile stays dashed and quiet, and the
    Filters line says "Hidden: ..."). A tile that still does not fit goes to a second line, never off the edge. */
 .tiles { flex-wrap: wrap; }
@@ -1380,7 +1386,8 @@ details.by-hand .hint { margin-top: 6px; }
 
     <h3>Labels and icons</h3>
     <dl>
-      <dt><span class="caps"><span data-helpcap="vision"></span></span> Vision</dt><dd>The model can read images (photos, screenshots). It does not make images. LM Studio also needs the model's <b>vision projector</b> (an <code>mmproj</code> file) next to the GGUF file. An <b>amber eye with a line through it</b> means: the original model reads images, but none of its GGUF copies on Hugging Face has a vision projector, so in LM Studio it reads text only. TensorTailor checks this for the top picks and for the model you open (a search on Hugging Face); for other models the eye stays normal until then.</dd>
+      <dt><span class="caps"><span data-helpcap="vision"></span></span> Vision</dt><dd>The model can read images (photos, screenshots). It does not make images. LM Studio also needs the model's <b>vision projector</b> (an <code>mmproj</code> file) next to the GGUF file.</dd>
+      <dt><span class="caps"><span data-helpcap="vision-off"></span></span> in LM Studio</dt><dd>The original model reads images, but none of its GGUF copies on Hugging Face has a vision projector, so LM Studio can use it for text only. TensorTailor checks this for the top picks and for the model you open (a search on Hugging Face); other models keep the normal eye until you open them.</dd>
       <dt><span class="caps"><span data-helpcap="tools"></span></span> Tool use</dt><dd>The model can call functions, so AI agents can use it.</dd>
       <dt><span class="caps"><span data-helpcap="reason"></span></span> Reasoning</dt><dd>The model thinks step by step before it answers. "(from the model name)" means only the name says so (for example "Thinking" or "R1"), not llmfit's list.</dd>
       <dt><span class="chip new">NEW</span></dt><dd>Released in the last 60 days: the date this repo was made on Hugging Face. A new re-upload of an old model does not make the old model new.</dd>
@@ -1777,11 +1784,16 @@ function capIcon(k, extra) { return `<span class="cap ${k}" role="img" title="${
 // m (optional): a model that reads images, but whose GGUF copies cannot (no vision projector in any of them), gets an
 // amber, struck-through eye: the original model reads images, LM Studio only text.
 const VISION_OFF = "Vision only in the original model: no GGUF copy has a vision projector, so LM Studio uses it for text only.";
-function visionOffIcon() { return `<span class="cap vision off" role="img" title="${esc(VISION_OFF)}" aria-label="${esc(VISION_OFF)}">${CAP_SVG.vision}</span>`; }
+// The eye with a thick line through it; the "cut" path (box colour) gives the line a clean edge on the eye.
+const VISION_OFF_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="cut" d="M3.5 3.5l17 17" stroke-width="7"/><path d="M3.5 3.5l17 17" stroke-width="2.6"/></svg>';
+function visionOffIcon() { return `<span class="cap vision off" role="img" title="${esc(VISION_OFF)}" aria-label="${esc(VISION_OFF)}">${VISION_OFF_SVG}</span>`; }
+// The words next to it (the same label as on the files in Files), so it does not depend on seeing the line.
+function visionOffTag() { return `<span class="tag warnish vis-off" title="${esc(VISION_OFF)}">text only</span>`; }
 function capIcons(caps, m) {
   const fromName = caps.includes("reason-name") ? " (from the model name)" : "";
   const off = !!m && caps.includes("vision") && visionCopies(m) === "none";
-  return `<span class="caps">${["vision", "tools", "reason"].filter((k) => caps.includes(k)).map((k) => (k === "vision" && off ? visionOffIcon() : capIcon(k, k === "reason" ? fromName : ""))).join("")}</span>`;
+  // The "text only" tag sits inside .caps, so a full list line (fitSubs) hides it together with the icons.
+  return `<span class="caps">${["vision", "tools", "reason"].filter((k) => caps.includes(k)).map((k) => (k === "vision" && off ? visionOffIcon() : capIcon(k, k === "reason" ? fromName : ""))).join("")}${off ? visionOffTag() : ""}</span>`;
 }
 // Repos with already-compressed weights that are not GGUF (EXL2/EXL3, bitsandbytes, AWQ, GPTQ, MLX, vLLM builds, "9bit"),
 // or whose name says far more parameters than llmfit counts. llmfit's list marks most of them "gguf" and counts the
@@ -2219,7 +2231,7 @@ function fitSubs() {
     const caps = sub.querySelector(".caps");
     const order = [...sub.querySelectorAll(".chip[data-p]")].sort((a, b) => a.dataset.p - b.dataset.p).concat(caps && caps.children.length ? [caps] : []);
     for (const c of order) {
-      c.style.display = "none"; gone.push(c === caps ? "the icons (" + [...caps.children].map((i) => (i.getAttribute("title") || "").split(":")[0]).filter(Boolean).join(", ") + ")" : c.textContent);
+      c.style.display = "none"; gone.push(c === caps ? "the icons (" + [...caps.querySelectorAll(".cap")].map((i) => (i.getAttribute("title") || "").split(":")[0]).filter(Boolean).join(", ") + ")" : c.textContent);
       if (sub.scrollWidth <= sub.clientWidth) break;
     }
     if (idt && sub.scrollWidth > sub.clientWidth) { idt.classList.add("nopub"); idt.style.minWidth = Math.ceil(prm.getBoundingClientRect().width) + 2 + "px"; gone.push("the maker (" + idt.querySelector(".pub").textContent + ")"); }
@@ -2364,7 +2376,7 @@ function renderSuggest() {
     return;
   }
   el.className = "suggest";
-  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span>${visionModel(r.m) ? capIcons(["vision"], r.m) : ""}</span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedTok(r.best)}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
+  const card = (k, r, why) => r ? `<div class="sug"><span class="k" title="${esc(why)}">${k}</span><span class="who">${avatar(r.m)}<span class="n" title="${esc(r.m.id)}">${esc(pickName(r.m.name))}</span></span><span class="m">${verdict(r.best.plain)} <span class="quant">${esc(r.best.q)}</span> ${speedTok(r.best)}${visionModel(r.m) ? capIcons(["vision"], r.m) : ""}</span><span class="acts"><button class="btn small" data-show="${esc(r.m.id)}">View details</button><button class="btn small ghost" data-addbattle="${esc(r.m.id)}">Add to battle</button></span></div>`
     : `<div class="sug"><span class="k">${k}</span><span class="m">Nothing matches this rule with the current filters.</span></div>`;
   el.innerHTML = `<div class="sug-head"><b>Top picks for this PC</b><span>They follow your filters. Point at a label for the rule.</span><span class="spacer"></span><button class="btn ghost small" id="btnCloseSuggest" title="Hide the top picks (the button Top picks shows them again)">Hide</button></div>` + card("Best overall", bestOverall, "Highest score that still gives 12+ tok/s.") + card("Highest quality", smartest, "Best quality score at reading pace or faster.") + card("Fastest", fastest, "Quickest model whose quality score is 60 or more.");
   el.hidden = false;
@@ -5811,7 +5823,7 @@ function wire() {
   try { state.build = JSON.parse($("build-info").textContent); } catch (e) { state.build = {}; }
   state.token = safeGet("sessionStorage", "tt-token") || "";
   document.querySelectorAll("#capChips [data-cap]").forEach((b) => b.insertAdjacentHTML("afterbegin", capIcon(b.dataset.cap)));
-  document.querySelectorAll("[data-helpcap]").forEach((s) => { s.outerHTML = capIcon(s.dataset.helpcap); });
+  document.querySelectorAll("[data-helpcap]").forEach((s) => { s.outerHTML = s.dataset.helpcap === "vision-off" ? visionOffIcon() + visionOffTag() : capIcon(s.dataset.helpcap); });
   fillHwInputs(); renderUseCases(); renderToken(); renderUsable(); wire(); renderDetail();
   checkLms(); dlLoad();
   try {
